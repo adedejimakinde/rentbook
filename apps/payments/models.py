@@ -41,6 +41,9 @@ class Payment(TimeStampedModel):
 
     amount is the rental portion. caution_amount is caution deposit money taken
     in the same payment; it never counts towards the booking's amount paid.
+    A rental refund entry is the record of money staff sent back by hand; the
+    refunded money itself is counted in refunded_amount on the payment it
+    refunds, so these entries never enter any total.
     """
 
     class Method(models.TextChoices):
@@ -56,6 +59,7 @@ class Payment(TimeStampedModel):
         BALANCE = "balance", "Balance"
         CAUTION_REFUND = "caution_refund", "Caution refund"
         DAMAGE_CHARGE = "damage_charge", "Damage charge"
+        RENTAL_REFUND = "rental_refund", "Rental refund"
 
     class Status(models.TextChoices):
         PENDING = "pending", "Pending"
@@ -101,8 +105,8 @@ class Payment(TimeStampedModel):
         on_delete=models.PROTECT,
         null=True,
         blank=True,
-        related_name="caution_refunds",
-        help_text="The Stripe payment a caution refund was sent back against.",
+        related_name="refunds",
+        help_text="The payment a refund entry was sent back against.",
     )
     reference = models.CharField(max_length=255, blank=True)
     received_by = models.ForeignKey(
@@ -155,7 +159,8 @@ class Payment(TimeStampedModel):
         """Caution money that can still be sent back against this Stripe payment."""
         if not self.stripe_payment_intent_id:
             return ZERO
-        sent_back = sum((refund.amount for refund in self.caution_refunds.all()), ZERO)
+        caution_refunds = self.refunds.filter(kind=Payment.Kind.CAUTION_REFUND)
+        sent_back = sum((refund.amount for refund in caution_refunds), ZERO)
         return max(self.caution_net - sent_back, ZERO)
 
 

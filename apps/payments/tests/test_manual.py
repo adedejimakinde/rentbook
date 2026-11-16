@@ -242,3 +242,151 @@ def test_booking_admin_pages_render_with_money_fields(client, staff):
     response = client.get(reverse("admin:bookings_booking_change", args=[booking.pk]))
     assert response.status_code == 200
     assert client.get(reverse("admin:payments_payment_changelist")).status_code == 200
+
+
+def refund_manual(payment, amount, staff, **kwargs):
+    return ledger.record_manual_rental_refund(
+        payment,
+        amount=D(amount),
+        method=kwargs.pop("method", Payment.Method.ZELLE),
+        reference=kwargs.pop("reference", "ZL-BACK-1"),
+        received_at=timezone.now(),
+        received_by=staff,
+    )
+
+
+def test_full_manual_rental_refund_cancels_the_booking(staff):
+    booking = held_booking(total="200.00")
+    payment = manual(booking, "200.00", staff)
+
+    entry = refund_manual(payment, "200.00", staff, method=Payment.Method.CASHAPP)
+
+    booking.refresh_from_db()
+    payment.refresh_from_db()
+    assert entry.kind == Payment.Kind.RENTAL_REFUND
+    assert (entry.refund_of, entry.method, entry.reference) == (payment, "cashapp", "ZL-BACK-1")
+    assert entry.received_by == staff
+    assert payment.status == Payment.Status.REFUNDED
+    assert payment.refunded_amount == D("200.00")
+    assert booking.amount_paid == D("0.00")
+    assert booking.status == Booking.Status.CANCELLED
+
+
+def test_manual_rental_refund_below_deposit_keeps_status_and_flags(staff):
+    booking = held_booking(total="200.00")
+    payment = manual(booking, "200.00", staff)
+    refund_manual(payment, "150.00", staff)
+    booking.refresh_from_db()
+    assert booking.amount_paid == D("50.00")
+    assert booking.status == Booking.Status.PAID
+    assert booking.needs_attention
+
+
+def test_manual_rental_refund_still_covering_deposit_sets_deposit_paid(staff):
+    booking = held_booking(total="200.00")
+    payment = manual(booking, "200.00", staff)
+    refund_manual(payment, "60.00", staff)
+    booking.refresh_from_db()
+    assert booking.amount_paid == D("140.00")
+    assert booking.balance_due == D("60.00")
+    assert booking.status == Booking.Status.DEPOSIT_PAID
+    assert not booking.needs_attention
+
+
+def test_manual_rental_refunds_add_up_and_cannot_exceed_the_payment(staff):
+    booking = held_booking(total="200.00", caution_fee="50.00")
+    payment = manual(booking, "200.00", staff, caution_amount=D("50.00"))
+    with pytest.raises(ledger.PaymentError):
+        refund_manual(payment, "200.01", staff)
+    refund_manual(payment, "150.00", staff)
+    with pytest.raises(ledger.PaymentError):
+        refund_manual(payment, "50.01", staff)
+    refund_manual(payment, "50.00", staff)
+
+    booking.refresh_from_db()
+    assert booking.payments.filter(kind=Payment.Kind.RENTAL_REFUND).count() == 2
+    assert booking.amount_paid == D("0.00")
+    assert booking.caution_held == D("50.00")
+    assert booking.status == Booking.Status.CANCELLED
+
+
+def test_manual_rental_refund_only_reduces_the_payment_it_is_against(staff):
+    booking = held_booking(total="200.00")
+    deposit = manual(booking, "100.00", staff)
+    manual(booking, "100.00", staff)
+    with pytest.raises(ledger.PaymentError):
+        refund_manual(deposit, "150.00", staff)
+    refund_manual(deposit, "100.00", staff)
+    booking.refresh_from_db()
+    assert booking.amount_paid == D("100.00")
+    assert booking.status == Booking.Status.DEPOSIT_PAID
+
+
+@pytest.mark.parametrize(
+    "kwargs", [{"reference": ""}, {"method": Payment.Method.CARD}, {"method": ""}]
+)
+def test_manual_rental_refund_needs_a_reference_and_a_manual_method(staff, kwargs):
+    booking = held_booking(total="200.00")
+    payment = manual(booking, "200.00", staff)
+    with pytest.raises(ledger.PaymentError):
+        refund_manual(payment, "50.00", staff, **kwargs)
+    assert booking.amount_paid == D("200.00")
+
+
+def test_manual_rental_refund_is_refused_for_stripe_and_non_rental_payments(client, staff):
+    booking = held_booking(total="200.00", caution_fee="50.00")
+    card = pay(client, booking, Payment.Kind.DEPOSIT)
+    manual(booking, "100.00", staff, caution_amount=D("50.00"))
+    damage = ledger.record_damage_charge(
+        booking, amount=D("10.00"), reference="x", received_at=None, received_by=staff
+    )
+    for payment in (card, damage):
+        with pytest.raises(ledger.PaymentError):
+            refund_manual(payment, "5.00", staff)
+    assert booking.amount_paid == D("200.00")
+
+
+def test_admin_refunds_a_manual_payment(client, staff):
+    client.force_login(staff)
+    booking = held_booking(total="200.00")
+    payment = manual(booking, "200.00", staff)
+    data = {"payment": payment.pk, "amount": "60.00", "date": "2026-11-12"}
+
+    assert client.get(ledger_url(booking, "rental-refund")).status_code == 200
+    complete = {**data, "method": "zelle", "reference": "ZL-B"}
+    for missing in ("method", "reference", "date"):
+        incomplete = {key: value for key, value in complete.items() if key != missing}
+        assert client.post(ledger_url(booking, "rental-refund"), incomplete).status_code == 200
+    assert booking.amount_paid == D("200.00")
+
+    response = client.post(
+        ledger_url(booking, "rental-refund"),
+        {**data, "method": "bank_deposit", "reference": "WIRE-9"},
+    )
+    assert response.status_code == 302
+    booking.refresh_from_db()
+    entry = booking.payments.get(kind=Payment.Kind.RENTAL_REFUND)
+    assert (entry.amount, entry.method, entry.reference) == (D("60.00"), "bank_deposit", "WIRE-9")
+    assert timezone.localtime(entry.received_at).date().isoformat() == "2026-11-12"
+    assert entry.received_by == staff
+    assert booking.amount_paid == D("140.00")
+    assert booking.status == Booking.Status.DEPOSIT_PAID
+
+
+def test_admin_manual_refund_over_the_limit_shows_the_error(client, staff):
+    client.force_login(staff)
+    booking = held_booking(total="200.00")
+    payment = manual(booking, "100.00", staff)
+    response = client.post(
+        ledger_url(booking, "rental-refund"),
+        {
+            "payment": payment.pk,
+            "amount": "100.01",
+            "method": "zelle",
+            "date": "2026-11-12",
+            "reference": "ZL-B",
+        },
+    )
+    assert response.status_code == 200
+    assert b"more than the rental money left" in response.content
+    assert booking.amount_paid == D("100.00")

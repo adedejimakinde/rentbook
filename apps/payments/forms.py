@@ -150,22 +150,62 @@ class PaymentChoiceField(forms.ModelChoiceField):
         )
 
 
-class RentalRefundForm(LedgerForm):
-    """Refund rental money on one of the booking's card or ACH payments through Stripe."""
+class RentalRefundForm(DatedLedgerForm):
+    """Refund rental money on one of the booking's payments.
+
+    A card or ACH payment is refunded through Stripe. A manual payment is
+    refunded by staff, who record how, when and the reference here.
+    """
 
     title = "Refund rental payment"
 
     payment = PaymentChoiceField(label="Payment to refund", queryset=Payment.objects.none())
     amount = _money_field("Amount to refund")
+    method = forms.ChoiceField(
+        label="Sent back by (manual payments only)",
+        choices=[("", "---------"), *MANUAL_METHOD_CHOICES],
+        required=False,
+    )
+
+    field_order = ["payment", "amount", "method", "date", "reference"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["payment"].queryset = self.booking.payments.filter(
             kind__in=Payment.RENTAL_KINDS,
             status__in=(Payment.Status.SUCCEEDED, Payment.Status.REFUNDED),
-            stripe_payment_intent_id__isnull=False,
         )
+        self.fields["date"].label = "Date sent back (manual payments only)"
+        self.fields["date"].required = False
+        self.fields["reference"].label = "Reference (manual payments only)"
+
+    @property
+    def is_manual(self):
+        payment = self.cleaned_data.get("payment")
+        return payment is not None and not payment.stripe_payment_intent_id
+
+    @property
+    def reference_required(self):
+        return self.is_manual
+
+    def clean(self):
+        cleaned = super().clean()
+        if self.is_manual and not cleaned.get("method"):
+            self.add_error("method", "Choose how the refund was sent back.")
+        if self.is_manual and not cleaned.get("date") and "date" not in self.errors:
+            self.add_error("date", "Enter the date the refund was sent back.")
+        return cleaned
 
     def record(self, user):
         data = self.cleaned_data
-        stripe_service.refund_rental(data["payment"], data["amount"], received_by=user)
+        if not self.is_manual:
+            stripe_service.refund_rental(data["payment"], data["amount"], received_by=user)
+            return
+        ledger.record_manual_rental_refund(
+            data["payment"],
+            amount=data["amount"],
+            method=data["method"],
+            reference=data["reference"],
+            received_at=self.received_at(),
+            received_by=user,
+        )

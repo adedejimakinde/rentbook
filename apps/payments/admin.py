@@ -101,7 +101,7 @@ class BookingPaymentActionsMixin:
     def record_damage_charge(self, request, queryset):
         return self._open_ledger_form(request, queryset, "damage-charge")
 
-    @admin.action(description="Refund rental payment (card or ACH, through Stripe)")
+    @admin.action(description="Refund rental payment")
     def refund_rental_payment(self, request, queryset):
         return self._open_ledger_form(request, queryset, "rental-refund")
 

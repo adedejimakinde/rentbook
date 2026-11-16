@@ -96,7 +96,7 @@ def _open_payment(booking_id, kind, session_expires_at):
             raise PaymentError("Nothing is due for this payment.")
 
         caution = ZERO
-        if kind != Payment.Kind.DEPOSIT:
+        if kind in (Payment.Kind.FULL, Payment.Kind.BALANCE):
             caution = max(booking.caution_fee - booking.payments.caution_collected(), ZERO)
 
         if on_hold:

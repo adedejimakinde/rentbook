@@ -266,6 +266,48 @@ def check_rental_refund(payment_id, amount):
     return payment
 
 
+def record_manual_rental_refund(payment, *, amount, method, reference, received_at, received_by):
+    """Record rental money staff sent back by Zelle, Cash App or bank deposit.
+
+    Only for a manual payment; card and ACH payments are refunded through
+    Stripe. The refund cannot exceed the rental money left on the payment, and
+    the booking is re-evaluated exactly as for a Stripe refund.
+    """
+    if method not in Payment.MANUAL_METHODS:
+        raise PaymentError("Manual refunds must be by Zelle, Cash App or bank deposit.")
+    if not reference:
+        raise PaymentError("Enter the refund reference.")
+    amount = positive_amount(amount)
+    with transaction.atomic():
+        booking, payment = _lock_payment(payment.pk)
+        if (
+            payment.kind not in Payment.RENTAL_KINDS
+            or payment.method not in Payment.MANUAL_METHODS
+            or payment.stripe_payment_intent_id
+        ):
+            raise PaymentError("Card and ACH payments are refunded through Stripe.")
+        if payment.status not in (Payment.Status.SUCCEEDED, Payment.Status.REFUNDED):
+            raise PaymentError("This payment has not succeeded, so there is nothing to refund.")
+        if amount > payment.rental_net:
+            raise PaymentError(
+                f"Amount is more than the rental money left on this payment "
+                f"(${payment.rental_net})."
+            )
+        entry = Payment.objects.create(
+            booking=booking,
+            amount=amount,
+            method=method,
+            kind=Payment.Kind.RENTAL_REFUND,
+            status=Payment.Status.SUCCEEDED,
+            refund_of=payment,
+            reference=reference,
+            received_by=received_by,
+            received_at=received_at,
+        )
+        record_refund(payment.pk, payment.refunded_amount + amount)
+    return entry
+
+
 def flag_attention(booking):
     """Flag a booking for staff follow-up."""
     booking.needs_attention = True
