@@ -10,7 +10,7 @@ from django.utils import timezone
 from apps.bookings.models import Booking
 from apps.payments.models import Payment
 from apps.payments.services import ledger
-from apps.payments.tests.helpers import held_booking, pay
+from apps.payments.tests.helpers import held_booking, pay, start_checkout
 
 pytestmark = pytest.mark.django_db
 
@@ -105,6 +105,72 @@ def test_manual_and_stripe_payments_share_one_ledger(client, staff):
     assert payment.amount == D("100.00")
     assert booking.status == Booking.Status.PAID
     assert booking.balance_due == D("0.00")
+
+
+def test_manual_payment_is_refused_while_a_checkout_is_open(staff):
+    booking = held_booking(total="200.00")
+    start_checkout(booking, Payment.Kind.FULL)
+
+    with pytest.raises(ledger.PaymentError, match="still in progress"):
+        manual(booking, "200.00", staff)
+
+    assert booking.payments.count() == 1
+    assert booking.amount_paid == D("0.00")
+
+
+def test_manual_payment_is_refused_while_an_ach_payment_is_clearing(client, staff):
+    booking = held_booking(total="200.00")
+    pay(client, booking, Payment.Kind.FULL, payment_status="unpaid")
+
+    with pytest.raises(ledger.PaymentError, match="still in progress"):
+        manual(booking, "200.00", staff)
+
+
+def test_admin_manual_payment_expires_an_abandoned_checkout_first(client, staff, sessions):
+    booking = held_booking(total="200.00")
+    abandoned, _ = start_checkout(booking, Payment.Kind.FULL)
+    client.force_login(staff)
+
+    response = client.post(
+        ledger_url(booking, "manual-payment"),
+        {
+            "method": "zelle",
+            "amount": "200.00",
+            "caution_amount": "0",
+            "date": "2027-06-01",
+            "reference": "ZL-9",
+        },
+    )
+
+    assert response.status_code == 302
+    assert sessions.sessions[abandoned.stripe_checkout_session_id]["status"] == "expired"
+    abandoned.refresh_from_db()
+    booking.refresh_from_db()
+    assert abandoned.status == Payment.Status.FAILED
+    assert booking.amount_paid == D("200.00")
+    assert booking.status == Booking.Status.PAID
+
+
+def test_admin_manual_payment_is_refused_when_the_checkout_was_just_paid(client, staff, sessions):
+    booking = held_booking(total="200.00")
+    paid_at_stripe, _ = start_checkout(booking, Payment.Kind.FULL)
+    sessions.complete(paid_at_stripe.stripe_checkout_session_id)
+    client.force_login(staff)
+
+    response = client.post(
+        ledger_url(booking, "manual-payment"),
+        {
+            "method": "zelle",
+            "amount": "200.00",
+            "caution_amount": "0",
+            "date": "2027-06-01",
+            "reference": "ZL-9",
+        },
+    )
+
+    assert response.status_code == 200
+    assert "already being processed" in response.content.decode()
+    assert booking.payments.count() == 1
 
 
 def test_caution_refund_and_damage_charge_leave_amount_paid_untouched(staff):

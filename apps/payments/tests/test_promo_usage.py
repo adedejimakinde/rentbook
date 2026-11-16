@@ -16,7 +16,15 @@ from apps.bookings.tests.factories import (
 )
 from apps.payments.models import Payment
 from apps.payments.services import ledger
-from apps.payments.tests.helpers import event, pay, post_event, session_object, start_checkout
+from apps.payments.services import stripe as stripe_service
+from apps.payments.tests.helpers import (
+    event,
+    pay,
+    post_event,
+    run_together,
+    session_object,
+    start_checkout,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -132,22 +140,31 @@ def test_first_payment_is_refused_once_the_promo_is_used_up(client, promo, staff
     assert winner.status == Booking.Status.PAID
 
 
+@pytest.mark.django_db(transaction=True)
 def test_payment_that_races_past_the_check_is_kept_and_flagged(client, promo):
-    winner = booking_with_promo()
-    late = booking_with_promo()
-    late_payment, _ = start_checkout(late, Payment.Kind.DEPOSIT)
-    pay(client, winner, Payment.Kind.DEPOSIT)
+    """Two bookings open a checkout while the code has one use left, then both pay at once.
 
-    response = post_event(client, event("checkout.session.completed", session_object(late_payment)))
+    The two webhooks run in separate threads on separate connections. Both
+    payments are kept; one booking takes the last use, the other is flagged,
+    and the code is never counted past its limit.
+    """
+    bookings = [booking_with_promo(), booking_with_promo()]
+    payments = [start_checkout(booking, Payment.Kind.DEPOSIT)[0] for booking in bookings]
+    payloads = [event("checkout.session.completed", session_object(p)) for p in payments]
 
-    assert response.status_code == 200
-    late.refresh_from_db()
+    results = run_together(*[lambda p=p: stripe_service.handle_event(p) for p in payloads])
+
+    assert results == [True, True]
     promo.refresh_from_db()
-    assert late.amount_paid == D("90.00")
-    assert late.status == Booking.Status.DEPOSIT_PAID
-    assert late.needs_attention is True
     assert promo.uses_count == 1
+    for booking in bookings:
+        booking.refresh_from_db()
+        assert booking.amount_paid == D("90.00")
+        assert booking.status == Booking.Status.DEPOSIT_PAID
+        assert booking.promo_redeemed_at is not None
+    assert sorted(booking.needs_attention for booking in bookings) == [False, True]
 
+    late = next(booking for booking in bookings if booking.needs_attention)
     pay(client, late, Payment.Kind.BALANCE)
     promo.refresh_from_db()
     assert late.status == Booking.Status.PAID

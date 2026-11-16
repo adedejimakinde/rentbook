@@ -69,6 +69,7 @@ class BookingPaymentActionsMixin:
         "refund_rental_payment",
     ]
     money_fields = ["total", "deposit_amount", "amount_paid", "balance_due", "caution_held"]
+    ledger_forms = LEDGER_FORMS
 
     def get_readonly_fields(self, request, obj=None):
         """Show the computed money fields once the booking exists."""
@@ -108,10 +109,11 @@ class BookingPaymentActionsMixin:
     def ledger_form_view(self, request, booking_id, action):
         """Show and process one of the ledger forms for a booking."""
         booking = get_object_or_404(self.model, pk=booking_id)
-        form_class = LEDGER_FORMS.get(action)
+        form_class = self.ledger_forms.get(action)
         if form_class is None or not self.has_change_permission(request, booking):
             raise PermissionDenied
-        form = form_class(request.POST or None, booking=booking)
+        data = request.POST if request.method == "POST" else None
+        form = form_class(data, booking=booking)
         if request.method == "POST" and form.is_valid() and form.save(request.user):
             self.message_user(request, f"{form.title}: saved.", messages.SUCCESS)
             return redirect(reverse("admin:bookings_booking_change", args=[booking.pk]))

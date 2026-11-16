@@ -211,6 +211,19 @@ class Booking(TimeStampedModel):
         help_text="Set when a payment or refund leaves the booking needing staff follow-up.",
     )
 
+    delivery_override_note = models.TextField(
+        blank=True,
+        help_text="Why the booking was delivered with money or a payment outstanding.",
+    )
+    delivery_override_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="delivery_overrides",
+    )
+    delivery_override_at = models.DateTimeField(null=True, blank=True)
+
     class Meta:
         ordering = ["-event_date", "-created_at"]
         constraints = [

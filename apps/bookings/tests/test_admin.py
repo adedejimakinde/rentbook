@@ -71,12 +71,12 @@ def errors_in(response):
     return " ".join(formset.non_form_errors())
 
 
-def test_creating_a_paid_booking_beyond_stock_shows_error(admin_client):
+def test_creating_a_held_booking_beyond_stock_shows_error(admin_client):
     variant = ItemVariantFactory(stock_quantity=3, item__name="Gold Chiavari Chair")
     BookingItemFactory(variant=variant, quantity=2, booking__status=Booking.Status.PAID)
 
     response = admin_client.post(
-        ADD_URL, booking_form("paid", [{"variant": variant, "quantity": 2}])
+        ADD_URL, booking_form("held", [{"variant": variant, "quantity": 2}])
     )
 
     assert response.status_code == 200
@@ -152,7 +152,7 @@ def test_admin_hold_keeps_a_later_expiry_chosen_by_staff(admin_client):
 def test_admin_does_not_add_an_expiry_to_other_statuses(admin_client):
     variant = ItemVariantFactory(stock_quantity=3)
 
-    admin_client.post(ADD_URL, booking_form("paid", [{"variant": variant, "quantity": 1}]))
+    admin_client.post(ADD_URL, booking_form("quoted", [{"variant": variant, "quantity": 1}]))
 
     assert Booking.objects.get().hold_expires_at is None
 
@@ -172,8 +172,8 @@ def test_enquiry_beyond_stock_is_allowed_because_it_holds_nothing(admin_client):
     assert response.status_code == 302
 
 
-@pytest.mark.parametrize("status", ["held", "deposit_paid", "paid", "delivered"])
-def test_moving_a_booking_into_a_stock_holding_status_is_checked(admin_client, status):
+def test_moving_a_booking_onto_hold_is_checked(admin_client):
+    status = "held"
     variant = ItemVariantFactory(stock_quantity=1)
     BookingItemFactory(variant=variant, quantity=1, booking__status=Booking.Status.PAID)
     enquiry = BookingFactory(status=Booking.Status.ENQUIRY)
@@ -250,19 +250,17 @@ def test_moving_the_event_date_onto_a_full_day_is_rejected(admin_client):
 
 def test_a_booking_does_not_count_against_itself(admin_client):
     variant = ItemVariantFactory(stock_quantity=3)
-    booking = BookingFactory(status=Booking.Status.PAID)
+    booking = BookingFactory(status=Booking.Status.ENQUIRY)
     item = BookingItemFactory(booking=booking, variant=variant, quantity=3)
 
     response = admin_client.post(
         change_url(booking),
-        booking_form(
-            "delivered", [{"variant": variant, "quantity": 3, "id": item.pk}], initial_forms=1
-        ),
+        booking_form("held", [{"variant": variant, "quantity": 3, "id": item.pk}], initial_forms=1),
     )
 
     assert response.status_code == 302
     booking.refresh_from_db()
-    assert booking.status == Booking.Status.DELIVERED
+    assert booking.status == Booking.Status.HELD
 
 
 def test_deleted_rows_are_not_counted(admin_client):
@@ -274,7 +272,7 @@ def test_deleted_rows_are_not_counted(admin_client):
     response = admin_client.post(
         change_url(booking),
         booking_form(
-            "paid",
+            "held",
             [{"variant": variant, "quantity": 1, "id": item.pk, "DELETE": True}],
             initial_forms=1,
         ),

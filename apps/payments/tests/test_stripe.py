@@ -13,6 +13,7 @@ from apps.bookings.models import Booking
 from apps.bookings.services import availability
 from apps.bookings.tests.factories import BookingItemFactory, ItemVariantFactory
 from apps.payments.models import Payment, StripeEvent
+from apps.payments.services import ledger
 from apps.payments.services import stripe as stripe_service
 from apps.payments.services.ledger import PaymentError
 from apps.payments.tests.helpers import (
@@ -361,36 +362,150 @@ def test_balance_checkout_is_refused_once_fully_paid(client):
         start_checkout(booking, Payment.Kind.BALANCE)
 
 
-def test_new_checkout_expires_the_previous_open_session():
+def test_new_checkout_expires_the_previous_open_session_at_stripe(sessions):
     booking = held_booking()
     first, _ = start_checkout(booking, Payment.Kind.DEPOSIT)
-    with mock.patch.object(stripe_service.stripe.checkout, "Session") as session_api:
-        session_api.create.return_value = {"id": "cs_second"}
-        stripe_service.create_checkout_session(booking, Payment.Kind.DEPOSIT, **URLS)
-        assert session_api.expire.call_args.args == (first.stripe_checkout_session_id,)
+
+    second, _ = start_checkout(booking, Payment.Kind.FULL)
+
+    assert sessions.sessions[first.stripe_checkout_session_id]["status"] == "expired"
+    assert sessions.sessions[second.stripe_checkout_session_id]["status"] == "open"
     first.refresh_from_db()
     assert first.status == Payment.Status.FAILED
+    assert list(booking.payments.open_checkouts()) == [second]
 
 
-def test_new_checkout_is_refused_while_a_payment_is_clearing():
+def test_asking_again_for_the_same_checkout_returns_the_open_session(sessions):
     booking = held_booking()
-    start_checkout(booking, Payment.Kind.DEPOSIT)
-    with mock.patch.object(stripe_service.stripe.checkout, "Session") as session_api:
-        session_api.expire.side_effect = stripe.InvalidRequestError("complete", None)
-        session_api.retrieve.return_value = {"status": "complete"}
-        with pytest.raises(PaymentError):
-            stripe_service.create_checkout_session(booking, Payment.Kind.DEPOSIT, **URLS)
-        session_api.create.assert_not_called()
+    first = stripe_service.create_checkout_session(booking, Payment.Kind.DEPOSIT, **URLS)
+
+    again = stripe_service.create_checkout_session(booking, Payment.Kind.DEPOSIT, **URLS)
+
+    assert again["id"] == first["id"]
+    assert again["url"] == first["url"]
+    assert len(sessions.create_calls) == 1
+    assert sessions.expire_calls == []
     assert booking.payments.count() == 1
 
 
-def test_stripe_error_marks_the_payment_failed():
+def test_new_checkout_is_refused_while_a_payment_is_clearing(client, sessions):
     booking = held_booking()
-    with mock.patch.object(stripe_service.stripe.checkout, "Session") as session_api:
-        session_api.create.side_effect = stripe.APIConnectionError("down")
-        with pytest.raises(stripe.APIConnectionError):
-            stripe_service.create_checkout_session(booking, Payment.Kind.FULL, **URLS)
-    assert booking.payments.get().status == Payment.Status.FAILED
+    pay(client, booking, Payment.Kind.DEPOSIT, payment_status="unpaid")
+
+    with pytest.raises(PaymentError):
+        start_checkout(booking, Payment.Kind.FULL)
+
+    assert len(sessions.create_calls) == 1
+    assert booking.payments.get().status == Payment.Status.PENDING
+
+
+def test_new_checkout_is_refused_when_the_open_one_was_just_paid(sessions):
+    """Paid at Stripe, webhook not here yet: the session is complete, so nothing new opens."""
+    booking = held_booking()
+    first, _ = start_checkout(booking, Payment.Kind.DEPOSIT)
+    sessions.complete(first.stripe_checkout_session_id)
+
+    with pytest.raises(PaymentError):
+        start_checkout(booking, Payment.Kind.DEPOSIT)
+
+    first.refresh_from_db()
+    assert first.status == Payment.Status.PENDING
+    assert booking.payments.count() == 1
+
+
+def test_stripe_timeout_leaves_no_payment_behind(sessions):
+    booking = held_booking()
+    sessions.on_create = mock.Mock(side_effect=stripe.APIConnectionError("timed out"))
+
+    with pytest.raises(stripe.APIConnectionError):
+        stripe_service.create_checkout_session(booking, Payment.Kind.FULL, **URLS)
+
+    assert not booking.payments.exists()
+    sessions.on_create = None
+    payment, _ = start_checkout(booking, Payment.Kind.FULL)
+    assert list(booking.payments.all()) == [payment]
+
+
+def test_stripe_timeout_after_expiring_an_old_session_recovers_on_retry(sessions):
+    booking = held_booking()
+    first, _ = start_checkout(booking, Payment.Kind.DEPOSIT)
+    sessions.on_create = mock.Mock(side_effect=stripe.APIConnectionError("timed out"))
+    with pytest.raises(stripe.APIConnectionError):
+        stripe_service.create_checkout_session(booking, Payment.Kind.FULL, **URLS)
+    sessions.on_create = None
+
+    second, _ = start_checkout(booking, Payment.Kind.FULL)
+
+    first.refresh_from_db()
+    assert first.status == Payment.Status.FAILED
+    assert list(booking.payments.open_checkouts()) == [second]
+
+
+def test_stripe_calls_time_out_after_ten_seconds_and_are_not_retried():
+    assert stripe.default_http_client._timeout == 10
+    assert stripe.max_network_retries == 0
+
+
+def test_expired_checkout_webhook_fails_the_payment(client):
+    booking = held_booking()
+    payment, _ = start_checkout(booking, Payment.Kind.DEPOSIT)
+
+    post_event(client, event("checkout.session.expired", session_object(payment, "unpaid")))
+
+    payment.refresh_from_db()
+    booking.refresh_from_db()
+    assert payment.status == Payment.Status.FAILED
+    assert booking.status == Booking.Status.HELD
+    assert not booking.needs_attention
+
+
+def _one_unit_booking(variant):
+    """A held booking for the only unit of variant, owing $200."""
+    booking = held_booking(total="0.00", delivery_fee=D("200.00"))
+    booking.items.update(variant=variant)
+    return booking
+
+
+def test_late_ach_webhook_does_not_revive_a_lapsed_hold_when_stock_is_gone(client, sessions):
+    variant = ItemVariantFactory(stock_quantity=1)
+    booking = _one_unit_booking(variant)
+    payment, _ = start_checkout(booking, Payment.Kind.FULL)
+    sessions.complete(payment.stripe_checkout_session_id)
+    lapsed = timezone.now() - timedelta(hours=1)
+    Booking.objects.filter(pk=booking.pk).update(hold_expires_at=lapsed)
+    rival = _one_unit_booking(variant)
+
+    post_event(client, event("checkout.session.completed", session_object(payment, "unpaid")))
+
+    booking.refresh_from_db()
+    payment.refresh_from_db()
+    assert payment.status == Payment.Status.PENDING
+    assert payment.method == Payment.Method.ACH
+    assert booking.hold_expires_at == lapsed
+    assert booking.needs_attention
+    assert availability.available_quantity(variant, booking.event_date) == 0
+    assert ledger.has_live_hold(rival)
+    assert not ledger.has_live_hold(booking)
+
+
+@pytest.mark.parametrize("status", [Booking.Status.HELD, Booking.Status.EXPIRED])
+def test_late_ach_webhook_holds_the_stock_again_when_it_is_still_free(client, sessions, status):
+    variant = ItemVariantFactory(stock_quantity=1)
+    booking = _one_unit_booking(variant)
+    payment, _ = start_checkout(booking, Payment.Kind.FULL)
+    sessions.complete(payment.stripe_checkout_session_id)
+    Booking.objects.filter(pk=booking.pk).update(
+        status=status, hold_expires_at=timezone.now() - timedelta(hours=1)
+    )
+    assert availability.available_quantity(variant, booking.event_date) == 1
+
+    post_event(client, event("checkout.session.completed", session_object(payment, "unpaid")))
+
+    booking.refresh_from_db()
+    assert booking.status == Booking.Status.HELD
+    assert booking.hold_expires_at > timezone.now() + timedelta(days=6)
+    assert not booking.needs_attention
+    assert availability.available_quantity(variant, booking.event_date) == 0
 
 
 def test_handler_error_rolls_back_so_the_retry_is_processed(client):

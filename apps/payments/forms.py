@@ -76,6 +76,7 @@ class ManualPaymentForm(DatedLedgerForm):
 
     def record(self, user):
         data = self.cleaned_data
+        stripe_service.close_open_checkouts(self.booking)
         ledger.record_manual_payment(
             self.booking,
             method=data["method"],
@@ -146,7 +147,7 @@ class PaymentChoiceField(forms.ModelChoiceField):
     def label_from_instance(self, payment):
         return (
             f"{payment.get_kind_display()} by {payment.get_method_display()}: "
-            f"${payment.amount} (refundable ${payment.rental_net})"
+            f"${payment.amount} (refundable ${payment.rental_refundable})"
         )
 
 

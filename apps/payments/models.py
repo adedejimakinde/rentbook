@@ -28,12 +28,29 @@ class PaymentQuerySet(models.QuerySet):
         """Caution money received, net of any refunded through Stripe."""
         return sum((payment.caution_net for payment in self._received()), ZERO)
 
+    def _caution_released(self, statuses):
+        released = self.filter(kind__in=Payment.CAUTION_RELEASE_KINDS, status__in=statuses)
+        return sum((payment.amount for payment in released), ZERO)
+
     def caution_held(self):
         """Caution money collected and not yet refunded or kept for damage."""
-        released = self.filter(
-            kind__in=Payment.CAUTION_RELEASE_KINDS, status=Payment.Status.SUCCEEDED
-        )
-        return self.caution_collected() - sum((payment.amount for payment in released), ZERO)
+        return self.caution_collected() - self._caution_released([Payment.Status.SUCCEEDED])
+
+    def caution_available(self):
+        """Caution held that no refund still in progress has already reserved."""
+        return self.caution_collected() - self._caution_released(Payment.RESERVING_STATUSES)
+
+    def in_progress(self):
+        """Entries whose money is still moving: open checkouts, clearing ACH, refunds."""
+        return self.filter(status=Payment.Status.PENDING)
+
+    def open_checkouts(self):
+        """Rental payments a customer may still be completing at Stripe."""
+        return self.in_progress().filter(kind__in=Payment.RENTAL_KINDS)
+
+    def counted(self):
+        """Every entry except the failed ones, which never moved money."""
+        return self.exclude(status=Payment.Status.FAILED)
 
 
 class Payment(TimeStampedModel):
@@ -41,9 +58,15 @@ class Payment(TimeStampedModel):
 
     amount is the rental portion. caution_amount is caution deposit money taken
     in the same payment; it never counts towards the booking's amount paid.
-    A rental refund entry is the record of money staff sent back by hand; the
-    refunded money itself is counted in refunded_amount on the payment it
-    refunds, so these entries never enter any total.
+    A rental refund entry is the record of one refund of rental money, sent
+    back by hand or through Stripe; the refunded money itself is counted in
+    refunded_amount on the payment it refunds, so these entries never enter
+    any total.
+
+    A refund through Stripe is written as a pending entry before Stripe is
+    called. While pending it reserves its amount, so a second refund cannot
+    be approved against the same money; it becomes succeeded or failed once
+    Stripe answers.
     """
 
     class Method(models.TextChoices):
@@ -70,6 +93,8 @@ class Payment(TimeStampedModel):
     RENTAL_KINDS = (Kind.DEPOSIT, Kind.FULL, Kind.BALANCE)
     CAUTION_RELEASE_KINDS = (Kind.CAUTION_REFUND, Kind.DAMAGE_CHARGE)
     MANUAL_METHODS = (Method.ZELLE, Method.CASHAPP, Method.BANK_DEPOSIT)
+    # A refund entry in one of these statuses uses up refundable money.
+    RESERVING_STATUSES = (Status.PENDING, Status.SUCCEEDED)
 
     booking = models.ForeignKey(
         "bookings.Booking", on_delete=models.PROTECT, related_name="payments"
@@ -98,7 +123,7 @@ class Payment(TimeStampedModel):
         unique=True,
         null=True,
         blank=True,
-        help_text="Set on a caution refund sent back through Stripe.",
+        help_text="Set on a refund entry sent back through Stripe.",
     )
     refund_of = models.ForeignKey(
         "self",
@@ -159,9 +184,19 @@ class Payment(TimeStampedModel):
         """Caution money that can still be sent back against this Stripe payment."""
         if not self.stripe_payment_intent_id:
             return ZERO
-        caution_refunds = self.refunds.filter(kind=Payment.Kind.CAUTION_REFUND)
+        caution_refunds = self.refunds.filter(
+            kind=Payment.Kind.CAUTION_REFUND, status__in=Payment.RESERVING_STATUSES
+        )
         sent_back = sum((refund.amount for refund in caution_refunds), ZERO)
         return max(self.caution_net - sent_back, ZERO)
+
+    @property
+    def rental_refundable(self):
+        """Rental money left on this payment that no refund in progress has reserved."""
+        reserved = self.refunds.filter(
+            kind=Payment.Kind.RENTAL_REFUND, status=Payment.Status.PENDING
+        )
+        return max(self.rental_net - sum((refund.amount for refund in reserved), ZERO), ZERO)
 
 
 class StripeEvent(TimeStampedModel):
