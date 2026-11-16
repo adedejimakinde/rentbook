@@ -12,7 +12,7 @@ from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
-from apps.bookings.models import Booking
+from apps.bookings.models import Booking, PromoCode
 from apps.bookings.services import availability
 from apps.payments.models import Payment
 
@@ -59,6 +59,40 @@ def _stock_still_free(booking):
     return True
 
 
+def promo_is_spent(booking):
+    """True when the booking's promo code ran out of uses before its first payment."""
+    if booking.promo_code_id is None or booking.promo_redeemed_at is not None:
+        return False
+    return booking.promo_code.is_used_up
+
+
+def check_promo_available(booking):
+    """Refuse a first payment on a booking whose promo code has run out of uses."""
+    if promo_is_spent(booking):
+        raise PaymentError(
+            "The promo code on this booking has been used the maximum number of times. "
+            "Get a new quote without it before paying."
+        )
+
+
+def _redeem_promo(booking):
+    """Count the booking's promo code as used, once, on its first successful payment.
+
+    The promo row is locked so two bookings paying at once cannot both take the
+    last use. If the code ran out in the meantime the money is still kept and
+    the booking is flagged; uses_count never goes above max_uses.
+    """
+    if booking.promo_code_id is None or booking.promo_redeemed_at is not None:
+        return
+    promo = PromoCode.objects.select_for_update().get(pk=booking.promo_code_id)
+    if promo.is_used_up:
+        booking.needs_attention = True
+    else:
+        promo.uses_count += 1
+        promo.save(update_fields=["uses_count", "updated_at"])
+    booking.promo_redeemed_at = timezone.now()
+
+
 def _apply_money_in(booking):
     """Move a locked booking forward after rental money arrived.
 
@@ -66,6 +100,7 @@ def _apply_money_in(booking):
     cancelled, under the deposit, overpaid) is still kept on the ledger and the
     booking is flagged for staff instead.
     """
+    _redeem_promo(booking)
     paid, total, deposit = booking.amount_paid, booking.total, booking.deposit_amount
     status = booking.status
 
@@ -91,7 +126,15 @@ def _apply_money_in(booking):
             booking.needs_attention = True
         if booking.status in SECURED_STATUSES:
             booking.hold_expires_at = None
-    booking.save(update_fields=["status", "hold_expires_at", "needs_attention", "updated_at"])
+    booking.save(
+        update_fields=[
+            "status",
+            "hold_expires_at",
+            "needs_attention",
+            "promo_redeemed_at",
+            "updated_at",
+        ]
+    )
 
 
 def _apply_money_out(booking):
@@ -355,6 +398,8 @@ def record_manual_payment(
         booking = lock_booking(booking.pk)
         if booking.status == Booking.Status.CANCELLED:
             raise PaymentError("This booking is cancelled. Reopen it before recording a payment.")
+        if amount > ZERO:
+            check_promo_available(booking)
         paid, balance = booking.amount_paid, booking.balance_due
         if amount > balance:
             raise PaymentError(f"Amount is more than the balance due (${balance}).")

@@ -31,6 +31,13 @@ class Item(TimeStampedModel):
     base_price = models.DecimalField(
         max_digits=10, decimal_places=2, validators=[MinValueValidator(0)]
     )
+    caution_fee = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0)],
+        help_text="Refundable caution deposit per unit rented. Leave at 0 for none.",
+    )
     is_active = models.BooleanField(default=True)
 
     class Meta:
@@ -88,3 +95,42 @@ class ItemVariant(TimeStampedModel):
                         )
                     }
                 )
+
+
+class Package(TimeStampedModel):
+    """A fixed bundle of variants rented together for one price."""
+
+    name = models.CharField(max_length=150)
+    slug = models.SlugField(max_length=170, unique=True)
+    package_price = models.DecimalField(
+        max_digits=10, decimal_places=2, validators=[MinValueValidator(0)]
+    )
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+
+class PackageItem(TimeStampedModel):
+    """A quantity of one variant included in each unit of a package."""
+
+    package = models.ForeignKey(Package, on_delete=models.CASCADE, related_name="items")
+    variant = models.ForeignKey(ItemVariant, on_delete=models.PROTECT, related_name="package_items")
+    quantity = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)])
+
+    class Meta:
+        ordering = ["pk"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(quantity__gte=1), name="package_item_quantity_at_least_1"
+            ),
+            models.UniqueConstraint(
+                fields=["package", "variant"], name="unique_variant_per_package"
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.quantity} x {self.variant}"
