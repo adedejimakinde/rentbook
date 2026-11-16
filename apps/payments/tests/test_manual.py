@@ -28,7 +28,7 @@ def manual(booking, amount, staff, **kwargs):
         method=kwargs.pop("method", Payment.Method.ZELLE),
         amount=D(amount),
         received_at=timezone.now(),
-        reference="ZL-123",
+        reference=kwargs.pop("reference", "ZL-123"),
         received_by=staff,
         **kwargs,
     )
@@ -366,8 +366,8 @@ def test_manual_rental_refunds_add_up_and_cannot_exceed_the_payment(staff):
         refund_manual(payment, "200.01", staff)
     refund_manual(payment, "150.00", staff)
     with pytest.raises(ledger.PaymentError):
-        refund_manual(payment, "50.01", staff)
-    refund_manual(payment, "50.00", staff)
+        refund_manual(payment, "50.01", staff, reference="ZL-BACK-2")
+    refund_manual(payment, "50.00", staff, reference="ZL-BACK-2")
 
     booking.refresh_from_db()
     assert booking.payments.filter(kind=Payment.Kind.RENTAL_REFUND).count() == 2
@@ -379,7 +379,7 @@ def test_manual_rental_refunds_add_up_and_cannot_exceed_the_payment(staff):
 def test_manual_rental_refund_only_reduces_the_payment_it_is_against(staff):
     booking = held_booking(total="200.00")
     deposit = manual(booking, "100.00", staff)
-    manual(booking, "100.00", staff)
+    manual(booking, "100.00", staff, reference="ZL-124")
     with pytest.raises(ledger.PaymentError):
         refund_manual(deposit, "150.00", staff)
     refund_manual(deposit, "100.00", staff)

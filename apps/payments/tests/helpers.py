@@ -77,9 +77,31 @@ class FakeStripeSessions:
         self.expire_calls.append(session_id)
         return session
 
-    def complete(self, session_id):
-        """The customer finished the checkout: it can no longer be expired."""
-        self.sessions[session_id]["status"] = "complete"
+    def complete(self, session_id, payment_status="paid"):
+        """The customer finished the checkout: it can no longer be expired.
+
+        The session then carries what Stripe reports on a finished one: the
+        amount charged, the payment intent and whether the money has arrived.
+        """
+        session = self.sessions[session_id]
+        call = next(c for c in self.create_calls if c["metadata"] == session["metadata"])
+        session.update(
+            {
+                "status": "complete",
+                "payment_status": payment_status,
+                "payment_intent": f"pi_{session_id}",
+                "currency": "usd",
+                "amount_total": sum(
+                    line["price_data"]["unit_amount"] * line["quantity"]
+                    for line in call["line_items"]
+                ),
+            }
+        )
+        return session
+
+    def lapse(self, session_id):
+        """The session ran out of time at Stripe without being paid."""
+        self.sessions[session_id]["status"] = "expired"
 
 
 def stripe_sessions():
@@ -150,15 +172,55 @@ class FakeStripeRefunds:
         return refund
 
     def list(self, **kwargs):
+        """One page of refunds, newest first, paged as Stripe pages them (10 by default)."""
         intent = kwargs["payment_intent"]
-        return {"data": [r for r in self.refunds if r["payment_intent"] == intent]}
+        matching = [r for r in reversed(self.refunds) if r["payment_intent"] == intent]
+        after = kwargs.get("starting_after")
+        if after is not None:
+            ids = [r["id"] for r in matching]
+            matching = matching[ids.index(after) + 1 :]
+        limit = kwargs.get("limit", 10)
+        return FakeList(self, kwargs, matching[:limit], has_more=len(matching) > limit)
+
+    def all_for(self, payment):
+        """Every refund Stripe holds for a payment, across all pages."""
+        return [r for r in self.refunds if r["payment_intent"] == payment.stripe_payment_intent_id]
 
     def total_cents(self, payment):
         return sum(
-            r["amount"]
-            for r in self.list(payment_intent=payment.stripe_payment_intent_id)["data"]
-            if r["status"] not in ("failed", "canceled")
+            r["amount"] for r in self.all_for(payment) if r["status"] not in ("failed", "canceled")
         )
+
+
+class FakeList(dict):
+    """A page of a Stripe list, with auto_paging_iter() fetching the pages after it."""
+
+    def __init__(self, source, params, data, has_more):
+        super().__init__(object="list", data=data, has_more=has_more)
+        self._source = source
+        self._params = params
+
+    def auto_paging_iter(self):
+        page = self
+        while True:
+            yield from page["data"]
+            if not page["has_more"] or not page["data"]:
+                return
+            page = self._source.list(**{**self._params, "starting_after": page["data"][-1]["id"]})
+
+
+class FakeStripePaymentIntents:
+    """Stands in for stripe.PaymentIntent: only retrieve, with statuses set by the test."""
+
+    def __init__(self):
+        self.statuses = {}
+
+    def retrieve(self, intent_id, **kwargs):
+        return {
+            "id": intent_id,
+            "object": "payment_intent",
+            "status": self.statuses.get(intent_id, "processing"),
+        }
 
 
 def charge_refunded_event(payment, refunds):

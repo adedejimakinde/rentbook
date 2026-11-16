@@ -116,6 +116,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "bookings.release_expired_holds",
         "schedule": 60.0,
     },
+    "sync-stripe": {
+        "task": "payments.sync_stripe",
+        "schedule": 15 * 60,
+    },
 }
 
 # Days before and after an event during which its items stay unavailable.
@@ -124,6 +128,9 @@ BOOKING_BUFFER_DAYS = env.int("BOOKING_BUFFER_DAYS", default=0)
 HOLD_MINUTES = env.int("HOLD_MINUTES", default=15)
 # Hours a hold placed by staff in the admin lasts when no expiry is entered.
 ADMIN_HOLD_HOURS = env.int("ADMIN_HOLD_HOURS", default=48)
+# Hours between now and the start of the event day that a quote or online
+# reservation needs. Staff bookings in the admin are not held to this.
+MIN_NOTICE_HOURS = env.int("MIN_NOTICE_HOURS", default=24)
 
 # Payments. Stripe keys come from the environment only.
 STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="")
@@ -151,7 +158,16 @@ BUSINESS_PHONE = env("BUSINESS_PHONE", default="469-347-4687")
 BUSINESS_EMAIL = env("BUSINESS_EMAIL", default="atglaceevents.rental@gmail.com")
 WHATSAPP_NUMBER = env("WHATSAPP_NUMBER", default="14693474687")
 
+
+def _static(path):
+    from django.templatetags.static import static
+
+    return static(path)
+
+
 UNFOLD = {
     "SITE_TITLE": BUSINESS_NAME,
     "SITE_HEADER": BUSINESS_NAME,
+    # Every admin page: forms submit once, so a double click cannot save twice.
+    "SCRIPTS": [lambda request: _static("core/js/submit_once.js")],
 }

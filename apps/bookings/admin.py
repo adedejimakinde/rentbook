@@ -14,7 +14,7 @@ from unfold.admin import ModelAdmin, TabularInline
 
 from apps.bookings.forms import LIFECYCLE_FORMS
 from apps.bookings.models import Booking, BookingItem, BookingPackage, DeliveryZone, PromoCode
-from apps.bookings.services import availability, lifecycle
+from apps.bookings.services import availability, lifecycle, quote
 from apps.payments.admin import BookingPaymentActionsMixin
 
 # Statuses staff may set by hand. Every other status is reached through a
@@ -139,11 +139,14 @@ class BookingAdmin(BookingPaymentActionsMixin, ModelAdmin):
         "mark_delivered",
         "mark_returned",
         "cancel_booking",
+        "reopen_booking",
     ]
     ledger_forms = {**BookingPaymentActionsMixin.ledger_forms, **LIFECYCLE_FORMS}
     search_fields = ["customer_name", "email", "phone"]
     date_hierarchy = "event_date"
     readonly_fields = [
+        "tax",
+        "caution_fee",
         "promo_code",
         "promo_redeemed_at",
         "needs_attention",
@@ -166,7 +169,15 @@ class BookingAdmin(BookingPaymentActionsMixin, ModelAdmin):
 
     def get_readonly_fields(self, request, obj=None):
         fields = list(super().get_readonly_fields(request, obj))
-        return fields + LOCKED_WITH_PAYMENTS if has_payments(obj) else fields
+        if has_payments(obj):
+            fields += [field for field in LOCKED_WITH_PAYMENTS if field not in fields]
+        return fields
+
+    def save_related(self, request, form, formsets, change):
+        """Once the lines are saved, recompute tax and caution from them (no payments yet)."""
+        super().save_related(request, form, formsets, change)
+        if not has_payments(form.instance):
+            quote.reprice_booking(form.instance)
 
     def get_actions(self, request):
         """Bookings are deleted one at a time, where stock and payments are checked."""
@@ -195,6 +206,10 @@ class BookingAdmin(BookingPaymentActionsMixin, ModelAdmin):
     @admin.action(description="Cancel booking")
     def cancel_booking(self, request, queryset):
         return self._open_ledger_form(request, queryset, "cancel")
+
+    @admin.action(description="Reopen cancelled booking")
+    def reopen_booking(self, request, queryset):
+        return self._open_ledger_form(request, queryset, "reopen")
 
 
 @admin.register(DeliveryZone)

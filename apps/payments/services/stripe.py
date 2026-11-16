@@ -13,10 +13,11 @@ import stripe
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.db import IntegrityError, transaction
+from django.db.models import F
 from django.utils import timezone
 
 from apps.bookings.models import Booking
-from apps.payments.models import Payment, StripeEvent
+from apps.payments.models import Payment, StripeEvent, UnmatchedStripeEvent
 from apps.payments.services import ledger
 from apps.payments.services.ledger import PaymentError
 
@@ -33,6 +34,15 @@ HOLD_GRACE_MINUTES = 5
 # are not retried: a timeout fails the request and leaves nothing behind.
 STRIPE_TIMEOUT_SECONDS = 10
 IN_PROGRESS = "A payment for this booking is already being processed."
+# Times an unmatched event is retried (every 15 minutes: one day) before it is
+# left for staff in the admin.
+UNMATCHED_RETRY_LIMIT = 96
+# Pending payments and refunds older than this are checked by the periodic sync.
+SYNC_AFTER_MINUTES = 15
+# A refund entry still pending this long with no refund at Stripe never got
+# there (the request timed out before Stripe saw it), so it is failed.
+PENDING_REFUND_TIMEOUT_MINUTES = 15
+FAILED_REFUND_STATUSES = ("failed", "canceled")
 
 stripe.default_http_client = stripe.new_default_http_client(timeout=STRIPE_TIMEOUT_SECONDS)
 stripe.max_network_retries = 0
@@ -251,8 +261,10 @@ def _amount_matches(payment, session):
 
 def _on_checkout_completed(session):
     payment = _payment_for_session(session)
-    if payment is None or not _amount_matches(payment, session):
-        return
+    if payment is None:
+        return False
+    if not _amount_matches(payment, session):
+        return True
     intent_id = session.get("payment_intent")
     if session.get("payment_status") == "paid":
         ledger.record_success(payment.pk, payment_intent_id=intent_id)
@@ -262,8 +274,10 @@ def _on_checkout_completed(session):
 
 def _on_async_payment_succeeded(session):
     payment = _payment_for_session(session)
-    if payment is None or not _amount_matches(payment, session):
-        return
+    if payment is None:
+        return False
+    if not _amount_matches(payment, session):
+        return True
     ledger.record_success(
         payment.pk, payment_intent_id=session.get("payment_intent"), method=Payment.Method.ACH
     )
@@ -271,32 +285,77 @@ def _on_async_payment_succeeded(session):
 
 def _on_async_payment_failed(session):
     payment = _payment_for_session(session)
-    if payment is not None:
-        ledger.record_failure(payment.pk, method=Payment.Method.ACH)
+    if payment is None:
+        return False
+    ledger.record_failure(payment.pk, method=Payment.Method.ACH)
+    return True
 
 
 def _on_checkout_expired(session):
     """An abandoned checkout can no longer be paid, so it stops blocking the booking."""
-    payment = Payment.objects.filter(stripe_checkout_session_id=session["id"]).first()
-    if payment is not None:
-        ledger.record_failure(payment.pk)
+    payment = _payment_for_session(session)
+    if payment is None:
+        return False
+    ledger.record_failure(payment.pk)
+    return True
 
 
 def _refund_entry_id(refund):
     return (refund.get("metadata") or {}).get("entry_id")
 
 
-def _fail_refund_entry(payment, refund):
-    """Mark failed the entry for a refund Stripe says did not go through."""
+def _refund_entry(payment, refund):
+    """The ledger entry for a Stripe refund, by refund id or the entry id in its metadata."""
     entry = Payment.objects.filter(stripe_refund_id=refund["id"]).first()
     entry_id = _refund_entry_id(refund)
     if entry is None and entry_id and str(entry_id).isdigit():
         entry = Payment.objects.filter(pk=entry_id, refund_of=payment).first()
-    if entry is not None:
+    return entry
+
+
+def _fail_refund_entry(payment, refund):
+    """Mark failed the entry for a refund Stripe says did not go through.
+
+    Returns (entry, was_counted): was_counted is True when the entry had
+    succeeded, so its money had been counted as sent back.
+    """
+    entry = _refund_entry(payment, refund)
+    if entry is None:
+        return None, False
+    was_counted = entry.status == Payment.Status.SUCCEEDED
+    ledger.fail_refund(entry.pk)
+    return entry, was_counted
+
+
+def _list_refunds(payment):
+    """Every refund Stripe holds for a payment, reading all pages."""
+    listing = stripe.Refund.list(
+        payment_intent=payment.stripe_payment_intent_id, limit=100, api_key=_secret_key()
+    )
+    return list(listing.auto_paging_iter())
+
+
+def _fail_stale_pending_refunds(payment, listed_refunds):
+    """Fail refund entries Stripe never received, once they are old enough to be sure.
+
+    A refund request that timed out may still have reached Stripe; it is only
+    failed when no refund at Stripe names it and it has been pending longer
+    than PENDING_REFUND_TIMEOUT_MINUTES. Returns how many were failed.
+    """
+    listed_entry_ids = {str(_refund_entry_id(refund)) for refund in listed_refunds}
+    listed_refund_ids = {refund["id"] for refund in listed_refunds}
+    cutoff = timezone.now() - timedelta(minutes=PENDING_REFUND_TIMEOUT_MINUTES)
+    stale = payment.refunds.filter(status=Payment.Status.PENDING, created_at__lt=cutoff)
+    failed = 0
+    for entry in stale:
+        if str(entry.pk) in listed_entry_ids or entry.stripe_refund_id in listed_refund_ids:
+            continue
         ledger.fail_refund(entry.pk)
+        failed += 1
+    return failed
 
 
-def sync_refunds(payment, *, reported_total=ZERO, received_by=None):
+def sync_refunds(payment, *, reported_total=ZERO, received_by=None, failed_ids=()):
     """Bring the ledger in line with every refund Stripe holds for a payment.
 
     Refunds tagged as caution refunds become caution refund entries, once each.
@@ -304,21 +363,29 @@ def sync_refunds(payment, *, reported_total=ZERO, received_by=None):
     tag (made in the Stripe dashboard) are treated as ambiguous. A refund this
     app reserved settles its pending entry: succeeded, or failed if Stripe
     says it did not go through. Safe to repeat. reported_total is the refunded
-    total a webhook stated, in case the list is behind it.
+    total a webhook stated, in case the list is behind it. failed_ids are
+    refunds a refund.failed event reported, in case the list is behind that.
+
+    A rental refund already counted that has since failed is taken back off
+    the refunded total, and only that: refunds missing from a lagging list
+    are never taken back.
     """
-    refunds = stripe.Refund.list(
-        payment_intent=payment.stripe_payment_intent_id, limit=100, api_key=_secret_key()
-    )
+    refunds = _list_refunds(payment)
+    failed_ids = set(failed_ids)
     with transaction.atomic():
-        ledger.lock_booking(payment.booking_id)
-        rental = caution = ZERO
-        ambiguous = False
-        for refund in refunds["data"]:
-            if refund["status"] in ("failed", "canceled"):
-                _fail_refund_entry(payment, refund)
-                continue
+        booking = ledger.lock_booking(payment.booking_id)
+        rental = caution = taken_back = ZERO
+        ambiguous = reversed_entry = False
+        for refund in refunds:
             amount = from_cents(refund["amount"])
             kind = (refund.get("metadata") or {}).get("kind")
+            if refund["status"] in FAILED_REFUND_STATUSES or refund["id"] in failed_ids:
+                entry, was_counted = _fail_refund_entry(payment, refund)
+                reversed_entry |= was_counted
+                counted = was_counted if entry is not None else refund["id"] in failed_ids
+                if counted and kind != Payment.Kind.CAUTION_REFUND:
+                    taken_back += amount
+                continue
             if kind == Payment.Kind.CAUTION_REFUND:
                 caution += amount
             else:
@@ -337,7 +404,14 @@ def sync_refunds(payment, *, reported_total=ZERO, received_by=None):
         if unlisted > ZERO:
             rental += unlisted
             ambiguous = True
-        ledger.record_refund(payment.pk, rental, ambiguous=ambiguous)
+        if _fail_stale_pending_refunds(payment, refunds) or reversed_entry:
+            ledger.flag_attention(booking)
+        if taken_back > ZERO:
+            counted_before = Payment.objects.get(pk=payment.pk).refunded_amount
+            rental = max(rental, counted_before - taken_back)
+        ledger.record_refund(
+            payment.pk, rental, ambiguous=ambiguous, allow_decrease=taken_back > ZERO
+        )
 
 
 def _issue_refund(entry, kind):
@@ -406,6 +480,78 @@ def refund_rental(payment, amount, *, received_by=None):
     return entry.refund_of
 
 
+def _sync_checkout(payment):
+    """Settle one pending checkout payment from its session (and intent) at Stripe."""
+    session = stripe.checkout.Session.retrieve(
+        payment.stripe_checkout_session_id, api_key=_secret_key()
+    )
+    if session["status"] == "expired":
+        ledger.record_failure(payment.pk)
+        return
+    if session["status"] != "complete":
+        return
+    with transaction.atomic():
+        if not _amount_matches(payment, session):
+            return
+    intent_id = session.get("payment_intent")
+    if session.get("payment_status") == "paid":
+        ledger.record_success(payment.pk, payment_intent_id=intent_id)
+        return
+    if session.get("payment_status") != "unpaid" or not intent_id:
+        return
+    intent = stripe.PaymentIntent.retrieve(intent_id, api_key=_secret_key())
+    if intent["status"] == "succeeded":
+        ledger.record_success(payment.pk, payment_intent_id=intent_id, method=Payment.Method.ACH)
+    elif intent["status"] in ("requires_payment_method", "canceled"):
+        ledger.record_failure(payment.pk, method=Payment.Method.ACH)
+    elif payment.method != Payment.Method.ACH:
+        ledger.record_processing(payment.pk, payment_intent_id=intent_id)
+
+
+def sync_booking(booking):
+    """Bring a booking's payments and refunds in line with what Stripe holds.
+
+    Pending checkouts are settled from their sessions: paid, still clearing,
+    failed or expired. Every card or ACH payment then has its refunds synced,
+    which also settles refund entries left pending (for example after a
+    timeout). Safe to repeat. Raises stripe.StripeError if Stripe cannot be
+    reached; whatever was settled before that is kept.
+    """
+    pending = booking.payments.open_checkouts().filter(stripe_checkout_session_id__isnull=False)
+    for payment in pending.order_by("pk"):
+        _sync_checkout(payment)
+    paid = booking.payments.filter(
+        kind__in=Payment.RENTAL_KINDS,
+        status__in=(Payment.Status.SUCCEEDED, Payment.Status.REFUNDED),
+        stripe_payment_intent_id__isnull=False,
+    )
+    for payment in paid.order_by("pk"):
+        sync_refunds(payment)
+
+
+def sync_stale_bookings():
+    """Sync every booking with a payment or refund pending for SYNC_AFTER_MINUTES.
+
+    Returns how many bookings were synced. A booking Stripe cannot be reached
+    for is logged and left for the next run.
+    """
+    cutoff = timezone.now() - timedelta(minutes=SYNC_AFTER_MINUTES)
+    booking_ids = (
+        Payment.objects.filter(status=Payment.Status.PENDING, created_at__lt=cutoff)
+        .values_list("booking_id", flat=True)
+        .distinct()
+    )
+    synced = 0
+    for booking in Booking.objects.filter(pk__in=list(booking_ids)).order_by("pk"):
+        try:
+            sync_booking(booking)
+        except stripe.StripeError:
+            logger.exception("Booking %s could not be synced with Stripe.", booking.pk)
+        else:
+            synced += 1
+    return synced
+
+
 def _payment_for_intent(stripe_object):
     intent_id = stripe_object.get("payment_intent")
     payment = (
@@ -418,16 +564,20 @@ def _payment_for_intent(stripe_object):
 
 def _on_charge_refunded(charge):
     payment = _payment_for_intent(charge)
-    if payment is not None:
-        sync_refunds(payment, reported_total=from_cents(charge["amount_refunded"]))
+    if payment is None:
+        return False
+    sync_refunds(payment, reported_total=from_cents(charge["amount_refunded"]))
+    return True
 
 
 def _on_refund_failed(refund):
-    """A refund we counted did not reach the customer: staff must sort it out."""
+    """A refund we counted did not reach the customer: take it back and flag the booking."""
     payment = _payment_for_intent(refund)
-    if payment is not None:
-        ledger.flag_attention(ledger.lock_booking(payment.booking_id))
-        _fail_refund_entry(payment, refund)
+    if payment is None:
+        return False
+    ledger.flag_attention(ledger.lock_booking(payment.booking_id))
+    sync_refunds(payment, failed_ids=[refund["id"]])
+    return True
 
 
 HANDLERS = {
@@ -445,6 +595,8 @@ def handle_event(event):
 
     The event id is recorded in the same transaction as the changes it causes,
     so a failure part-way leaves nothing behind and Stripe's retry starts clean.
+    An event that matches no payment is kept in UnmatchedStripeEvent for the
+    periodic sync to match again.
     """
     with transaction.atomic():
         try:
@@ -453,6 +605,47 @@ def handle_event(event):
         except IntegrityError:
             return False
         handler = HANDLERS.get(event["type"])
-        if handler is not None:
-            handler(event["data"]["object"])
+        if handler is not None and handler(event["data"]["object"]) is False:
+            UnmatchedStripeEvent.objects.get_or_create(
+                event_id=event["id"],
+                defaults={
+                    "type": event["type"],
+                    "object_id": event["data"]["object"].get("id", ""),
+                    "payload": event,
+                },
+            )
     return True
+
+
+def retry_unmatched():
+    """Run each kept unmatched event through its handler again; return how many matched.
+
+    An event still matching nothing counts an attempt, and is no longer
+    retried after UNMATCHED_RETRY_LIMIT attempts. Each event is handled in its
+    own transaction, so one Stripe failure does not undo the others.
+    """
+    matched = 0
+    open_ids = UnmatchedStripeEvent.objects.filter(
+        resolved_at__isnull=True, attempts__lt=UNMATCHED_RETRY_LIMIT
+    ).values_list("pk", flat=True)
+    for pk in list(open_ids):
+        try:
+            with transaction.atomic():
+                row = (
+                    UnmatchedStripeEvent.objects.select_for_update(skip_locked=True)
+                    .filter(pk=pk, resolved_at__isnull=True)
+                    .first()
+                )
+                if row is None:
+                    continue
+                handler = HANDLERS[row.type]
+                if handler(row.payload["data"]["object"]) is False:
+                    row.attempts += 1
+                else:
+                    row.resolved_at = timezone.now()
+                    matched += 1
+                row.save(update_fields=["attempts", "resolved_at", "updated_at"])
+        except stripe.StripeError:
+            logger.exception("Unmatched Stripe event %s could not be retried.", pk)
+            UnmatchedStripeEvent.objects.filter(pk=pk).update(attempts=F("attempts") + 1)
+    return matched

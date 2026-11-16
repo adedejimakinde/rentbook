@@ -7,7 +7,7 @@ already tied up by other bookings.
 """
 
 from collections import defaultdict
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 
 from django.conf import settings
 from django.db import transaction
@@ -46,6 +46,28 @@ class InsufficientStockError(Exception):
         self.shortages = shortages
         details = "; ".join(str(shortage) for shortage in shortages)
         super().__init__(f"Not enough stock on {event_date:%b %d, %Y}. {details}.")
+
+
+class EventDateError(ValueError):
+    """Raised when an event date is in the past or too soon to deliver for."""
+
+
+def notice_problem(event_date, now=None):
+    """Why event_date cannot be booked online, or "" if it can.
+
+    The event day must start (midnight in the business's time zone) at least
+    MIN_NOTICE_HOURS from now. Staff booking in the admin are not held to this.
+    """
+    now = now or timezone.now()
+    if event_date < timezone.localdate(now):
+        return f"{event_date:%b %d, %Y} is in the past. Choose a future event date."
+    day_starts = timezone.make_aware(datetime.combine(event_date, time.min))
+    if day_starts - now < timedelta(hours=settings.MIN_NOTICE_HOURS):
+        return (
+            f"{event_date:%b %d, %Y} is too soon: we need {settings.MIN_NOTICE_HOURS} "
+            "hours' notice before the event day."
+        )
+    return ""
 
 
 def _buffer_days():
@@ -164,6 +186,9 @@ def reserve(booking_items, event_date, *, customer_name, email, phone, delivery_
         quantities[variant.pk] += quantity
     if not quantities:
         raise ValueError("A reservation needs at least one item.")
+    problem = notice_problem(event_date)
+    if problem:
+        raise EventDateError(problem)
 
     with transaction.atomic():
         variants = lock_and_check(quantities, event_date)
@@ -188,6 +213,49 @@ def reserve(booking_items, event_date, *, customer_name, email, phone, delivery_
             for variant in variants
         )
     return booking
+
+
+def bookings_left_short(variant_ids, today=None):
+    """Return the future stock-holding bookings the variants' stock no longer covers.
+
+    Used after units are taken out of service or stock is cut. Bookings keep
+    their units in the order they were made, so for each variant the newest
+    bookings that no longer fit are the ones reported, oldest first. Bookings
+    already past still use their units, but are never reported. A booking
+    short on several variants is reported once.
+    """
+    today = today or timezone.localdate()
+    buffer = _buffer_days()
+    variants = list(ItemVariant.objects.filter(pk__in=variant_ids))
+    out_of_service = out_of_service_by_variant([variant.pk for variant in variants])
+    rows = (
+        BookingItem.objects.filter(
+            _holds_stock(timezone.now()),
+            variant_id__in=[variant.pk for variant in variants],
+            booking__event_date__gte=today - timedelta(days=2 * buffer),
+        )
+        .values("variant_id", "booking_id", "booking__event_date", "booking__created_at")
+        .annotate(total=Sum("quantity"))
+        .order_by("booking__created_at", "booking_id")
+    )
+    rows_by_variant = defaultdict(list)
+    for row in rows:
+        rows_by_variant[row["variant_id"]].append(row)
+
+    short_ids = set()
+    for variant in variants:
+        in_service = variant.stock_quantity - out_of_service.get(variant.pk, 0)
+        in_use = defaultdict(int)
+        for row in rows_by_variant[variant.pk]:
+            event_date = row["booking__event_date"]
+            days = [event_date + timedelta(days=offset) for offset in range(-buffer, buffer + 1)]
+            fits = all(in_use[day] + row["total"] <= in_service for day in days)
+            if not fits and event_date >= today:
+                short_ids.add(row["booking_id"])
+                continue
+            for day in days:
+                in_use[day] += row["total"]
+    return list(Booking.objects.filter(pk__in=short_ids).order_by("created_at", "pk"))
 
 
 def staff_hold_expiry():

@@ -5,7 +5,7 @@ from decimal import Decimal
 
 import factory
 
-from apps.bookings.models import Booking, BookingItem, DeliveryZone, PromoCode
+from apps.bookings.models import Booking, BookingItem, BookingPackage, DeliveryZone, PromoCode
 from apps.catalogue.models import Category, Item, ItemVariant, Package, PackageItem
 from apps.inventory.models import StockAdjustment
 
@@ -86,6 +86,17 @@ class PackageItemFactory(factory.django.DjangoModelFactory):
     package = factory.SubFactory(PackageFactory)
     variant = factory.SubFactory(ItemVariantFactory)
     quantity = 1
+
+
+class BookingPackageFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = BookingPackage
+
+    booking = factory.SubFactory(BookingFactory)
+    package = factory.SubFactory(PackageFactory)
+    name = factory.LazyAttribute(lambda line: line.package.name)
+    quantity = 1
+    unit_price = Decimal("100.00")
 
 
 class DeliveryZoneFactory(factory.django.DjangoModelFactory):

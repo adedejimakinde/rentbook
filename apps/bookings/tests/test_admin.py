@@ -1,28 +1,42 @@
 """The admin must not bypass the availability check."""
 
 from datetime import timedelta
+from decimal import Decimal as D
 
 import pytest
 from django.db import IntegrityError, transaction
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.bookings.models import Booking, BookingItem
+from apps.bookings.models import Booking, BookingItem, BookingPackage
 from apps.bookings.services import availability
 from apps.bookings.tests.factories import (
     EVENT_DATE,
     BookingFactory,
     BookingItemFactory,
+    BookingPackageFactory,
     ItemVariantFactory,
+    PackageFactory,
+    PackageItemFactory,
 )
 
 pytestmark = pytest.mark.django_db
 
 
-def booking_form(status, items, event_date=EVENT_DATE, initial_forms=0, hold_expires_at=None):
-    """POST data for the booking admin form with inline booking items.
+def booking_form(
+    status,
+    items,
+    event_date=EVENT_DATE,
+    initial_forms=0,
+    hold_expires_at=None,
+    packages=(),
+    initial_packages=0,
+):
+    """POST data for the booking admin form with inline booking items and packages.
 
-    items is a list of dicts with variant, quantity and optionally id / DELETE.
+    items is a list of dicts with variant, quantity and optionally id /
+    package_quantity / unit_price / DELETE. packages is a list of dicts with
+    package, quantity and optionally id / unit_price / DELETE.
     """
     data = {
         "customer_name": "Ada Planner",
@@ -35,8 +49,8 @@ def booking_form(status, items, event_date=EVENT_DATE, initial_forms=0, hold_exp
         "setup_fee": "0.00",
         "discount": "0.00",
         "tax": "0.00",
-        "packages-TOTAL_FORMS": 0,
-        "packages-INITIAL_FORMS": 0,
+        "packages-TOTAL_FORMS": len(packages),
+        "packages-INITIAL_FORMS": initial_packages,
         "packages-MIN_NUM_FORMS": 0,
         "packages-MAX_NUM_FORMS": 1000,
         "caution_fee": "0.00",
@@ -50,12 +64,21 @@ def booking_form(status, items, event_date=EVENT_DATE, initial_forms=0, hold_exp
     for index, item in enumerate(items):
         data[f"items-{index}-variant"] = item["variant"].pk
         data[f"items-{index}-quantity"] = item["quantity"]
-        data[f"items-{index}-unit_price"] = "25.00"
-        data[f"items-{index}-package_quantity"] = 0
+        data[f"items-{index}-unit_price"] = item.get("unit_price", "25.00")
+        data[f"items-{index}-package_quantity"] = item.get("package_quantity", 0)
         if "id" in item:
             data[f"items-{index}-id"] = item["id"]
         if item.get("DELETE"):
             data[f"items-{index}-DELETE"] = "on"
+    for index, line in enumerate(packages):
+        data[f"packages-{index}-package"] = line["package"].pk
+        data[f"packages-{index}-name"] = line["package"].name
+        data[f"packages-{index}-quantity"] = line["quantity"]
+        data[f"packages-{index}-unit_price"] = line.get("unit_price", "100.00")
+        if "id" in line:
+            data[f"packages-{index}-id"] = line["id"]
+        if line.get("DELETE"):
+            data[f"packages-{index}-DELETE"] = "on"
     return data
 
 
@@ -291,3 +314,105 @@ def test_item_quantity_must_be_at_least_one(admin_client):
 
     assert response.status_code == 200
     assert Booking.objects.count() == 0
+
+
+def party_package(chairs):
+    """A package of 10 chairs. Returns (package, chairs variant)."""
+    package = PackageFactory(name="Party Pack")
+    PackageItemFactory(package=package, variant=chairs, quantity=10)
+    return package
+
+
+def test_creating_a_booking_with_a_package_saves_its_lines(admin_client):
+    chairs = ItemVariantFactory(stock_quantity=20)
+    package = party_package(chairs)
+
+    response = admin_client.post(
+        ADD_URL,
+        booking_form(
+            "held",
+            [{"variant": chairs, "quantity": 12, "package_quantity": 10}],
+            packages=[{"package": package, "quantity": 1}],
+        ),
+    )
+
+    assert response.status_code == 302
+    booking = Booking.objects.get()
+    line = booking.packages.get()
+    assert (line.package, line.quantity, line.unit_price) == (package, 1, D("100.00"))
+    assert booking.items.get().package_quantity == 10
+    assert booking.total == D("150.00")
+    assert availability.available_quantity(chairs, EVENT_DATE) == 8
+
+
+def test_package_units_count_against_stock_in_the_admin(admin_client):
+    chairs = ItemVariantFactory(stock_quantity=10)
+    package = party_package(chairs)
+    BookingItemFactory(variant=chairs, quantity=5, booking__status=Booking.Status.PAID)
+
+    response = admin_client.post(
+        ADD_URL,
+        booking_form(
+            "held",
+            [{"variant": chairs, "quantity": 10, "package_quantity": 10}],
+            packages=[{"package": package, "quantity": 1}],
+        ),
+    )
+
+    assert response.status_code == 200
+    assert "only 5 available" in errors_in(response)
+    assert BookingPackage.objects.count() == 0
+
+
+def test_editing_and_removing_a_package_line(admin_client):
+    chairs = ItemVariantFactory(stock_quantity=30)
+    package = party_package(chairs)
+    booking = BookingFactory(
+        status=Booking.Status.HELD, hold_expires_at=timezone.now() + timedelta(hours=1)
+    )
+    item = BookingItemFactory(booking=booking, variant=chairs, quantity=10, package_quantity=10)
+    line = BookingPackageFactory(booking=booking, package=package)
+    common = {"initial_forms": 1, "initial_packages": 1, "hold_expires_at": booking.hold_expires_at}
+
+    response = admin_client.post(
+        change_url(booking),
+        booking_form(
+            "held",
+            [{"variant": chairs, "quantity": 20, "package_quantity": 20, "id": item.pk}],
+            packages=[{"package": package, "quantity": 2, "id": line.pk}],
+            **common,
+        ),
+    )
+    assert response.status_code == 302
+    assert booking.packages.get().quantity == 2
+    assert booking.total == D("200.00")
+
+    response = admin_client.post(
+        change_url(booking),
+        booking_form(
+            "held",
+            [{"variant": chairs, "quantity": 20, "id": item.pk}],
+            packages=[{"package": package, "quantity": 2, "id": line.pk, "DELETE": True}],
+            **common,
+        ),
+    )
+    assert response.status_code == 302
+    assert not booking.packages.exists()
+    assert booking.total == D("500.00")
+
+
+def test_package_line_quantity_must_be_at_least_one(admin_client):
+    chairs = ItemVariantFactory(stock_quantity=30)
+    package = party_package(chairs)
+
+    response = admin_client.post(
+        ADD_URL,
+        booking_form(
+            "held",
+            [{"variant": chairs, "quantity": 1}],
+            packages=[{"package": package, "quantity": 0}],
+        ),
+    )
+
+    assert response.status_code == 200
+    assert BookingPackage.objects.count() == 0

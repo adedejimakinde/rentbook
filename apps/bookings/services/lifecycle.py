@@ -30,7 +30,7 @@ def holds_stock(booking, now=None):
 
 
 def cancel_booking(booking):
-    """Cancel a booking and release its stock.
+    """Cancel a booking and release its stock and its promo code use.
 
     Refused while a payment or refund is still in progress. Money still on the
     booking (rental paid or caution held) flags it, so staff refund it.
@@ -50,7 +50,69 @@ def cancel_booking(booking):
         booking.hold_expires_at = None
         if booking.amount_paid > ZERO or booking.caution_held > ZERO:
             booking.needs_attention = True
-        booking.save(update_fields=["status", "hold_expires_at", "needs_attention", "updated_at"])
+        ledger.release_promo(booking)
+        booking.save(
+            update_fields=[
+                "status",
+                "hold_expires_at",
+                "needs_attention",
+                "promo_redeemed_at",
+                "updated_at",
+            ]
+        )
+    return booking
+
+
+def reopen_booking(booking):
+    """Bring a cancelled booking back, re-holding its stock, or raise BookingStateError.
+
+    The booking is locked first, then its stock is locked and checked again;
+    if any of it has been taken since, nothing changes and the shortage is
+    reported. The new status follows the money still on the booking: paid in
+    full, deposit paid, or otherwise a staff hold (flagged if some money is
+    on it). A promo use given back on cancelling is taken again when money is
+    on the booking.
+    """
+    with transaction.atomic():
+        booking = ledger.lock_booking(booking.pk)
+        if booking.status != Booking.Status.CANCELLED:
+            raise BookingStateError("Only a cancelled booking can be reopened.")
+        if booking.event_date < timezone.localdate():
+            raise BookingStateError("This booking's event date has already passed.")
+        if booking.payments.in_progress().exists():
+            raise BookingStateError(
+                "A payment or refund on this booking is still in progress. "
+                "Wait for it to finish before reopening."
+            )
+        quantities = dict(booking.items.values_list("variant_id", "quantity"))
+        if quantities:
+            try:
+                availability.lock_and_check(quantities, booking.event_date, exclude_booking=booking)
+            except availability.InsufficientStockError as error:
+                raise BookingStateError(f"Cannot reopen. {error}") from error
+
+        paid, total, deposit = booking.amount_paid, booking.total, booking.deposit_amount
+        if paid > ZERO and paid >= total:
+            booking.status = Booking.Status.PAID
+        elif paid > ZERO and paid >= deposit:
+            booking.status = Booking.Status.DEPOSIT_PAID
+        else:
+            booking.status = Booking.Status.HELD
+            booking.hold_expires_at = availability.staff_hold_expiry()
+            booking.needs_attention |= paid > ZERO
+        if booking.status != Booking.Status.HELD:
+            booking.hold_expires_at = None
+        if paid > ZERO:
+            ledger.redeem_promo(booking)
+        booking.save(
+            update_fields=[
+                "status",
+                "hold_expires_at",
+                "needs_attention",
+                "promo_redeemed_at",
+                "updated_at",
+            ]
+        )
     return booking
 
 

@@ -56,13 +56,13 @@ def booking_with_promo(code="ONCE"):
     )
 
 
-def manual(booking, amount, staff):
+def manual(booking, amount, staff, reference="ZELLE-1"):
     return ledger.record_manual_payment(
         booking,
         method=Payment.Method.ZELLE,
         amount=D(amount),
         received_at=timezone.now(),
-        reference="ZELLE-1",
+        reference=reference,
         received_by=staff,
     )
 
@@ -119,7 +119,7 @@ def test_manual_payment_counts_the_promo(promo, staff):
     booking = booking_with_promo()
 
     manual(booking, "90.00", staff)
-    manual(booking, "90.00", staff)
+    manual(booking, "90.00", staff, reference="ZELLE-2")
 
     promo.refresh_from_db()
     assert promo.uses_count == 1

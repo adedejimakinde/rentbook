@@ -147,6 +147,7 @@ class Payment(TimeStampedModel):
 
     class Meta:
         ordering = ["-created_at", "-pk"]
+        permissions = [("can_issue_refunds", "Can issue refunds")]
         constraints = [
             models.CheckConstraint(
                 condition=Q(amount__gte=0)
@@ -204,6 +205,31 @@ class StripeEvent(TimeStampedModel):
 
     event_id = models.CharField(max_length=255, unique=True)
     type = models.CharField(max_length=100)
+
+    def __str__(self):
+        return f"{self.type} ({self.event_id})"
+
+
+class UnmatchedStripeEvent(TimeStampedModel):
+    """A Stripe event that matched no payment when it arrived, kept to be matched again.
+
+    The webhook can beat the transaction that saves a payment's Stripe ids, so
+    such events are retried by the periodic Stripe sync instead of being lost.
+    """
+
+    event_id = models.CharField(max_length=255, unique=True)
+    type = models.CharField(max_length=100)
+    object_id = models.CharField(max_length=255, blank=True, db_index=True)
+    payload = models.JSONField()
+    attempts = models.PositiveIntegerField(
+        default=0, help_text="Retries that still matched nothing."
+    )
+    resolved_at = models.DateTimeField(
+        null=True, blank=True, help_text="When a retry matched the event to a payment."
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
 
     def __str__(self):
         return f"{self.type} ({self.event_id})"

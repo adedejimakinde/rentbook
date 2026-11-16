@@ -14,6 +14,13 @@ class CancelBookingForm(LedgerForm):
         lifecycle.cancel_booking(self.booking)
 
 
+class ReopenBookingForm(LedgerForm):
+    title = "Reopen booking"
+
+    def record(self, user):
+        lifecycle.reopen_booking(self.booking)
+
+
 class MarkDeliveredForm(LedgerForm):
     title = "Mark delivered"
 
@@ -72,6 +79,7 @@ class ChangeItemForm(LedgerForm):
 
 LIFECYCLE_FORMS = {
     "cancel": CancelBookingForm,
+    "reopen": ReopenBookingForm,
     "mark-delivered": MarkDeliveredForm,
     "mark-returned": MarkReturnedForm,
     "change-item": ChangeItemForm,
