@@ -121,6 +121,8 @@ CELERY_BEAT_SCHEDULE = {
 BOOKING_BUFFER_DAYS = env.int("BOOKING_BUFFER_DAYS", default=0)
 # Minutes a held booking keeps its stock before the hold lapses.
 HOLD_MINUTES = env.int("HOLD_MINUTES", default=15)
+# Hours a hold placed by staff in the admin lasts when no expiry is entered.
+ADMIN_HOLD_HOURS = env.int("ADMIN_HOLD_HOURS", default=48)
 
 BUSINESS_NAME = env("BUSINESS_NAME", default="Atglace Events & Rentals LLC")
 BUSINESS_TAGLINE = env("BUSINESS_TAGLINE", default="Your one-stop shop for event rentals")

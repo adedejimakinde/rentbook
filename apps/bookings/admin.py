@@ -4,11 +4,21 @@ from collections import defaultdict
 
 from django.contrib import admin
 from django.core.exceptions import ValidationError
-from django.forms import BaseInlineFormSet
+from django.forms import BaseInlineFormSet, ModelForm
 from unfold.admin import ModelAdmin, TabularInline
 
 from apps.bookings.models import Booking, BookingItem
 from apps.bookings.services import availability
+
+
+class BookingForm(ModelForm):
+    """Makes sure a hold placed by staff always has an expiry."""
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("status") == Booking.Status.HELD and not cleaned.get("hold_expires_at"):
+            cleaned["hold_expires_at"] = availability.staff_hold_expiry()
+        return cleaned
 
 
 class BookingItemFormSet(BaseInlineFormSet):
@@ -54,6 +64,7 @@ class BookingItemInline(TabularInline):
 
 @admin.register(Booking)
 class BookingAdmin(ModelAdmin):
+    form = BookingForm
     list_display = ["id", "customer_name", "event_date", "status", "hold_expires_at"]
     list_filter = ["status", "event_date"]
     search_fields = ["customer_name", "email", "phone"]

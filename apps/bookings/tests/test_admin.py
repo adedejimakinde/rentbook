@@ -1,9 +1,14 @@
 """The admin must not bypass the availability check."""
 
+from datetime import timedelta
+
 import pytest
+from django.db import IntegrityError, transaction
 from django.urls import reverse
+from django.utils import timezone
 
 from apps.bookings.models import Booking, BookingItem
+from apps.bookings.services import availability
 from apps.bookings.tests.factories import (
     EVENT_DATE,
     BookingFactory,
@@ -14,7 +19,7 @@ from apps.bookings.tests.factories import (
 pytestmark = pytest.mark.django_db
 
 
-def booking_form(status, items, event_date=EVENT_DATE, initial_forms=0):
+def booking_form(status, items, event_date=EVENT_DATE, initial_forms=0, hold_expires_at=None):
     """POST data for the booking admin form with inline booking items.
 
     items is a list of dicts with variant, quantity and optionally id / DELETE.
@@ -26,8 +31,8 @@ def booking_form(status, items, event_date=EVENT_DATE, initial_forms=0):
         "event_date": event_date.isoformat(),
         "delivery_address": "1 Main St, Dallas, TX",
         "status": status,
-        "hold_expires_at_0": "",
-        "hold_expires_at_1": "",
+        "hold_expires_at_0": f"{hold_expires_at:%Y-%m-%d}" if hold_expires_at else "",
+        "hold_expires_at_1": f"{hold_expires_at:%H:%M:%S}" if hold_expires_at else "",
         "items-TOTAL_FORMS": len(items),
         "items-INITIAL_FORMS": initial_forms,
         "items-MIN_NUM_FORMS": 0,
@@ -84,6 +89,67 @@ def test_creating_a_booking_within_stock_saves(admin_client):
     booking = Booking.objects.get()
     assert booking.status == Booking.Status.HELD
     assert booking.items.get().quantity == 3
+
+
+def test_admin_hold_without_expiry_gets_the_default(admin_client, settings):
+    assert settings.ADMIN_HOLD_HOURS == 48
+    settings.ADMIN_HOLD_HOURS = 24
+    variant = ItemVariantFactory(stock_quantity=3)
+    before = timezone.now()
+
+    response = admin_client.post(
+        ADD_URL, booking_form("held", [{"variant": variant, "quantity": 1}])
+    )
+
+    assert response.status_code == 302
+    expected = before + timedelta(hours=24)
+    booking = Booking.objects.get()
+    assert expected <= booking.hold_expires_at <= expected + timedelta(seconds=5)
+    assert availability.available_quantity(variant, EVENT_DATE) == 2
+
+
+def test_admin_hold_expiry_cannot_be_cleared(admin_client):
+    variant = ItemVariantFactory(stock_quantity=3)
+    booking = BookingFactory(
+        status=Booking.Status.HELD, hold_expires_at=timezone.now() + timedelta(minutes=5)
+    )
+    item = BookingItemFactory(booking=booking, variant=variant, quantity=1)
+    before = timezone.now()
+
+    response = admin_client.post(
+        change_url(booking),
+        booking_form("held", [{"variant": variant, "quantity": 1, "id": item.pk}], initial_forms=1),
+    )
+
+    assert response.status_code == 302
+    booking.refresh_from_db()
+    assert booking.hold_expires_at >= before + timedelta(hours=48)
+
+
+def test_admin_hold_keeps_a_later_expiry_chosen_by_staff(admin_client):
+    variant = ItemVariantFactory(stock_quantity=3)
+    chosen = timezone.localtime(timezone.now() + timedelta(days=7)).replace(microsecond=0)
+
+    response = admin_client.post(
+        ADD_URL,
+        booking_form("held", [{"variant": variant, "quantity": 1}], hold_expires_at=chosen),
+    )
+
+    assert response.status_code == 302
+    assert Booking.objects.get().hold_expires_at == chosen
+
+
+def test_admin_does_not_add_an_expiry_to_other_statuses(admin_client):
+    variant = ItemVariantFactory(stock_quantity=3)
+
+    admin_client.post(ADD_URL, booking_form("paid", [{"variant": variant, "quantity": 1}]))
+
+    assert Booking.objects.get().hold_expires_at is None
+
+
+def test_database_rejects_a_held_booking_without_expiry():
+    with pytest.raises(IntegrityError), transaction.atomic():
+        BookingFactory(status=Booking.Status.HELD, hold_expires_at=None)
 
 
 def test_enquiry_beyond_stock_is_allowed_because_it_holds_nothing(admin_client):

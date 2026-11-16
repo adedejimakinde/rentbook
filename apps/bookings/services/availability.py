@@ -60,10 +60,7 @@ def _holds_stock(now):
             Booking.Status.PAID,
             Booking.Status.DELIVERED,
         )
-    ) | (
-        Q(booking__status=Booking.Status.HELD)
-        & (Q(booking__hold_expires_at__isnull=True) | Q(booking__hold_expires_at__gt=now))
-    )
+    ) | Q(booking__status=Booking.Status.HELD, booking__hold_expires_at__gt=now)
 
 
 def _peak_booked(variant_ids, event_date, exclude_booking_id=None):
@@ -183,6 +180,11 @@ def reserve(booking_items, event_date, *, customer_name, email, phone, delivery_
             for variant in variants
         )
     return booking
+
+
+def staff_hold_expiry():
+    """When a hold placed by staff lapses if they do not choose a time."""
+    return timezone.now() + timedelta(hours=settings.ADMIN_HOLD_HOURS)
 
 
 def release_expired_holds():

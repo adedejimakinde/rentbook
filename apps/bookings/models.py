@@ -31,11 +31,17 @@ class Booking(TimeStampedModel):
     hold_expires_at = models.DateTimeField(
         null=True,
         blank=True,
-        help_text="When a held booking lapses. Empty on a held booking means it never lapses.",
+        help_text="When a held booking lapses and releases its stock.",
     )
 
     class Meta:
         ordering = ["-event_date", "-created_at"]
+        constraints = [
+            models.CheckConstraint(
+                condition=~models.Q(status="held") | models.Q(hold_expires_at__isnull=False),
+                name="held_booking_has_expiry",
+            ),
+        ]
 
     def __str__(self):
         return f"Booking #{self.pk} for {self.customer_name} on {self.event_date}"

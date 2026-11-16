@@ -77,12 +77,6 @@ class TestAvailableQuantity:
 
         assert availability.available_quantity(variant, EVENT_DATE) == 10
 
-    def test_held_booking_without_expiry_counts(self):
-        variant = ItemVariantFactory(stock_quantity=10)
-        book(variant, 4, Booking.Status.HELD, hold_expires_at=None)
-
-        assert availability.available_quantity(variant, EVENT_DATE) == 6
-
     def test_only_counts_the_requested_date_and_variant(self):
         variant = ItemVariantFactory(stock_quantity=10)
         other_variant = ItemVariantFactory(item=variant.item, name="Black", stock_quantity=10)
@@ -306,12 +300,11 @@ class TestReleaseExpiredHolds:
     def test_leaves_live_holds_and_other_statuses_alone(self):
         variant = ItemVariantFactory(stock_quantity=10)
         live = book(variant, 1, Booking.Status.HELD, hold_expires_at=in_minutes(5))
-        open_ended = book(variant, 1, Booking.Status.HELD, hold_expires_at=None)
         paid = book(variant, 1, Booking.Status.PAID, hold_expires_at=in_minutes(-30))
 
         assert availability.release_expired_holds() == 0
 
-        for booking, status in [(live, "held"), (open_ended, "held"), (paid, "paid")]:
+        for booking, status in [(live, "held"), (paid, "paid")]:
             booking.refresh_from_db()
             assert booking.status == status
 
