@@ -3,7 +3,12 @@ from unittest import mock
 import pytest
 
 from apps.payments.services import stripe as stripe_service
-from apps.payments.tests.helpers import WEBHOOK_SECRET, FakeStripeRefunds
+from apps.payments.tests.helpers import (
+    WEBHOOK_SECRET,
+    FakeStripePaymentIntents,
+    FakeStripeRefunds,
+    FakeStripeSessions,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -19,4 +24,20 @@ def refunds():
     """Replace stripe.Refund with an in-memory fake."""
     fake = FakeStripeRefunds()
     with mock.patch.object(stripe_service.stripe, "Refund", fake):
+        yield fake
+
+
+@pytest.fixture(autouse=True)
+def sessions():
+    """Replace stripe.checkout.Session with an in-memory fake for every test."""
+    fake = FakeStripeSessions()
+    with mock.patch.object(stripe_service.stripe.checkout, "Session", fake):
+        yield fake
+
+
+@pytest.fixture
+def intents():
+    """Replace stripe.PaymentIntent with an in-memory fake."""
+    fake = FakeStripePaymentIntents()
+    with mock.patch.object(stripe_service.stripe, "PaymentIntent", fake, create=True):
         yield fake

@@ -1,9 +1,10 @@
 """Admin for the catalogue."""
 
-from django.contrib import admin
+from django.contrib import admin, messages
 from unfold.admin import ModelAdmin, TabularInline
 
 from apps.catalogue.models import Category, Item, ItemVariant, Package, PackageItem
+from apps.inventory import services as inventory
 
 
 @admin.register(Category)
@@ -34,6 +35,19 @@ class ItemAdmin(ModelAdmin):
     search_fields = ["name", "description"]
     prepopulated_fields = {"slug": ["name"]}
     inlines = [ItemVariantInline]
+
+    def save_formset(self, request, form, formset, change):
+        """Save variants under their row locks and warn about bookings left short."""
+        if formset.model is not ItemVariant:
+            return super().save_formset(request, form, formset, change)
+        variants = formset.save(commit=False)
+        for variant in formset.deleted_objects:
+            variant.delete()
+        warning = inventory.shortage_warning(inventory.save_variants(variants))
+        formset.save_m2m()
+        if warning:
+            self.message_user(request, warning, messages.WARNING)
+        return None
 
 
 @admin.register(ItemVariant)

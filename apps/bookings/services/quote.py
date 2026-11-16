@@ -36,6 +36,7 @@ ZIP_NOT_SERVED = "zip_not_served"
 PROMO_INVALID = "promo_invalid"
 LINE_UNAVAILABLE = "line_unavailable"
 EMPTY_CART = "empty_cart"
+EVENT_TOO_SOON = "event_too_soon"
 
 
 def to_cents(amount):
@@ -198,6 +199,9 @@ def build_quote(lines, event_date, zip_code, promo_code=None):
     errors = []
     if not item_requests and not package_requests:
         errors.append(QuoteError(EMPTY_CART, "Add at least one item to get a quote."))
+    notice = availability.notice_problem(event_date)
+    if notice:
+        errors.append(QuoteError(EVENT_TOO_SOON, notice))
 
     packages = {
         package.pk: package
@@ -291,21 +295,9 @@ def build_quote(lines, event_date, zip_code, promo_code=None):
     delivery_fee = zone.delivery_fee if zone else ZERO
     setup_fee = zone.setup_fee if zone else ZERO
 
-    taxable = subtotal - discount
-    if settings.TAX_DELIVERY:
-        taxable += delivery_fee
-    if settings.TAX_SETUP:
-        taxable += setup_fee
-    tax = to_cents(taxable * Decimal(settings.SALES_TAX_RATE) / HUNDRED)
-
-    caution = to_cents(
-        sum(
-            (
-                variants[variant_id].item.caution_fee * quantity
-                for variant_id, quantity in needed.items()
-            ),
-            ZERO,
-        )
+    tax = sales_tax(subtotal, discount, delivery_fee, setup_fee)
+    caution = caution_for(
+        (variants[variant_id].item.caution_fee, quantity) for variant_id, quantity in needed.items()
     )
     rental_total = subtotal - discount + delivery_fee + setup_fee + tax
     deposit = to_cents(rental_total * Decimal(settings.DEPOSIT_PERCENT) / HUNDRED)
@@ -332,6 +324,49 @@ def build_quote(lines, event_date, zip_code, promo_code=None):
         variants=variants,
         packages=packages,
     )
+
+
+def sales_tax(subtotal, discount, delivery_fee, setup_fee):
+    """Sales tax on items and packages after discount, plus delivery and setup if taxed."""
+    taxable = max(subtotal - discount, ZERO)
+    if settings.TAX_DELIVERY:
+        taxable += delivery_fee
+    if settings.TAX_SETUP:
+        taxable += setup_fee
+    return to_cents(taxable * Decimal(settings.SALES_TAX_RATE) / HUNDRED)
+
+
+def caution_for(fees_and_quantities):
+    """Total caution for (caution fee per unit, units) pairs, every unit reserved counting."""
+    return to_cents(sum((fee * quantity for fee, quantity in fees_and_quantities), ZERO))
+
+
+def reprice_booking(booking):
+    """Recompute a booking's tax and caution from its current lines and save them.
+
+    For bookings edited by staff before any payment: lines, fees and discount
+    may have changed, so tax and caution follow them. Once money is on the
+    booking its amounts are locked and change only through the ledger.
+    """
+    items = list(booking.items.select_related("variant__item"))
+    items_subtotal = sum(
+        (to_cents(item.unit_price * (item.quantity - item.package_quantity)) for item in items),
+        ZERO,
+    )
+    package_subtotal = sum(
+        (to_cents(line.unit_price * line.quantity) for line in booking.packages.all()), ZERO
+    )
+    booking.tax = sales_tax(
+        items_subtotal + package_subtotal,
+        booking.discount,
+        booking.delivery_fee,
+        booking.setup_fee,
+    )
+    booking.caution_fee = caution_for(
+        (item.variant.item.caution_fee, item.quantity) for item in items
+    )
+    booking.save(update_fields=["tax", "caution_fee", "updated_at"])
+    return booking
 
 
 def _unavailable(name, event_date):

@@ -52,11 +52,15 @@ def test_caution_refund_goes_through_stripe_tagged_as_caution(paid_with_caution,
     (call,) = refunds.create_calls
     assert call["payment_intent"] == payment.stripe_payment_intent_id
     assert call["amount"] == 7500
+    entry = booking.payments.get(kind=CAUTION)
     assert call["metadata"] == {
         "kind": "caution_refund",
         "booking_id": str(booking.pk),
         "payment_id": str(payment.pk),
+        "entry_id": str(entry.pk),
     }
+    assert call["idempotency_key"] == f"rentbook-refund-entry-{entry.pk}"
+    assert entry.status == Payment.Status.SUCCEEDED
     booking.refresh_from_db()
     payment.refresh_from_db()
     entry = booking.payments.get(kind=CAUTION)
@@ -106,10 +110,91 @@ def test_app_refund_is_still_recorded_when_the_follow_up_sync_fails(
     booking, payment = paid_with_caution
     with mock.patch.object(refunds, "list", side_effect=stripe.APIConnectionError("down")):
         stripe_service.refund_caution(booking, D("75.00"))
-    assert not booking.payments.filter(kind=CAUTION).exists()
+    entry = booking.payments.get(kind=CAUTION)
+    assert entry.status == Payment.Status.SUCCEEDED
+    assert entry.stripe_refund_id == refunds.refunds[0]["id"]
+    assert booking.caution_held == D("0.00")
 
     post_event(client, charge_refunded_event(payment, refunds))
     assert booking.payments.get(kind=CAUTION).amount == D("75.00")
+
+
+def test_rental_refund_is_counted_once_when_the_follow_up_sync_fails(
+    client, paid_with_caution, refunds
+):
+    booking, payment = paid_with_caution
+    with mock.patch.object(refunds, "list", side_effect=stripe.APIConnectionError("down")):
+        stripe_service.refund_rental(payment, D("60.00"))
+    assert booking.amount_paid == D("140.00")
+
+    post_event(client, charge_refunded_event(payment, refunds))
+    assert booking.amount_paid == D("140.00")
+    entry = booking.payments.get(kind=Payment.Kind.RENTAL_REFUND)
+    assert (entry.status, entry.amount) == (Payment.Status.SUCCEEDED, D("60.00"))
+
+
+def test_refund_stripe_refuses_is_marked_failed_and_releases_its_reservation(
+    paid_with_caution, refunds
+):
+    booking, payment = paid_with_caution
+    refused = stripe.InvalidRequestError("charge disputed", None)
+    with mock.patch.object(refunds, "create", side_effect=refused), pytest.raises(type(refused)):
+        stripe_service.refund_caution(booking, D("75.00"))
+
+    assert booking.payments.get(kind=CAUTION).status == Payment.Status.FAILED
+    assert booking.caution_held == D("75.00")
+    stripe_service.refund_caution(booking, D("75.00"))
+    assert booking.caution_held == D("0.00")
+
+
+def test_refund_with_unknown_outcome_stays_pending_and_keeps_its_reservation(
+    client, paid_with_caution, refunds
+):
+    """Stripe timed out: the refund may have gone through, so its money stays reserved."""
+    booking, payment = paid_with_caution
+    timeout = stripe.APIConnectionError("timed out")
+    with mock.patch.object(refunds, "create", side_effect=timeout), pytest.raises(type(timeout)):
+        stripe_service.refund_caution(booking, D("50.00"))
+
+    entry = booking.payments.get(kind=CAUTION)
+    booking.refresh_from_db()
+    assert entry.status == Payment.Status.PENDING
+    assert booking.needs_attention
+    with pytest.raises(ledger.PaymentError):
+        stripe_service.refund_caution(booking, D("50.00"))
+    assert refunds.create_calls == []
+
+    refund = refunds.add(payment, "50.00", kind=CAUTION)
+    refund["metadata"]["entry_id"] = str(entry.pk)
+    post_event(client, charge_refunded_event(payment, refunds))
+    entry.refresh_from_db()
+    assert entry.status == Payment.Status.SUCCEEDED
+    assert booking.payments.filter(kind=CAUTION).count() == 1
+    assert booking.caution_held == D("25.00")
+
+
+def test_pending_rental_refund_counts_against_the_rental_limit(paid_with_caution, refunds):
+    booking, payment = paid_with_caution
+    ledger.reserve_rental_refund(payment.pk, D("150.00"))
+
+    with pytest.raises(ledger.PaymentError):
+        stripe_service.refund_rental(payment, D("60.00"))
+    assert refunds.create_calls == []
+    stripe_service.refund_rental(payment, D("50.00"))
+    assert booking.amount_paid == D("150.00")
+
+
+def test_pending_caution_refund_counts_against_manual_caution_releases(
+    paid_with_caution, refunds, staff
+):
+    booking, _ = paid_with_caution
+    ledger.reserve_caution_refund(booking.pk, D("50.00"))
+
+    with pytest.raises(ledger.PaymentError):
+        ledger.record_damage_charge(
+            booking, amount=D("30.00"), reference="Stain", received_at=None, received_by=staff
+        )
+    assert booking.caution_held == D("75.00")
 
 
 def test_partial_caution_refunds_add_up_and_cannot_exceed_what_is_held(
@@ -196,6 +281,28 @@ def test_rental_refund_cannot_exceed_the_rental_money_on_the_payment(paid_with_c
         stripe_service.refund_rental(payment, D("50.01"))
     assert len(refunds.create_calls) == 1
     assert booking.amount_paid == D("50.00")
+
+
+def test_refund_that_takes_caution_held_below_zero_flags_the_booking(
+    client, paid_with_caution, refunds, staff
+):
+    """Caution sent back by Zelle, then the whole card charge refunded in the dashboard."""
+    booking, payment = paid_with_caution
+    ledger.record_caution_refund(
+        booking,
+        amount=D("75.00"),
+        method=Payment.Method.ZELLE,
+        reference="ZL-7",
+        received_at=None,
+        received_by=staff,
+    )
+    refunds.add(payment, "275.00")
+
+    post_event(client, charge_refunded_event(payment, refunds))
+
+    booking.refresh_from_db()
+    assert booking.caution_held == D("-75.00")
+    assert booking.needs_attention
 
 
 def test_rental_refund_is_refused_for_manual_and_unpaid_payments(client, refunds, staff):
@@ -290,6 +397,20 @@ def test_refund_failed_event_flags_the_booking(client, paid_with_caution, refund
 
     assert post_event(client, event("refund.failed", failed)).status_code == 200
     booking.refresh_from_db()
+    assert booking.needs_attention
+    assert booking.payments.get(kind=Payment.Kind.RENTAL_REFUND).status == Payment.Status.FAILED
+
+
+def test_failed_caution_refund_puts_the_caution_back_on_hold(client, paid_with_caution, refunds):
+    booking, payment = paid_with_caution
+    stripe_service.refund_caution(booking, D("75.00"))
+    assert booking.caution_held == D("0.00")
+    refunds.refunds[0]["status"] = "failed"
+
+    post_event(client, event("refund.failed", refunds.refunds[0]))
+
+    booking.refresh_from_db()
+    assert booking.caution_held == D("75.00")
     assert booking.needs_attention
 
 

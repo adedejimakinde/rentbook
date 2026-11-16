@@ -140,6 +140,28 @@ class PromoCode(TimeStampedModel):
         return self.max_uses is not None and self.uses_count >= self.max_uses
 
 
+class BookingDeleteRefused(Exception):
+    """Raised when something tries to delete a booking that holds stock or has payments."""
+
+
+def check_deletable(booking):
+    """Raise BookingDeleteRefused if the booking holds stock or has any payment entry."""
+    from apps.bookings.services import lifecycle
+
+    if lifecycle.holds_stock(booking):
+        raise BookingDeleteRefused(f"{booking} holds stock and cannot be deleted. Cancel it.")
+    if booking.payments.exists():
+        raise BookingDeleteRefused(f"{booking} has payments on it and cannot be deleted.")
+
+
+class BookingQuerySet(models.QuerySet):
+    def delete(self):
+        """Refuse the whole delete, before anything is removed, if any booking is live."""
+        for booking in self:
+            check_deletable(booking)
+        return super().delete()
+
+
 class Booking(TimeStampedModel):
     """A customer's request for items on one event date."""
 
@@ -188,14 +210,20 @@ class Booking(TimeStampedModel):
         decimal_places=2,
         default=0,
         validators=[MinValueValidator(0)],
-        help_text="Sales tax as quoted. Not recalculated when the booking is edited here.",
+        help_text=(
+            "Sales tax on the lines after discount. Recalculated whenever staff save the "
+            "booking, until it has a payment."
+        ),
     )
     caution_fee = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         default=0,
         validators=[MinValueValidator(0)],
-        help_text="Refundable caution deposit, collected on top of the rental total.",
+        help_text=(
+            "Refundable caution deposit, collected on top of the rental total. "
+            "Recalculated from the lines whenever staff save the booking, until it has a payment."
+        ),
     )
     promo_code = models.ForeignKey(
         PromoCode, on_delete=models.PROTECT, null=True, blank=True, related_name="bookings"
@@ -211,6 +239,21 @@ class Booking(TimeStampedModel):
         help_text="Set when a payment or refund leaves the booking needing staff follow-up.",
     )
 
+    delivery_override_note = models.TextField(
+        blank=True,
+        help_text="Why the booking was delivered with money or a payment outstanding.",
+    )
+    delivery_override_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="delivery_overrides",
+    )
+    delivery_override_at = models.DateTimeField(null=True, blank=True)
+
+    objects = BookingQuerySet.as_manager()
+
     class Meta:
         ordering = ["-event_date", "-created_at"]
         constraints = [
@@ -222,6 +265,11 @@ class Booking(TimeStampedModel):
 
     def __str__(self):
         return f"Booking #{self.pk} for {self.customer_name} on {self.event_date}"
+
+    def delete(self, *args, **kwargs):
+        """Refuse to delete a booking that holds stock or has payments."""
+        check_deletable(self)
+        return super().delete(*args, **kwargs)
 
     @property
     def total(self):

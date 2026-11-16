@@ -93,6 +93,25 @@ def _redeem_promo(booking):
     booking.promo_redeemed_at = timezone.now()
 
 
+def release_promo(booking):
+    """Give back the promo use a locked booking took, once, when it is cancelled or refunded.
+
+    Saves nothing on the booking itself: the caller saves promo_redeemed_at.
+    """
+    if booking.promo_code_id is None or booking.promo_redeemed_at is None:
+        return
+    promo = PromoCode.objects.select_for_update().get(pk=booking.promo_code_id)
+    if promo.uses_count > 0:
+        promo.uses_count -= 1
+        promo.save(update_fields=["uses_count", "updated_at"])
+    booking.promo_redeemed_at = None
+
+
+def redeem_promo(booking):
+    """Count the promo use again on a reopened booking that still has money on it."""
+    _redeem_promo(booking)
+
+
 def _apply_money_in(booking):
     """Move a locked booking forward after rental money arrived.
 
@@ -145,12 +164,42 @@ def _apply_money_out(booking):
     elif booking.status in (Booking.Status.HELD, *SECURED_STATUSES):
         if paid == ZERO:
             booking.status = Booking.Status.CANCELLED
+            booking.hold_expires_at = None
+            booking.needs_attention |= booking.caution_held > ZERO
         elif paid < deposit:
             booking.needs_attention = True
         elif paid < total:
             booking.status = Booking.Status.DEPOSIT_PAID
             booking.hold_expires_at = None
-    booking.save(update_fields=["status", "hold_expires_at", "needs_attention", "updated_at"])
+    if paid == ZERO:
+        release_promo(booking)
+    booking.save(
+        update_fields=[
+            "status",
+            "hold_expires_at",
+            "needs_attention",
+            "promo_redeemed_at",
+            "updated_at",
+        ]
+    )
+
+
+def _apply_refund_reversal(booking):
+    """Re-evaluate a locked booking after a refund it counted failed at Stripe.
+
+    The money is back on the booking but the customer was told it was sent,
+    so the booking is always flagged. A secured booking's status follows the
+    money again; a booking the refund cancelled stays cancelled for staff to
+    reopen.
+    """
+    paid, total, deposit = booking.amount_paid, booking.total, booking.deposit_amount
+    if booking.status in SECURED_STATUSES:
+        if paid >= total:
+            booking.status = Booking.Status.PAID
+        elif paid >= deposit:
+            booking.status = Booking.Status.DEPOSIT_PAID
+    booking.needs_attention = True
+    booking.save(update_fields=["status", "needs_attention", "updated_at"])
 
 
 def _mark_succeeded(payment, payment_intent_id=None, method=None):
@@ -179,7 +228,12 @@ def record_success(payment_id, *, payment_intent_id=None, method=None):
 
 
 def record_processing(payment_id, *, payment_intent_id=None):
-    """Note that an ACH payment is clearing, and keep the stock held meanwhile."""
+    """Note that an ACH payment is clearing, and keep the stock held meanwhile.
+
+    A live hold is extended. A hold that already lapsed has released its
+    stock, so the stock is locked and checked again: the booking goes back on
+    hold if it is still free, and is flagged for staff if it is gone.
+    """
     with transaction.atomic():
         booking, payment = _lock_payment(payment_id)
         if payment.status != Payment.Status.PENDING:
@@ -188,11 +242,24 @@ def record_processing(payment_id, *, payment_intent_id=None):
         if payment_intent_id:
             payment.stripe_payment_intent_id = payment_intent_id
         payment.save()
-        if booking.status == Booking.Status.HELD:
-            clearing_until = timezone.now() + timedelta(days=settings.ACH_HOLD_DAYS)
-            booking.hold_expires_at = max(booking.hold_expires_at, clearing_until)
-            booking.save(update_fields=["hold_expires_at", "updated_at"])
+        _hold_while_clearing(booking)
     return payment
+
+
+def _hold_while_clearing(booking):
+    """Keep a locked booking's stock for the days an ACH payment takes to clear."""
+    clearing_until = timezone.now() + timedelta(days=settings.ACH_HOLD_DAYS)
+    if has_live_hold(booking):
+        booking.hold_expires_at = max(booking.hold_expires_at, clearing_until)
+    elif booking.status in (Booking.Status.HELD, *REOPENABLE_STATUSES):
+        if _stock_still_free(booking):
+            booking.status = Booking.Status.HELD
+            booking.hold_expires_at = clearing_until
+        else:
+            booking.needs_attention = True
+    elif booking.status not in SECURED_STATUSES:
+        booking.needs_attention = True
+    booking.save(update_fields=["status", "hold_expires_at", "needs_attention", "updated_at"])
 
 
 def record_failure(payment_id, *, method=None):
@@ -213,7 +280,7 @@ def record_failure(payment_id, *, method=None):
     return payment
 
 
-def record_refund(payment_id, refunded_total, *, ambiguous=False):
+def record_refund(payment_id, refunded_total, *, ambiguous=False, allow_decrease=False):
     """Set the cumulative rental amount refunded on a payment and update its booking.
 
     refunded_total is a running total, so a repeated or out-of-date report
@@ -221,13 +288,24 @@ def record_refund(payment_id, refunded_total, *, ambiguous=False):
     any caution taken in the same payment. ambiguous marks refunds made outside
     the app (the Stripe dashboard), where rental and caution cannot be told
     apart: a partial one on a payment that carried caution flags the booking.
+
+    allow_decrease lets the total go down; only for a total Stripe reported
+    after a refund already counted failed. The money is then back on the
+    booking, which is flagged and re-evaluated.
     """
     with transaction.atomic():
         booking, payment = _lock_payment(payment_id)
         if payment.status in (Payment.Status.PENDING, Payment.Status.FAILED):
             _mark_succeeded(payment)
             _apply_money_in(booking)
-        refunded_total = min(refunded_total, payment.charged_total)
+        refunded_total = max(min(refunded_total, payment.charged_total), ZERO)
+        if refunded_total < payment.refunded_amount and allow_decrease:
+            payment.refunded_amount = refunded_total
+            if payment.status == Payment.Status.REFUNDED and refunded_total < payment.amount:
+                payment.status = Payment.Status.SUCCEEDED
+            payment.save()
+            _apply_refund_reversal(booking)
+            return payment
         if refunded_total <= payment.refunded_amount:
             return payment
         payment.refunded_amount = refunded_total
@@ -237,76 +315,160 @@ def record_refund(payment_id, refunded_total, *, ambiguous=False):
         partial = refunded_total < payment.charged_total
         if ambiguous and payment.caution_amount > ZERO and partial:
             booking.needs_attention = True
+        if booking.caution_held < ZERO:
+            booking.needs_attention = True
         _apply_money_out(booking)
     return payment
 
 
-def record_stripe_caution_refund(payment_id, refund_id, amount, *, received_by=None):
-    """Record a caution refund Stripe sent back against a payment, once per refund id.
+def _lock_refund_entry(payment, entry_id, kind):
+    """Return the locked refund entry a Stripe refund names, if it is one of payment's."""
+    if not entry_id or not str(entry_id).isdigit():
+        return None
+    return (
+        Payment.objects.select_for_update()
+        .filter(pk=entry_id, refund_of=payment, kind=kind)
+        .first()
+    )
 
-    The refund has already happened at Stripe, so it is always recorded; if it
-    takes the caution held below zero the booking is flagged.
+
+def record_stripe_refund(payment_id, refund_id, amount, kind, *, entry_id=None, received_by=None):
+    """Record one refund Stripe holds against a payment. Repeating it changes nothing.
+
+    entry_id is the pending entry that reserved the refund, taken from the
+    refund's metadata; it is marked succeeded. A caution refund with no entry
+    (one this app did not reserve) gets an entry of its own, once per refund
+    id. Rental refunds only settle their entry here: the rental money itself
+    is counted by record_refund. The refund has already happened at Stripe, so
+    it is always recorded; if it takes the caution held below zero the booking
+    is flagged.
     """
     with transaction.atomic():
         booking, payment = _lock_payment(payment_id)
-        existing = Payment.objects.filter(stripe_refund_id=refund_id).first()
-        if existing is not None:
-            return existing
-        refund = Payment.objects.create(
-            booking=booking,
-            amount=amount,
-            method=payment.method,
-            kind=Payment.Kind.CAUTION_REFUND,
-            status=Payment.Status.SUCCEEDED,
-            stripe_refund_id=refund_id,
-            refund_of=payment,
-            reference=refund_id,
-            received_by=received_by,
-            received_at=timezone.now(),
-        )
+        entry = Payment.objects.filter(stripe_refund_id=refund_id).first()
+        if entry is None:
+            entry = _lock_refund_entry(payment, entry_id, kind)
+        if entry is None:
+            if kind != Payment.Kind.CAUTION_REFUND:
+                return None
+            entry = Payment(
+                booking=booking,
+                amount=amount,
+                method=payment.method,
+                kind=kind,
+                refund_of=payment,
+                received_by=received_by,
+            )
+        if entry.status == Payment.Status.SUCCEEDED and entry.stripe_refund_id == refund_id:
+            return entry
+        entry.status = Payment.Status.SUCCEEDED
+        entry.stripe_refund_id = refund_id
+        entry.reference = refund_id
+        entry.received_at = entry.received_at or timezone.now()
+        entry.save()
         if booking.caution_held < ZERO:
             flag_attention(booking)
-    return refund
+    return entry
 
 
-def check_caution_refund(booking_id, amount):
-    """Return the Stripe payment a caution refund of amount can be sent back against.
+def reserve_caution_refund(booking_id, amount, *, received_by=None):
+    """Reserve a caution refund through Stripe and return its pending entry.
 
-    Raises PaymentError when the amount is more than the caution held, or no
-    single card or ACH payment holds that much caution.
+    The entry is written while the booking is locked and counts against the
+    caution held from then on, so two refunds requested at once cannot both be
+    approved against the same money. Raises PaymentError when the amount is
+    more than the caution still free, or no single card or ACH payment holds
+    that much caution.
     """
     amount = positive_amount(amount)
     with transaction.atomic():
         booking = lock_booking(booking_id)
-        held = booking.caution_held
-        if amount > held:
-            raise PaymentError(f"Amount is more than the caution deposit still held (${held}).")
+        free = booking.payments.caution_available()
+        if amount > free:
+            raise PaymentError(f"Amount is more than the caution deposit still held (${free}).")
         for payment in booking.payments.filter(
             kind__in=Payment.RENTAL_KINDS, stripe_payment_intent_id__isnull=False
         ):
             if payment.caution_refundable >= amount:
-                return payment
+                return _reserve_refund(
+                    booking, payment, amount, Payment.Kind.CAUTION_REFUND, received_by
+                )
     raise PaymentError(
         "No card or ACH payment holds that much caution. Refund it by Zelle, Cash App "
         "or bank deposit and record it that way."
     )
 
 
-def check_rental_refund(payment_id, amount):
-    """Validate a rental refund of amount against a Stripe payment and return the payment."""
+def reserve_rental_refund(payment_id, amount, *, received_by=None):
+    """Reserve a rental refund through Stripe and return its pending entry.
+
+    Written under the booking lock, and counted in every later limit check
+    until Stripe answers.
+    """
     amount = positive_amount(amount)
     with transaction.atomic():
-        _, payment = _lock_payment(payment_id)
+        booking, payment = _lock_payment(payment_id)
         if payment.kind not in Payment.RENTAL_KINDS or not payment.stripe_payment_intent_id:
             raise PaymentError("Only card and ACH rental payments can be refunded here.")
-        if payment.status not in (Payment.Status.SUCCEEDED, Payment.Status.REFUNDED):
-            raise PaymentError("This payment has not succeeded, so there is nothing to refund.")
-        if amount > payment.rental_net:
-            raise PaymentError(
-                f"Amount is more than the rental money left on this payment "
-                f"(${payment.rental_net})."
-            )
-    return payment
+        _check_rental_refundable(payment, amount)
+        return _reserve_refund(booking, payment, amount, Payment.Kind.RENTAL_REFUND, received_by)
+
+
+def _check_rental_refundable(payment, amount):
+    """Raise PaymentError unless amount of rental money can still be refunded on payment."""
+    if payment.status not in (Payment.Status.SUCCEEDED, Payment.Status.REFUNDED):
+        raise PaymentError("This payment has not succeeded, so there is nothing to refund.")
+    if amount > payment.rental_refundable:
+        raise PaymentError(
+            f"Amount is more than the rental money left on this payment "
+            f"(${payment.rental_refundable})."
+        )
+
+
+def _reserve_refund(booking, payment, amount, kind, received_by):
+    return Payment.objects.create(
+        booking=booking,
+        amount=amount,
+        method=payment.method,
+        kind=kind,
+        status=Payment.Status.PENDING,
+        refund_of=payment,
+        received_by=received_by,
+    )
+
+
+def complete_refund(entry_id, refund_id):
+    """Mark a reserved refund succeeded once Stripe has accepted it.
+
+    A rental refund also raises the refunded total on its payment here, unless
+    a webhook got in first and already counted it.
+    """
+    with transaction.atomic():
+        booking_id = Payment.objects.values_list("booking_id", flat=True).get(pk=entry_id)
+        lock_booking(booking_id)
+        entry = Payment.objects.select_for_update().get(pk=entry_id)
+        if entry.status != Payment.Status.PENDING:
+            return entry
+        record_stripe_refund(
+            entry.refund_of_id, refund_id, entry.amount, entry.kind, entry_id=entry.pk
+        )
+        if entry.kind == Payment.Kind.RENTAL_REFUND:
+            parent = Payment.objects.get(pk=entry.refund_of_id)
+            record_refund(parent.pk, parent.refunded_amount + entry.amount)
+    entry.refresh_from_db()
+    return entry
+
+
+def fail_refund(entry_id):
+    """Mark a refund entry failed, releasing the money it reserved."""
+    with transaction.atomic():
+        booking_id = Payment.objects.values_list("booking_id", flat=True).get(pk=entry_id)
+        lock_booking(booking_id)
+        entry = Payment.objects.select_for_update().get(pk=entry_id, refund_of__isnull=False)
+        if entry.status != Payment.Status.FAILED:
+            entry.status = Payment.Status.FAILED
+            entry.save()
+    return entry
 
 
 def record_manual_rental_refund(payment, *, amount, method, reference, received_at, received_by):
@@ -329,13 +491,8 @@ def record_manual_rental_refund(payment, *, amount, method, reference, received_
             or payment.stripe_payment_intent_id
         ):
             raise PaymentError("Card and ACH payments are refunded through Stripe.")
-        if payment.status not in (Payment.Status.SUCCEEDED, Payment.Status.REFUNDED):
-            raise PaymentError("This payment has not succeeded, so there is nothing to refund.")
-        if amount > payment.rental_net:
-            raise PaymentError(
-                f"Amount is more than the rental money left on this payment "
-                f"(${payment.rental_net})."
-            )
+        check_not_recorded(booking, [Payment.Kind.RENTAL_REFUND], method, reference)
+        _check_rental_refundable(payment, amount)
         entry = Payment.objects.create(
             booking=booking,
             amount=amount,
@@ -349,6 +506,45 @@ def record_manual_rental_refund(payment, *, amount, method, reference, received_
         )
         record_refund(payment.pk, payment.refunded_amount + amount)
     return entry
+
+
+def reassess_after_change(booking):
+    """Re-check a locked booking against its payments after its total changed.
+
+    A booking with payments on it is always flagged, so staff collect or
+    refund the difference; a secured booking's status follows the new total.
+    """
+    if not booking.payments.counted().exists():
+        return
+    paid, total, deposit = booking.amount_paid, booking.total, booking.deposit_amount
+    if booking.status in SECURED_STATUSES:
+        if paid >= total:
+            booking.status = Booking.Status.PAID
+        elif paid >= deposit:
+            booking.status = Booking.Status.DEPOSIT_PAID
+    booking.needs_attention = True
+    booking.save(update_fields=["status", "needs_attention", "updated_at"])
+
+
+def check_not_recorded(booking, kinds, method, reference):
+    """Refuse an entry a locked booking already has: same kind, method and reference.
+
+    Guards against a form submitted twice. Failed entries never moved money,
+    so they do not count.
+    """
+    reference = (reference or "").strip()
+    if not reference or not method:
+        return
+    duplicate = (
+        booking.payments.counted()
+        .filter(kind__in=kinds, method=method, reference__iexact=reference)
+        .exists()
+    )
+    if duplicate:
+        raise PaymentError(
+            f"A {Payment.Method(method).label} entry with reference {reference} is already "
+            "recorded on this booking."
+        )
 
 
 def flag_attention(booking):
@@ -398,6 +594,12 @@ def record_manual_payment(
         booking = lock_booking(booking.pk)
         if booking.status == Booking.Status.CANCELLED:
             raise PaymentError("This booking is cancelled. Reopen it before recording a payment.")
+        if booking.payments.open_checkouts().exists():
+            raise PaymentError(
+                "A card or bank payment for this booking is still in progress. "
+                "It must fail or be expired before a manual payment is recorded."
+            )
+        check_not_recorded(booking, Payment.RENTAL_KINDS, method, reference)
         if amount > ZERO:
             check_promo_available(booking)
         paid, balance = booking.amount_paid, booking.balance_due
@@ -434,9 +636,10 @@ def _release_caution(booking, kind, *, amount, method, reference, received_at, r
     amount = positive_amount(amount)
     with transaction.atomic():
         booking = lock_booking(booking.pk)
-        held = booking.caution_held
-        if amount > held:
-            raise PaymentError(f"Amount is more than the caution deposit still held (${held}).")
+        check_not_recorded(booking, [kind], method, reference)
+        free = booking.payments.caution_available()
+        if amount > free:
+            raise PaymentError(f"Amount is more than the caution deposit still held (${free}).")
         return Payment.objects.create(
             booking=booking,
             amount=amount,

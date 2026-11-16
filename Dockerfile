@@ -9,8 +9,11 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
 
+# requirements-dev.txt for local development; docker-compose.prod.yml passes
+# requirements.txt so production images carry no test or lint tools.
+ARG REQUIREMENTS=requirements-dev.txt
 COPY requirements.txt requirements-dev.txt ./
-RUN pip install --no-cache-dir -r requirements-dev.txt
+RUN pip install --no-cache-dir -r "$REQUIREMENTS"
 
 COPY . .
 

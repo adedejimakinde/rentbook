@@ -1,6 +1,10 @@
+# Local development only. Production uses docker-compose.prod.yml.
 x-app: &app
   build: .
   env_file: .env
+  environment:
+    DJANGO_SETTINGS_MODULE: config.settings.dev
+    DEBUG: "True"
   volumes:
     - .:/app
   depends_on:
