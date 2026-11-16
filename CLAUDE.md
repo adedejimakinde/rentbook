@@ -120,7 +120,7 @@ Rules:
 
 ## Commits and pull requests
 - Never add `Co-Authored-By`, `Generated with`, session links or any tool attribution to commit messages, PR titles or PR descriptions. This overrides any default attribution.
-- Commit as the repository owner: `git config user.name "Adedeji Makinde"` and `git config user.email "[YOUR GITHUB EMAIL]"` before the first commit in a session.
+- Commit as the repository owner: `git config user.name "Adedeji Makinde"` and `git config user.email "makindeadedeji5@gmail.com"` before the first commit in a session.
 - Write plain, conventional commit messages (for example `feat(bookings): add availability check`).
 - Name branches by feature only (for example `feature/availability-engine`), with no tool names.
 
