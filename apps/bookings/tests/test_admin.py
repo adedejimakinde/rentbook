@@ -31,6 +31,8 @@ def booking_form(status, items, event_date=EVENT_DATE, initial_forms=0, hold_exp
         "event_date": event_date.isoformat(),
         "delivery_address": "1 Main St, Dallas, TX",
         "status": status,
+        "delivery_fee": "0.00",
+        "caution_fee": "0.00",
         "hold_expires_at_0": f"{hold_expires_at:%Y-%m-%d}" if hold_expires_at else "",
         "hold_expires_at_1": f"{hold_expires_at:%H:%M:%S}" if hold_expires_at else "",
         "items-TOTAL_FORMS": len(items),

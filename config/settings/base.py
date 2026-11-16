@@ -124,6 +124,17 @@ HOLD_MINUTES = env.int("HOLD_MINUTES", default=15)
 # Hours a hold placed by staff in the admin lasts when no expiry is entered.
 ADMIN_HOLD_HOURS = env.int("ADMIN_HOLD_HOURS", default=48)
 
+# Payments. Stripe keys come from the environment only.
+STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="")
+STRIPE_PUBLISHABLE_KEY = env("STRIPE_PUBLISHABLE_KEY", default="")
+STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET", default="")
+# Percentage of the booking total taken as the deposit.
+DEPOSIT_PERCENT = env.int("DEPOSIT_PERCENT", default=50)
+if not 1 <= DEPOSIT_PERCENT <= 100:
+    raise ValueError("DEPOSIT_PERCENT must be between 1 and 100.")
+# Days a hold is kept while an ACH bank payment is still clearing.
+ACH_HOLD_DAYS = env.int("ACH_HOLD_DAYS", default=7)
+
 BUSINESS_NAME = env("BUSINESS_NAME", default="Atglace Events & Rentals LLC")
 BUSINESS_TAGLINE = env("BUSINESS_TAGLINE", default="Your one-stop shop for event rentals")
 BUSINESS_AREA = env("BUSINESS_AREA", default="DFW area")
