@@ -9,6 +9,7 @@ from unfold.admin import ModelAdmin, TabularInline
 
 from apps.bookings.models import Booking, BookingItem
 from apps.bookings.services import availability
+from apps.payments.admin import BookingPaymentActionsMixin
 
 
 class BookingForm(ModelForm):
@@ -63,10 +64,18 @@ class BookingItemInline(TabularInline):
 
 
 @admin.register(Booking)
-class BookingAdmin(ModelAdmin):
+class BookingAdmin(BookingPaymentActionsMixin, ModelAdmin):
     form = BookingForm
-    list_display = ["id", "customer_name", "event_date", "status", "hold_expires_at"]
-    list_filter = ["status", "event_date"]
+    list_display = [
+        "id",
+        "customer_name",
+        "event_date",
+        "status",
+        "needs_attention",
+        "hold_expires_at",
+    ]
+    list_filter = ["status", "needs_attention", "event_date"]
+    actions = BookingPaymentActionsMixin.payment_actions
     search_fields = ["customer_name", "email", "phone"]
     date_hierarchy = "event_date"
     inlines = [BookingItemInline]

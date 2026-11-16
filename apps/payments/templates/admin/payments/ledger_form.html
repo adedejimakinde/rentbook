@@ -1,0 +1,15 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<dl>
+  <dt>Total</dt><dd>${{ booking.total }}</dd>
+  <dt>Paid</dt><dd>${{ booking.amount_paid }}</dd>
+  <dt>Balance due</dt><dd>${{ booking.balance_due }}</dd>
+  <dt>Caution fee</dt><dd>${{ booking.caution_fee }} (held: ${{ booking.caution_held }})</dd>
+</dl>
+<form method="post">
+  {% csrf_token %}
+  {{ form.as_div }}
+  <button type="submit" class="button default">Save</button>
+  <a href="{% url 'admin:bookings_booking_change' booking.pk %}">Cancel</a>
+</form>
+{% endblock %}
