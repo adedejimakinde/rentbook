@@ -1,0 +1,78 @@
+{% load static tailwind_cli %}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ business_name }} | {{ business_tagline }}{% endblock %}</title>
+  <meta name="description" content="{% block description %}{{ business_tagline }}. Chairs, tables, linen, bounce houses, backdrops and more for events in the {{ business_area }}.{% endblock %}">
+  <meta name="theme-color" content="#6A0DAD">
+  <link rel="preload" href="{% static 'fonts/montserrat-latin-500-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
+  {% tailwind_css %}
+  <script src="{% static 'js/htmx.min.js' %}" defer></script>
+  <script src="{% static 'js/alpine.min.js' %}" defer></script>
+  {% block head_extra %}{% endblock %}
+</head>
+<body class="flex min-h-screen flex-col" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+  <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-white focus:px-4 focus:py-3">Skip to content</a>
+
+  <header class="border-b-4 border-gold bg-white" x-data="{ open: false }">
+    <div class="mx-auto flex max-w-5xl items-center justify-between gap-2 px-4 py-2">
+      <a href="{% url 'core:home' %}" class="flex min-h-11 items-center gap-2 font-bold text-primary" aria-label="{{ business_name }} home">
+        <svg width="40" height="40" viewBox="0 0 40 40" role="img" aria-label="Logo placeholder" class="shrink-0">
+          <rect width="40" height="40" rx="8" fill="#6A0DAD"/>
+          <text x="20" y="27" text-anchor="middle" font-size="20" font-weight="700" fill="#fff" font-family="system-ui, sans-serif">A</text>
+        </svg>
+        <span class="text-lg leading-none">Atglace</span>
+      </a>
+
+      <nav class="hidden items-center gap-6 md:flex" aria-label="Main">
+        <a href="{% url 'core:home' %}#rentals" class="flex min-h-11 items-center hover:text-primary">Rentals</a>
+        <a href="{% url 'core:home' %}#contact" class="flex min-h-11 items-center hover:text-primary">Contact</a>
+      </nav>
+
+      <div class="flex items-center gap-2">
+        <a href="{% url 'core:home' %}#contact" class="inline-flex min-h-11 items-center rounded-lg bg-accent px-4 font-bold text-white hover:bg-accent-dark">Book now</a>
+        <button type="button" class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-primary text-primary md:hidden"
+                @click="open = !open" :aria-expanded="open.toString()" aria-controls="mobile-menu" aria-label="Menu">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <path x-show="!open" d="M4 7h16M4 12h16M4 17h16"/>
+            <path x-show="open" x-cloak d="M6 6l12 12M18 6L6 18"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <nav id="mobile-menu" x-show="open" x-cloak class="border-t border-surface bg-surface md:hidden" aria-label="Mobile">
+      <ul class="mx-auto max-w-5xl px-4 py-2">
+        <li><a href="{% url 'core:home' %}#rentals" class="flex min-h-11 items-center" @click="open = false">Rentals</a></li>
+        <li><a href="{% url 'core:home' %}#contact" class="flex min-h-11 items-center" @click="open = false">Contact</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main id="main" class="flex-1">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="mt-12 border-t-4 border-gold bg-ink text-white">
+    <div class="mx-auto max-w-5xl space-y-2 px-4 py-8">
+      <p class="text-lg font-bold">{{ business_name }}</p>
+      <p>{{ business_tagline }}</p>
+      <p>Serving the {{ business_area }}</p>
+      <p>
+        <a href="tel:{{ business_phone_href }}" class="inline-flex min-h-11 items-center underline">{{ business_phone }}</a>
+      </p>
+      <p>
+        <a href="mailto:{{ business_email }}" class="inline-flex min-h-11 items-center break-all underline">{{ business_email }}</a>
+      </p>
+    </div>
+  </footer>
+
+  <a href="https://wa.me/{{ whatsapp_number }}" class="fixed bottom-4 right-4 z-40 inline-flex h-14 w-14 items-center justify-center rounded-full bg-whatsapp text-white shadow-lg"
+     aria-label="Chat with us on WhatsApp" rel="noopener">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12.04 2a9.9 9.9 0 0 0-8.5 14.9L2 22l5.27-1.38A9.9 9.9 0 1 0 12.04 2Zm0 1.8a8.1 8.1 0 1 1-4.2 15.03l-.3-.18-3.13.82.84-3.05-.2-.31A8.1 8.1 0 0 1 12.04 3.8Zm-3.1 4.1c-.17 0-.45.06-.69.32-.24.26-.9.88-.9 2.15s.92 2.5 1.05 2.67c.13.17 1.8 2.86 4.45 3.9 2.2.87 2.65.7 3.13.65.48-.04 1.54-.63 1.76-1.24.22-.6.22-1.13.15-1.24-.06-.1-.24-.17-.5-.3-.26-.13-1.54-.76-1.78-.85-.24-.09-.41-.13-.59.13-.17.26-.67.85-.82 1.02-.15.18-.3.2-.57.07-.26-.13-1.1-.4-2.1-1.3-.77-.7-1.3-1.55-1.45-1.81-.15-.26-.02-.4.11-.53.12-.12.26-.3.4-.46.13-.15.17-.26.26-.44.09-.17.04-.33-.02-.46-.07-.13-.59-1.43-.81-1.96-.21-.51-.43-.44-.59-.45h-.5Z"/>
+    </svg>
+  </a>
+</body>
+</html>

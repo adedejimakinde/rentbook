@@ -1,0 +1,9 @@
+Django==5.2.19
+django-environ==0.14.0
+django-unfold==0.110.1
+django-tailwind-cli==4.8.2
+celery==5.7.0
+redis==8.1.0
+psycopg[binary]==3.3.9
+gunicorn==27.0.1
+whitenoise==6.12.0

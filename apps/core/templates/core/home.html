@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="bg-surface">
+  <div class="mx-auto max-w-5xl px-4 py-12 md:py-20">
+    <p class="mb-3 inline-block border-b-4 border-accent-bright pb-1 text-sm font-bold uppercase tracking-wide text-primary">{{ business_area }}</p>
+    <h1 class="text-3xl font-bold leading-tight text-ink md:text-5xl">{{ business_tagline }}</h1>
+    <p class="mt-4 max-w-2xl text-lg">Chairs, tables, linen, bounce houses, backdrops, a golf simulator, and popcorn and cotton candy machines for parties, weddings, corporate, school and church events.</p>
+    <div class="mt-8 flex flex-wrap gap-3">
+      <a href="#contact" class="inline-flex min-h-12 items-center rounded-lg bg-accent px-6 font-bold text-white hover:bg-accent-dark">Book now</a>
+      <a href="tel:{{ business_phone_href }}" class="inline-flex min-h-12 items-center rounded-lg border-2 border-primary px-6 font-bold text-primary">Call {{ business_phone }}</a>
+    </div>
+  </div>
+</section>
+
+<section id="rentals" class="mx-auto max-w-5xl px-4 pt-12">
+  <h2 class="text-2xl font-bold">What we rent</h2>
+  <ul class="mt-6 grid gap-3 sm:grid-cols-2 md:grid-cols-4">
+    {% for item in rentals %}
+    <li class="rounded-lg border border-primary/20 border-l-4 border-l-gold bg-white p-4 font-bold">{{ item }}</li>
+    {% endfor %}
+  </ul>
+</section>
+
+<section id="contact" class="mx-auto max-w-5xl px-4 pt-12">
+  <h2 class="text-2xl font-bold">Get in touch</h2>
+  <p class="mt-2">Tell us your date, location and what you need. Online booking is coming soon.</p>
+  <ul class="mt-4">
+    <li><a href="tel:{{ business_phone_href }}" class="inline-flex min-h-11 items-center font-bold text-primary underline">{{ business_phone }}</a></li>
+    <li><a href="mailto:{{ business_email }}" class="inline-flex min-h-11 items-center break-all font-bold text-primary underline">{{ business_email }}</a></li>
+  </ul>
+</section>
+{% endblock %}

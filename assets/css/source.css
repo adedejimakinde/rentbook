@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+@source "../../templates";
+@source "../../apps";
+
+@font-face {
+  font-family: "Montserrat";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("../fonts/montserrat-latin-500-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Montserrat";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../fonts/montserrat-latin-700-normal.woff2") format("woff2");
+}
+
+@theme {
+  --color-primary: #6a0dad;
+  --color-primary-light: #8e44ff;
+  --color-accent: #c2185b;
+  --color-accent-dark: #a3144c;
+  --color-accent-bright: #ff2d8f;
+  --color-gold: #d4af37;
+  --color-ink: #2a1b3d;
+  --color-surface: #f8f2fd;
+  --color-whatsapp: #0b6b3a;
+  --font-sans: "Montserrat", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-white font-medium text-ink antialiased;
+  }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-primary;
+  }
+
+  [x-cloak] {
+    display: none !important;
+  }
+}
