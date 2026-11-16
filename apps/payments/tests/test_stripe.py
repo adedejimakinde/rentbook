@@ -17,7 +17,7 @@ from apps.payments.services import stripe as stripe_service
 from apps.payments.services.ledger import PaymentError
 from apps.payments.tests.helpers import (
     URLS,
-    charge_object,
+    charge_refunded_event,
     event,
     held_booking,
     pay,
@@ -232,13 +232,14 @@ def test_caution_fee_on_full_payment_stays_out_of_amount_paid(client):
     assert booking.caution_held == D("75.00")
 
 
-def test_full_refund_cancels_the_booking_and_frees_stock(client):
+def test_full_refund_cancels_the_booking_and_frees_stock(client, refunds):
     booking = held_booking(total="200.00")
     variant = booking.items.get().variant
     before = availability.available_quantity(variant, booking.event_date)
     payment = pay(client, booking, Payment.Kind.FULL)
 
-    post_event(client, event("charge.refunded", charge_object(payment, "200.00")))
+    refunds.add(payment, "200.00")
+    post_event(client, charge_refunded_event(payment, refunds))
     booking.refresh_from_db()
     payment.refresh_from_db()
     assert payment.status == Payment.Status.REFUNDED
@@ -247,11 +248,12 @@ def test_full_refund_cancels_the_booking_and_frees_stock(client):
     assert availability.available_quantity(variant, booking.event_date) == before + 1
 
 
-def test_partial_refund_below_deposit_keeps_status_and_flags_attention(client):
+def test_partial_refund_below_deposit_keeps_status_and_flags_attention(client, refunds):
     booking = held_booking(total="200.00")
     payment = pay(client, booking, Payment.Kind.FULL)
 
-    post_event(client, event("charge.refunded", charge_object(payment, "150.00")))
+    refunds.add(payment, "150.00")
+    post_event(client, charge_refunded_event(payment, refunds))
     booking.refresh_from_db()
     payment.refresh_from_db()
     assert payment.status == Payment.Status.SUCCEEDED
@@ -260,11 +262,12 @@ def test_partial_refund_below_deposit_keeps_status_and_flags_attention(client):
     assert booking.needs_attention
 
 
-def test_partial_refund_still_covering_deposit_sets_deposit_paid(client):
+def test_partial_refund_still_covering_deposit_sets_deposit_paid(client, refunds):
     booking = held_booking(total="200.00")
     payment = pay(client, booking, Payment.Kind.FULL)
 
-    post_event(client, event("charge.refunded", charge_object(payment, "60.00")))
+    refunds.add(payment, "60.00")
+    post_event(client, charge_refunded_event(payment, refunds))
     booking.refresh_from_db()
     assert booking.amount_paid == D("140.00")
     assert booking.balance_due == D("60.00")
@@ -272,23 +275,25 @@ def test_partial_refund_still_covering_deposit_sets_deposit_paid(client):
     assert not booking.needs_attention
 
 
-def test_refunding_the_balance_payment_returns_booking_to_deposit_paid(client):
+def test_refunding_the_balance_payment_returns_booking_to_deposit_paid(client, refunds):
     booking = held_booking(total="200.00")
     pay(client, booking, Payment.Kind.DEPOSIT)
     balance = pay(client, booking, Payment.Kind.BALANCE)
 
-    post_event(client, event("charge.refunded", charge_object(balance, "100.00")))
+    refunds.add(balance, "100.00")
+    post_event(client, charge_refunded_event(balance, refunds))
     booking.refresh_from_db()
     assert booking.amount_paid == D("100.00")
     assert booking.status == Booking.Status.DEPOSIT_PAID
 
 
-def test_refund_totals_are_cumulative_so_repeats_do_not_double_count(client):
+def test_refund_totals_are_cumulative_so_repeats_do_not_double_count(client, refunds):
     booking = held_booking(total="200.00")
     payment = pay(client, booking, Payment.Kind.FULL)
 
-    post_event(client, event("charge.refunded", charge_object(payment, "60.00")))
-    post_event(client, event("charge.refunded", charge_object(payment, "60.00")))
+    refunds.add(payment, "60.00")
+    post_event(client, charge_refunded_event(payment, refunds))
+    post_event(client, charge_refunded_event(payment, refunds))
     booking.refresh_from_db()
     assert booking.amount_paid == D("140.00")
 

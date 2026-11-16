@@ -64,15 +64,61 @@ def session_object(payment, payment_status="paid", amount_total=None):
     }
 
 
-def charge_object(payment, amount_refunded):
-    """The charge Stripe would send after refunding amount_refunded dollars in total."""
-    return {
+class FakeStripeRefunds:
+    """Stands in for stripe.Refund: remembers refunds and lists them by payment intent."""
+
+    def __init__(self):
+        self.refunds = []
+        self.create_calls = []
+
+    def add(self, payment, amount, kind=None, status="succeeded"):
+        """Add a refund as Stripe would hold it. kind None is a dashboard refund."""
+        refund = {
+            "id": f"re_test_{next(_sequence)}",
+            "object": "refund",
+            "payment_intent": payment.stripe_payment_intent_id,
+            "amount": stripe_service.to_cents(Decimal(amount)),
+            "status": status,
+            "metadata": {"kind": kind} if kind else {},
+        }
+        self.refunds.append(refund)
+        return refund
+
+    def create(self, **kwargs):
+        self.create_calls.append(kwargs)
+        refund = {
+            "id": f"re_test_{next(_sequence)}",
+            "object": "refund",
+            "payment_intent": kwargs["payment_intent"],
+            "amount": kwargs["amount"],
+            "status": "succeeded",
+            "metadata": kwargs["metadata"],
+        }
+        self.refunds.append(refund)
+        return refund
+
+    def list(self, **kwargs):
+        intent = kwargs["payment_intent"]
+        return {"data": [r for r in self.refunds if r["payment_intent"] == intent]}
+
+    def total_cents(self, payment):
+        return sum(
+            r["amount"]
+            for r in self.list(payment_intent=payment.stripe_payment_intent_id)["data"]
+            if r["status"] not in ("failed", "canceled")
+        )
+
+
+def charge_refunded_event(payment, refunds):
+    """The charge.refunded event Stripe sends once refunds exist on a payment."""
+    charge = {
         "id": f"ch_{payment.pk}",
         "object": "charge",
         "payment_intent": payment.stripe_payment_intent_id,
         "amount": stripe_service.to_cents(payment.charged_total),
-        "amount_refunded": stripe_service.to_cents(Decimal(amount_refunded)),
+        "amount_refunded": refunds.total_cents(payment),
     }
+    return event("charge.refunded", charge)
 
 
 def event(event_type, data_object, event_id=None):

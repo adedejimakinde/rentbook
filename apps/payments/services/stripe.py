@@ -24,6 +24,8 @@ logger = logging.getLogger(__name__)
 
 ZERO = Decimal("0.00")
 CURRENCY = "usd"
+# Metadata tag on refunds of rental money issued from the admin.
+RENTAL_REFUND = "rental_refund"
 # Stripe's shortest allowed session lifetime is 30 minutes.
 CHECKOUT_SESSION_MINUTES = 31
 HOLD_GRACE_MINUTES = 5
@@ -246,15 +248,108 @@ def _on_async_payment_failed(session):
         ledger.record_failure(payment.pk, method=Payment.Method.ACH)
 
 
-def _on_charge_refunded(charge):
-    intent_id = charge.get("payment_intent")
+def sync_refunds(payment, *, reported_total=ZERO, received_by=None):
+    """Bring the ledger in line with every refund Stripe holds for a payment.
+
+    Refunds tagged as caution refunds become caution refund entries, once each.
+    Everything else counts as rental money refunded; refunds without the app's
+    tag (made in the Stripe dashboard) are treated as ambiguous. Safe to repeat.
+    reported_total is the refunded total a webhook stated, in case the list
+    is behind it.
+    """
+    refunds = stripe.Refund.list(
+        payment_intent=payment.stripe_payment_intent_id, limit=100, api_key=_secret_key()
+    )
+    with transaction.atomic():
+        rental = caution = ZERO
+        ambiguous = False
+        for refund in refunds["data"]:
+            if refund["status"] in ("failed", "canceled"):
+                continue
+            amount = from_cents(refund["amount"])
+            kind = (refund.get("metadata") or {}).get("kind")
+            if kind == Payment.Kind.CAUTION_REFUND:
+                caution += amount
+                ledger.record_stripe_caution_refund(
+                    payment.pk, refund["id"], amount, received_by=received_by
+                )
+            else:
+                rental += amount
+                ambiguous |= kind != RENTAL_REFUND
+        unlisted = reported_total - rental - caution
+        if unlisted > ZERO:
+            rental += unlisted
+            ambiguous = True
+        ledger.record_refund(payment.pk, rental, ambiguous=ambiguous)
+
+
+def _issue_refund(payment, amount, kind, already_refunded, received_by):
+    """Send a tagged refund through Stripe, then record it from Stripe's own list."""
+    stripe.Refund.create(
+        api_key=_secret_key(),
+        idempotency_key=(
+            f"rentbook-refund-{payment.pk}-{kind}-{to_cents(amount)}-{to_cents(already_refunded)}"
+        ),
+        payment_intent=payment.stripe_payment_intent_id,
+        amount=to_cents(amount),
+        metadata={
+            "kind": str(kind),
+            "booking_id": str(payment.booking_id),
+            "payment_id": str(payment.pk),
+        },
+    )
+    try:
+        sync_refunds(payment, received_by=received_by)
+    except stripe.StripeError:
+        logger.exception(
+            "Refund on payment %s was issued but not yet recorded; the webhook will record it.",
+            payment.pk,
+        )
+
+
+def refund_caution(booking, amount, *, received_by=None):
+    """Send caution deposit money back to the card or bank account it came from.
+
+    The refund is tagged so it is recorded as a caution refund, never as a
+    rental refund. Returns the payment it was refunded against.
+    """
+    payment = ledger.check_caution_refund(booking.pk, amount)
+    already = payment.caution_amount - payment.caution_refundable
+    _issue_refund(payment, Decimal(amount), Payment.Kind.CAUTION_REFUND, already, received_by)
+    return payment
+
+
+def refund_rental(payment, amount, *, received_by=None):
+    """Refund rental money on a card or ACH payment through Stripe.
+
+    The booking is then re-evaluated exactly as for any refund.
+    """
+    payment = ledger.check_rental_refund(payment.pk, amount)
+    _issue_refund(payment, Decimal(amount), RENTAL_REFUND, payment.refunded_amount, received_by)
+    return payment
+
+
+def _payment_for_intent(stripe_object):
+    intent_id = stripe_object.get("payment_intent")
     payment = (
         Payment.objects.filter(stripe_payment_intent_id=intent_id).first() if intent_id else None
     )
     if payment is None:
-        logger.warning("Refunded Stripe charge %s matches no payment.", charge["id"])
-        return
-    ledger.record_refund(payment.pk, from_cents(charge["amount_refunded"]))
+        logger.warning("Stripe %s matches no payment.", stripe_object["id"])
+    return payment
+
+
+def _on_charge_refunded(charge):
+    payment = _payment_for_intent(charge)
+    if payment is not None:
+        sync_refunds(payment, reported_total=from_cents(charge["amount_refunded"]))
+
+
+def _on_refund_failed(refund):
+    """A refund we counted did not reach the customer: staff must sort it out."""
+    payment = _payment_for_intent(refund)
+    if payment is not None:
+        ledger.flag_attention(ledger.lock_booking(payment.booking_id))
 
 
 HANDLERS = {
@@ -262,6 +357,7 @@ HANDLERS = {
     "checkout.session.async_payment_succeeded": _on_async_payment_succeeded,
     "checkout.session.async_payment_failed": _on_async_payment_failed,
     "charge.refunded": _on_charge_refunded,
+    "refund.failed": _on_refund_failed,
 }
 
 

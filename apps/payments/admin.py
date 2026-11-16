@@ -6,13 +6,19 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import path, reverse
 from unfold.admin import ModelAdmin
 
-from apps.payments.forms import CautionRefundForm, DamageChargeForm, ManualPaymentForm
+from apps.payments.forms import (
+    CautionRefundForm,
+    DamageChargeForm,
+    ManualPaymentForm,
+    RentalRefundForm,
+)
 from apps.payments.models import Payment
 
 LEDGER_FORMS = {
     "manual-payment": ManualPaymentForm,
     "caution-refund": CautionRefundForm,
     "damage-charge": DamageChargeForm,
+    "rental-refund": RentalRefundForm,
 }
 
 
@@ -29,6 +35,7 @@ class PaymentAdmin(ModelAdmin):
         "amount",
         "caution_amount",
         "refunded_amount",
+        "refund_of",
         "reference",
         "received_at",
     ]
@@ -55,7 +62,12 @@ class PaymentAdmin(ModelAdmin):
 class BookingPaymentActionsMixin:
     """Booking admin actions to record manual payments and caution outcomes."""
 
-    payment_actions = ["record_manual_payment", "record_caution_refund", "record_damage_charge"]
+    payment_actions = [
+        "record_manual_payment",
+        "record_caution_refund",
+        "record_damage_charge",
+        "refund_rental_payment",
+    ]
     money_fields = ["total", "deposit_amount", "amount_paid", "balance_due", "caution_held"]
 
     def get_readonly_fields(self, request, obj=None):
@@ -89,14 +101,18 @@ class BookingPaymentActionsMixin:
     def record_damage_charge(self, request, queryset):
         return self._open_ledger_form(request, queryset, "damage-charge")
 
+    @admin.action(description="Refund rental payment (card or ACH, through Stripe)")
+    def refund_rental_payment(self, request, queryset):
+        return self._open_ledger_form(request, queryset, "rental-refund")
+
     def ledger_form_view(self, request, booking_id, action):
         """Show and process one of the ledger forms for a booking."""
         booking = get_object_or_404(self.model, pk=booking_id)
         form_class = LEDGER_FORMS.get(action)
         if form_class is None or not self.has_change_permission(request, booking):
             raise PermissionDenied
-        form = form_class(request.POST or None)
-        if request.method == "POST" and form.is_valid() and form.save(booking, request.user):
+        form = form_class(request.POST or None, booking=booking)
+        if request.method == "POST" and form.is_valid() and form.save(request.user):
             self.message_user(request, f"{form.title}: saved.", messages.SUCCESS)
             return redirect(reverse("admin:bookings_booking_change", args=[booking.pk]))
         context = {

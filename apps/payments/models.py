@@ -89,6 +89,21 @@ class Payment(TimeStampedModel):
     stripe_payment_intent_id = models.CharField(  # noqa: DJ001
         max_length=255, unique=True, null=True, blank=True
     )
+    stripe_refund_id = models.CharField(  # noqa: DJ001
+        max_length=255,
+        unique=True,
+        null=True,
+        blank=True,
+        help_text="Set on a caution refund sent back through Stripe.",
+    )
+    refund_of = models.ForeignKey(
+        "self",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="caution_refunds",
+        help_text="The Stripe payment a caution refund was sent back against.",
+    )
     reference = models.CharField(max_length=255, blank=True)
     received_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -134,6 +149,14 @@ class Payment(TimeStampedModel):
     def caution_net(self):
         """Caution money this payment still contributes after refunds."""
         return self.caution_amount - max(self.refunded_amount - self.amount, ZERO)
+
+    @property
+    def caution_refundable(self):
+        """Caution money that can still be sent back against this Stripe payment."""
+        if not self.stripe_payment_intent_id:
+            return ZERO
+        sent_back = sum((refund.amount for refund in self.caution_refunds.all()), ZERO)
+        return max(self.caution_net - sent_back, ZERO)
 
 
 class StripeEvent(TimeStampedModel):

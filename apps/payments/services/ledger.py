@@ -170,12 +170,14 @@ def record_failure(payment_id, *, method=None):
     return payment
 
 
-def record_refund(payment_id, refunded_total):
-    """Set the cumulative amount refunded on a payment and update its booking.
+def record_refund(payment_id, refunded_total, *, ambiguous=False):
+    """Set the cumulative rental amount refunded on a payment and update its booking.
 
-    refunded_total is the running total Stripe reports for the charge, so a
-    repeated or out-of-date report changes nothing. Refunds count against the
-    rental amount first, then against any caution taken in the same payment.
+    refunded_total is a running total, so a repeated or out-of-date report
+    changes nothing. It counts against the rental amount first, then against
+    any caution taken in the same payment. ambiguous marks refunds made outside
+    the app (the Stripe dashboard), where rental and caution cannot be told
+    apart: a partial one on a payment that carried caution flags the booking.
     """
     with transaction.atomic():
         booking, payment = _lock_payment(payment_id)
@@ -186,13 +188,81 @@ def record_refund(payment_id, refunded_total):
         if refunded_total <= payment.refunded_amount:
             return payment
         payment.refunded_amount = refunded_total
-        fully_refunded = refunded_total == payment.charged_total
-        if fully_refunded:
+        if refunded_total >= payment.amount:
             payment.status = Payment.Status.REFUNDED
         payment.save()
-        if payment.caution_amount > ZERO and not fully_refunded:
+        partial = refunded_total < payment.charged_total
+        if ambiguous and payment.caution_amount > ZERO and partial:
             booking.needs_attention = True
         _apply_money_out(booking)
+    return payment
+
+
+def record_stripe_caution_refund(payment_id, refund_id, amount, *, received_by=None):
+    """Record a caution refund Stripe sent back against a payment, once per refund id.
+
+    The refund has already happened at Stripe, so it is always recorded; if it
+    takes the caution held below zero the booking is flagged.
+    """
+    with transaction.atomic():
+        booking, payment = _lock_payment(payment_id)
+        existing = Payment.objects.filter(stripe_refund_id=refund_id).first()
+        if existing is not None:
+            return existing
+        refund = Payment.objects.create(
+            booking=booking,
+            amount=amount,
+            method=payment.method,
+            kind=Payment.Kind.CAUTION_REFUND,
+            status=Payment.Status.SUCCEEDED,
+            stripe_refund_id=refund_id,
+            refund_of=payment,
+            reference=refund_id,
+            received_by=received_by,
+            received_at=timezone.now(),
+        )
+        if booking.caution_held < ZERO:
+            flag_attention(booking)
+    return refund
+
+
+def check_caution_refund(booking_id, amount):
+    """Return the Stripe payment a caution refund of amount can be sent back against.
+
+    Raises PaymentError when the amount is more than the caution held, or no
+    single card or ACH payment holds that much caution.
+    """
+    amount = positive_amount(amount)
+    with transaction.atomic():
+        booking = lock_booking(booking_id)
+        held = booking.caution_held
+        if amount > held:
+            raise PaymentError(f"Amount is more than the caution deposit still held (${held}).")
+        for payment in booking.payments.filter(
+            kind__in=Payment.RENTAL_KINDS, stripe_payment_intent_id__isnull=False
+        ):
+            if payment.caution_refundable >= amount:
+                return payment
+    raise PaymentError(
+        "No card or ACH payment holds that much caution. Refund it by Zelle, Cash App "
+        "or bank deposit and record it that way."
+    )
+
+
+def check_rental_refund(payment_id, amount):
+    """Validate a rental refund of amount against a Stripe payment and return the payment."""
+    amount = positive_amount(amount)
+    with transaction.atomic():
+        _, payment = _lock_payment(payment_id)
+        if payment.kind not in Payment.RENTAL_KINDS or not payment.stripe_payment_intent_id:
+            raise PaymentError("Only card and ACH rental payments can be refunded here.")
+        if payment.status not in (Payment.Status.SUCCEEDED, Payment.Status.REFUNDED):
+            raise PaymentError("This payment has not succeeded, so there is nothing to refund.")
+        if amount > payment.rental_net:
+            raise PaymentError(
+                f"Amount is more than the rental money left on this payment "
+                f"(${payment.rental_net})."
+            )
     return payment
 
 
@@ -206,6 +276,14 @@ def _clean_amount(value, label):
     amount = Decimal(value)
     if amount < ZERO or amount != amount.quantize(CENT):
         raise PaymentError(f"{label} must be a dollar amount of zero or more.")
+    return amount
+
+
+def positive_amount(value):
+    """Return value as a dollar Decimal, or raise PaymentError unless it is above zero."""
+    amount = _clean_amount(value, "Amount")
+    if amount <= ZERO:
+        raise PaymentError("Enter an amount greater than zero.")
     return amount
 
 
@@ -266,9 +344,7 @@ def record_manual_payment(
 
 
 def _release_caution(booking, kind, *, amount, method, reference, received_at, received_by):
-    amount = _clean_amount(amount, "Amount")
-    if amount <= ZERO:
-        raise PaymentError("Enter an amount greater than zero.")
+    amount = positive_amount(amount)
     with transaction.atomic():
         booking = lock_booking(booking.pk)
         held = booking.caution_held
@@ -287,9 +363,13 @@ def _release_caution(booking, kind, *, amount, method, reference, received_at, r
 
 
 def record_caution_refund(booking, *, amount, method, reference, received_at, received_by):
-    """Record caution deposit money returned to the customer."""
-    if method not in Payment.Method.values:
-        raise PaymentError("Choose how the caution deposit was refunded.")
+    """Record caution deposit money staff returned by Zelle, Cash App or bank deposit.
+
+    Refunds back to a card or bank account go through
+    services.stripe.refund_caution instead, which moves the money itself.
+    """
+    if method not in Payment.MANUAL_METHODS:
+        raise PaymentError("Manual caution refunds must be Zelle, Cash App or bank deposit.")
     return _release_caution(
         booking,
         Payment.Kind.CAUTION_REFUND,
