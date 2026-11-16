@@ -115,6 +115,14 @@ def available_quantity(variant, event_date):
     return _available([fresh], event_date)[fresh.pk]
 
 
+def available_quantities(variants, event_date):
+    """Return {variant_id: bookable units} for loaded variants, without locking.
+
+    For quotes only: anything that reserves stock must use lock_and_check.
+    """
+    return _available(list(variants), event_date)
+
+
 def lock_and_check(quantities, event_date, exclude_booking=None):
     """Lock the variant rows and raise InsufficientStockError if any is short.
 

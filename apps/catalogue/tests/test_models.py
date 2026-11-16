@@ -23,6 +23,7 @@ def test_unit_price_falls_back_to_base_price():
 
 def item_form(category, variants):
     data = {
+        "caution_fee": "0.00",
         "category": category.pk,
         "name": "Folding Chair",
         "slug": "folding-chair",

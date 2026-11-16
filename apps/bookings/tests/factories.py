@@ -5,8 +5,8 @@ from decimal import Decimal
 
 import factory
 
-from apps.bookings.models import Booking, BookingItem
-from apps.catalogue.models import Category, Item, ItemVariant
+from apps.bookings.models import Booking, BookingItem, DeliveryZone, PromoCode
+from apps.catalogue.models import Category, Item, ItemVariant, Package, PackageItem
 from apps.inventory.models import StockAdjustment
 
 EVENT_DATE = date(2027, 6, 12)
@@ -68,3 +68,39 @@ class BookingItemFactory(factory.django.DjangoModelFactory):
     variant = factory.SubFactory(ItemVariantFactory)
     quantity = 1
     unit_price = Decimal("25.00")
+
+
+class PackageFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Package
+
+    name = factory.Sequence(lambda n: f"Package {n}")
+    slug = factory.Sequence(lambda n: f"package-{n}")
+    package_price = Decimal("100.00")
+
+
+class PackageItemFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = PackageItem
+
+    package = factory.SubFactory(PackageFactory)
+    variant = factory.SubFactory(ItemVariantFactory)
+    quantity = 1
+
+
+class DeliveryZoneFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = DeliveryZone
+
+    name = factory.Sequence(lambda n: f"Zone {n}")
+    zip_codes = ["75001"]
+    delivery_fee = Decimal("40.00")
+    setup_fee = Decimal("20.00")
+
+
+class PromoCodeFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = PromoCode
+
+    code = factory.Sequence(lambda n: f"PROMO{n}")
+    percent_off = Decimal("10.00")

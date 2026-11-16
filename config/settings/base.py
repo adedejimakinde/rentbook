@@ -1,5 +1,6 @@
 """Settings shared by every environment. All configuration comes from env vars."""
 
+from decimal import Decimal
 from pathlib import Path
 
 import environ
@@ -133,6 +134,14 @@ DEPOSIT_PERCENT = env.int("DEPOSIT_PERCENT", default=50)
 if not 1 <= DEPOSIT_PERCENT <= 100:
     raise ValueError("DEPOSIT_PERCENT must be between 1 and 100.")
 # Days a hold is kept while an ACH bank payment is still clearing.
+# Sales tax as a percent (8.25 means 8.25%). Applies to items and packages after
+# any discount; delivery and setup fees are taxed only when switched on below.
+SALES_TAX_RATE = Decimal(env.str("SALES_TAX_RATE", default="0"))
+if not 0 <= SALES_TAX_RATE <= 100:
+    raise ValueError("SALES_TAX_RATE must be between 0 and 100.")
+TAX_DELIVERY = env.bool("TAX_DELIVERY", default=False)
+TAX_SETUP = env.bool("TAX_SETUP", default=False)
+
 ACH_HOLD_DAYS = env.int("ACH_HOLD_DAYS", default=7)
 
 BUSINESS_NAME = env("BUSINESS_NAME", default="Atglace Events & Rentals LLC")

@@ -78,6 +78,7 @@ def _open_payment(booking_id, kind, session_expires_at):
         on_hold = ledger.has_live_hold(booking)
         if not (on_hold or booking.status == Booking.Status.DEPOSIT_PAID):
             raise PaymentError("This booking is not open for payment.")
+        ledger.check_promo_available(booking)
 
         paid, total = booking.amount_paid, booking.total
         if kind == Payment.Kind.DEPOSIT:

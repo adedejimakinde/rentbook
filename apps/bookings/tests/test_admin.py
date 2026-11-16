@@ -32,6 +32,13 @@ def booking_form(status, items, event_date=EVENT_DATE, initial_forms=0, hold_exp
         "delivery_address": "1 Main St, Dallas, TX",
         "status": status,
         "delivery_fee": "0.00",
+        "setup_fee": "0.00",
+        "discount": "0.00",
+        "tax": "0.00",
+        "packages-TOTAL_FORMS": 0,
+        "packages-INITIAL_FORMS": 0,
+        "packages-MIN_NUM_FORMS": 0,
+        "packages-MAX_NUM_FORMS": 1000,
         "caution_fee": "0.00",
         "hold_expires_at_0": f"{hold_expires_at:%Y-%m-%d}" if hold_expires_at else "",
         "hold_expires_at_1": f"{hold_expires_at:%H:%M:%S}" if hold_expires_at else "",
@@ -44,6 +51,7 @@ def booking_form(status, items, event_date=EVENT_DATE, initial_forms=0, hold_exp
         data[f"items-{index}-variant"] = item["variant"].pk
         data[f"items-{index}-quantity"] = item["quantity"]
         data[f"items-{index}-unit_price"] = "25.00"
+        data[f"items-{index}-package_quantity"] = 0
         if "id" in item:
             data[f"items-{index}-id"] = item["id"]
         if item.get("DELETE"):
