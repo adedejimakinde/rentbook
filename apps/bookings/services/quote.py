@@ -341,30 +341,44 @@ def caution_for(fees_and_quantities):
     return to_cents(sum((fee * quantity for fee, quantity in fees_and_quantities), ZERO))
 
 
-def reprice_booking(booking):
-    """Recompute a booking's tax and caution from its current lines and save them.
-
-    For bookings edited by staff before any payment: lines, fees and discount
-    may have changed, so tax and caution follow them. Once money is on the
-    booking its amounts are locked and change only through the ledger.
-    """
-    items = list(booking.items.select_related("variant__item"))
+def booking_tax(booking):
+    """Sales tax on a booking's current lines, fees and discount; zero when it is tax exempt."""
+    if booking.tax_exempt:
+        return ZERO
     items_subtotal = sum(
-        (to_cents(item.unit_price * (item.quantity - item.package_quantity)) for item in items),
+        (
+            to_cents(item.unit_price * (item.quantity - item.package_quantity))
+            for item in booking.items.all()
+        ),
         ZERO,
     )
     package_subtotal = sum(
         (to_cents(line.unit_price * line.quantity) for line in booking.packages.all()), ZERO
     )
-    booking.tax = sales_tax(
+    return sales_tax(
         items_subtotal + package_subtotal,
         booking.discount,
         booking.delivery_fee,
         booking.setup_fee,
     )
-    booking.caution_fee = caution_for(
-        (item.variant.item.caution_fee, item.quantity) for item in items
-    )
+
+
+def booking_caution(booking):
+    """Caution owed for a booking's current lines: every unit reserved counts."""
+    items = booking.items.select_related("variant__item")
+    return caution_for((item.variant.item.caution_fee, item.quantity) for item in items)
+
+
+def reprice_booking(booking):
+    """Recompute a booking's tax and caution from its current lines and save them.
+
+    For bookings edited by staff before any payment: lines, fees and discount
+    may have changed, so tax and caution follow them. Once money is on the
+    booking its lines change only through lifecycle.change_item, which
+    recomputes them the same way.
+    """
+    booking.tax = booking_tax(booking)
+    booking.caution_fee = booking_caution(booking)
     booking.save(update_fields=["tax", "caution_fee", "updated_at"])
     return booking
 

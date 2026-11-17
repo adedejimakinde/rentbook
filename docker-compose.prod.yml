@@ -1,6 +1,8 @@
 # Production on the VPS: docker compose -f docker-compose.prod.yml up -d --build
-# Uses config.settings.prod, gunicorn and requirements.txt only. The code is
-# baked into the image (no source mount) and nothing runs the dev server.
+# Uses config.settings.prod, gunicorn and requirements.txt only. The code and the
+# built Tailwind CSS are baked into the image (no source mount) and nothing runs
+# the dev server. gunicorn listens on 127.0.0.1:8000 only; a reverse proxy on the
+# VPS (Caddy, see the README) terminates TLS in front of it.
 # Run migrations after each deploy:
 #   docker compose -f docker-compose.prod.yml exec web python manage.py migrate
 
@@ -24,8 +26,7 @@ services:
   web:
     <<: *app
     command: >-
-      sh -c "python manage.py tailwind build &&
-      python manage.py collectstatic --noinput &&
+      sh -c "python manage.py collectstatic --noinput &&
       gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 30"
     ports:
       - "127.0.0.1:8000:8000"

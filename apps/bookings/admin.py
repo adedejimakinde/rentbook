@@ -7,15 +7,24 @@ which check the money first.
 
 from collections import defaultdict
 
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
 from django.forms import BaseInlineFormSet, ModelForm
+from django.shortcuts import redirect
+from django.urls import reverse
 from unfold.admin import ModelAdmin, TabularInline
 
 from apps.bookings.forms import LIFECYCLE_FORMS
-from apps.bookings.models import Booking, BookingItem, BookingPackage, DeliveryZone, PromoCode
+from apps.bookings.models import (
+    Booking,
+    BookingDeleteRefused,
+    BookingItem,
+    BookingPackage,
+    DeliveryZone,
+    PromoCode,
+)
 from apps.bookings.services import availability, lifecycle, quote
-from apps.payments.admin import BookingPaymentActionsMixin
+from apps.payments.admin import TAX_EXEMPTION_PERMISSION, BookingPaymentActionsMixin
 
 # Statuses staff may set by hand. Every other status is reached through a
 # payment or a lifecycle action, never by editing the booking.
@@ -36,8 +45,40 @@ def has_payments(booking):
     return booking is not None and booking.pk and booking.payments.counted().exists()
 
 
+def stock_error(error):
+    """The admin's message for an InsufficientStockError."""
+    return ValidationError(
+        [f"Not enough stock on {error.event_date:%b %d, %Y} to save this booking."]
+        + [str(shortage) for shortage in error.shortages]
+    )
+
+
+def check_saved_lines(booking, event_date, status):
+    """Lock and check a booking's saved lines for event_date, if status ties up stock."""
+    if not booking.pk or not event_date or status not in availability.STOCK_HOLDING_STATUSES:
+        return
+    quantities = defaultdict(int)
+    for variant_id, quantity in booking.items.values_list("variant_id", "quantity"):
+        quantities[variant_id] += quantity
+    if not quantities:
+        return
+    try:
+        availability.lock_and_check(quantities, event_date, exclude_booking=booking)
+    except availability.InsufficientStockError as error:
+        raise stock_error(error) from error
+
+
 class BookingForm(ModelForm):
-    """Makes sure a hold placed by staff always has an expiry."""
+    """Makes sure a hold placed by staff always has an expiry, and dates are checked.
+
+    lines_editable is set by the admin for each request. When the lines cannot
+    be edited (the booking has payments, or the user has no permission on
+    booking items, so the inline is read-only or hidden), the saved lines are
+    what will be moved, so they are checked here against the new date and
+    status. Otherwise the item formset checks the lines as edited.
+    """
+
+    lines_editable = True
 
     def clean(self):
         cleaned = super().clean()
@@ -50,45 +91,44 @@ class BookingForm(ModelForm):
             )
         if cleaned.get("status") == Booking.Status.HELD and not cleaned.get("hold_expires_at"):
             cleaned["hold_expires_at"] = availability.staff_hold_expiry()
+        if not self.lines_editable and not self.errors:
+            check_saved_lines(
+                self.instance,
+                cleaned.get("event_date", self.instance.event_date),
+                cleaned.get("status", self.instance.status),
+            )
         return cleaned
 
 
 class BookingItemFormSet(BaseInlineFormSet):
-    """Rejects the whole booking form when its items would overbook stock.
+    """Rejects the whole booking form when its edited items would overbook stock.
 
     The admin change view runs in one transaction, so the variant locks taken
-    here are held until the booking and its items have been saved.
+    here are held until the booking and its items have been saved. Read-only
+    lines are checked by BookingForm instead.
     """
 
     def clean(self):
         super().clean()
         booking = self.instance
-        if any(self.errors) or not booking.event_date:
+        if any(self.errors) or not booking.event_date or has_payments(booking):
             return
         if booking.status not in availability.STOCK_HOLDING_STATUSES:
             return
 
         quantities = defaultdict(int)
-        if has_payments(booking):
-            # The lines are read-only, so the saved ones are what is being moved.
-            for variant_id, quantity in booking.items.values_list("variant_id", "quantity"):
-                quantities[variant_id] += quantity
-        else:
-            for form in self.forms:
-                data = getattr(form, "cleaned_data", None)
-                if not data or data.get("DELETE") or not data.get("variant"):
-                    continue
-                quantities[data["variant"].pk] += data["quantity"]
+        for form in self.forms:
+            data = getattr(form, "cleaned_data", None)
+            if not data or data.get("DELETE") or not data.get("variant"):
+                continue
+            quantities[data["variant"].pk] += data["quantity"]
         if not quantities:
             return
 
         try:
             availability.lock_and_check(quantities, booking.event_date, exclude_booking=booking)
         except availability.InsufficientStockError as error:
-            raise ValidationError(
-                [f"Not enough stock on {error.event_date:%b %d, %Y} to save this booking."]
-                + [str(shortage) for shortage in error.shortages]
-            ) from error
+            raise stock_error(error) from error
 
 
 class LockedWithPaymentsInline(TabularInline):
@@ -136,6 +176,7 @@ class BookingAdmin(BookingPaymentActionsMixin, ModelAdmin):
     actions = [
         *BookingPaymentActionsMixin.payment_actions,
         "change_item_line",
+        "set_tax_exemption",
         "mark_delivered",
         "mark_returned",
         "cancel_booking",
@@ -153,8 +194,34 @@ class BookingAdmin(BookingPaymentActionsMixin, ModelAdmin):
         "delivery_override_note",
         "delivery_override_by",
         "delivery_override_at",
+        "clearing_override_note",
+        "clearing_override_by",
+        "clearing_override_at",
+        "tax_exempt",
+        "tax_exempt_certificate",
+        "tax_exempt_by",
+        "tax_exempt_at",
     ]
     inlines = [BookingItemInline, BookingPackageInline]
+
+    def get_form(self, request, obj=None, change=False, **kwargs):
+        """Tell the form whether this user can edit the lines, so it knows what to check."""
+        form = super().get_form(request, obj, change=change, **kwargs)
+        inline = BookingItemInline(self.model, self.admin_site)
+        form.lines_editable = obj is None or inline.has_change_permission(request, obj)
+        return form
+
+    def delete_view(self, request, object_id, extra_context=None):
+        """A delete refused by the booking itself (it took stock or money meanwhile) is an error.
+
+        The admin checks first, but a booking can be put on hold or paid
+        between that check and the delete.
+        """
+        try:
+            return super().delete_view(request, object_id, extra_context)
+        except BookingDeleteRefused as error:
+            self.message_user(request, str(error), messages.ERROR)
+            return redirect(reverse("admin:bookings_booking_change", args=[object_id]))
 
     def get_object(self, request, object_id, from_field=None):
         """Lock the booking while it is being saved, so no payment lands mid-edit.
@@ -194,6 +261,13 @@ class BookingAdmin(BookingPaymentActionsMixin, ModelAdmin):
     @admin.action(description="Change an item line (bookings with payments)")
     def change_item_line(self, request, queryset):
         return self._open_ledger_form(request, queryset, "change-item")
+
+    def has_set_tax_exemption_permission(self, request):
+        return request.user.has_perm(TAX_EXEMPTION_PERMISSION)
+
+    @admin.action(description="Set tax exemption", permissions=["set_tax_exemption"])
+    def set_tax_exemption(self, request, queryset):
+        return self._open_ledger_form(request, queryset, "tax-exemption")
 
     @admin.action(description="Mark delivered")
     def mark_delivered(self, request, queryset):

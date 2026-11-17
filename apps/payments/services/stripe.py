@@ -13,7 +13,7 @@ import stripe
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.db import IntegrityError, transaction
-from django.db.models import F
+from django.db.models import F, Q
 from django.utils import timezone
 
 from apps.bookings.models import Booking
@@ -34,15 +34,26 @@ HOLD_GRACE_MINUTES = 5
 # are not retried: a timeout fails the request and leaves nothing behind.
 STRIPE_TIMEOUT_SECONDS = 10
 IN_PROGRESS = "A payment for this booking is already being processed."
+MISMATCHED = (
+    "Stripe charged a different amount than this booking's checkout asked for. "
+    "Use the Resolve mismatched payment action first."
+)
 # Times an unmatched event is retried (every 15 minutes: one day) before it is
 # left for staff in the admin.
 UNMATCHED_RETRY_LIMIT = 96
 # Pending payments and refunds older than this are checked by the periodic sync.
 SYNC_AFTER_MINUTES = 15
+# Bookings paid through Stripe are also synced hourly while they changed this
+# recently, or their event is this close, to catch refunds made at Stripe.
+RECENT_CHANGE_DAYS = 7
+UPCOMING_EVENT_DAYS = 30
 # A refund entry still pending this long with no refund at Stripe never got
 # there (the request timed out before Stripe saw it), so it is failed.
 PENDING_REFUND_TIMEOUT_MINUTES = 15
 FAILED_REFUND_STATUSES = ("failed", "canceled")
+# A refund this app sends back for a checkout charged the wrong amount.
+MISMATCH_REFUND = "mismatch_refund"
+Reason = Payment.FailureReason
 
 stripe.default_http_client = stripe.new_default_http_client(timeout=STRIPE_TIMEOUT_SECONDS)
 stripe.max_network_retries = 0
@@ -80,6 +91,8 @@ def _settle_open_checkouts(booking, reuse=None):
     record a payment in between.
     """
     for payment in booking.payments.open_checkouts().order_by("pk"):
+        if payment.mismatch_flagged_at is not None:
+            raise PaymentError(MISMATCHED)
         session_id = payment.stripe_checkout_session_id
         if session_id:
             session = stripe.checkout.Session.retrieve(session_id, api_key=_secret_key())
@@ -103,6 +116,95 @@ def close_open_checkouts(booking):
     """
     with transaction.atomic():
         _settle_open_checkouts(ledger.lock_booking(booking.pk))
+
+
+def record_manual_payment(booking, **details):
+    """Record a manual payment, closing the booking's unfinished checkouts first.
+
+    One transaction holds the booking lock throughout. The payment itself
+    (amount, caution, duplicate reference) is checked before anything is
+    expired at Stripe, so a refused payment leaves open checkouts as they were.
+    details are ledger.record_manual_payment's keyword arguments.
+    """
+    with transaction.atomic():
+        locked = ledger.lock_booking(booking.pk)
+        ledger.check_manual_payment(
+            locked,
+            method=details["method"],
+            amount=details["amount"],
+            caution_amount=details.get("caution_amount", ZERO),
+            reference=details["reference"],
+        )
+        _settle_open_checkouts(locked)
+        return ledger.record_manual_payment(locked, **details)
+
+
+class Resolution:
+    """What staff do about a checkout Stripe charged the wrong amount for."""
+
+    ACCEPT = "accept"
+    REFUND = "refund"
+    CHOICES = [
+        (ACCEPT, "Record the amount Stripe actually charged (the booking is flagged)"),
+        (REFUND, "Fail the payment and refund all of it at Stripe"),
+    ]
+
+
+def resolve_mismatch(payment, resolution, *, by):
+    """Settle a pending payment Stripe charged a different amount for.
+
+    The session is read again from Stripe under the booking lock; nothing the
+    caller sends sets an amount. ACCEPT records what Stripe charged, as
+    paid or as still clearing. REFUND fails the payment and refunds the whole
+    charge at Stripe, in the same transaction: if Stripe cannot be reached
+    nothing changes, and a retry reuses the same refund (idempotency key).
+    A charge still clearing cannot be refunded yet. Returns the payment.
+    """
+    with transaction.atomic():
+        ledger.lock_booking(payment.booking_id)
+        payment = Payment.objects.select_for_update().get(pk=payment.pk)
+        if payment.status != Payment.Status.PENDING or payment.mismatch_flagged_at is None:
+            raise PaymentError("This payment is not waiting on a charged-amount mismatch.")
+        session = stripe.checkout.Session.retrieve(
+            payment.stripe_checkout_session_id, api_key=_secret_key()
+        )
+        intent_id = session.get("payment_intent")
+        cents = session.get("amount_total") or 0
+        if resolution == Resolution.ACCEPT:
+            if session.get("currency") != CURRENCY:
+                raise PaymentError(
+                    f"Stripe charged in {str(session.get('currency')).upper()}, not USD. "
+                    "Refund it instead."
+                )
+            ledger.accept_charged_amount(payment.pk, from_cents(cents), received_by=by)
+            if session.get("payment_status") == "paid":
+                ledger.record_success(payment.pk, payment_intent_id=intent_id)
+            else:
+                ledger.record_processing(payment.pk, payment_intent_id=intent_id)
+        elif resolution == Resolution.REFUND:
+            if session.get("payment_status") != "paid" or not intent_id:
+                raise PaymentError(
+                    "This payment is still clearing, so it cannot be refunded yet. "
+                    "Try again once it has cleared, or record the amount charged."
+                )
+            refund = stripe.Refund.create(
+                api_key=_secret_key(),
+                idempotency_key=f"rentbook-mismatch-refund-{payment.pk}",
+                payment_intent=intent_id,
+                amount=cents,
+                metadata={
+                    "kind": MISMATCH_REFUND,
+                    "booking_id": str(payment.booking_id),
+                    "payment_id": str(payment.pk),
+                },
+            )
+            ledger.fail_mismatched_payment(
+                payment.pk, payment_intent_id=intent_id, refund_id=refund["id"]
+            )
+        else:
+            raise PaymentError("Choose how to resolve the payment.")
+    payment.refresh_from_db()
+    return payment
 
 
 def _amount_due(booking, kind):
@@ -227,35 +329,40 @@ def parse_event(payload, signature_header):
 
 
 def _payment_for_session(session):
-    """Find our payment for a Checkout session, by session id or signed metadata."""
+    """Find our payment for a Checkout session by its session id.
+
+    The id is saved in the same transaction that created the session, so an
+    event that matches nothing is kept and retried rather than matched by its
+    metadata (which would lock the payment before its booking).
+    """
     payment = Payment.objects.filter(stripe_checkout_session_id=session["id"]).first()
-    if payment is None:
-        payment_id = (session.get("metadata") or {}).get("payment_id", "")
-        if payment_id.isdigit():
-            claimed = Payment.objects.filter(
-                pk=payment_id, stripe_checkout_session_id__isnull=True
-            ).update(stripe_checkout_session_id=session["id"])
-            if claimed:
-                payment = Payment.objects.get(pk=payment_id)
     if payment is None:
         logger.warning("Stripe session %s matches no payment.", session["id"])
     return payment
 
 
 def _amount_matches(payment, session):
-    """Check Stripe charged exactly what we asked for (rental plus caution)."""
+    """Check Stripe charged exactly what we asked for (rental plus caution).
+
+    A mismatch leaves the payment pending for staff to resolve and flags the
+    booking, once: a payment already noted as mismatched is not flagged again.
+    A payment staff already failed and refunded for it is never credited.
+    """
+    if payment.failure_reason == Reason.AMOUNT_MISMATCH:
+        return False
     expected = to_cents(payment.charged_total)
     if session.get("amount_total") == expected and session.get("currency") == CURRENCY:
         return True
-    logger.error(
-        "Stripe session %s total %s %s does not match payment %s (%s cents). Not credited.",
-        session["id"],
-        session.get("amount_total"),
-        session.get("currency"),
-        payment.pk,
-        expected,
-    )
-    ledger.flag_attention(ledger.lock_booking(payment.booking_id))
+    if payment.mismatch_flagged_at is None:
+        logger.error(
+            "Stripe session %s total %s %s does not match payment %s (%s cents). Not credited.",
+            session["id"],
+            session.get("amount_total"),
+            session.get("currency"),
+            payment.pk,
+            expected,
+        )
+    ledger.flag_mismatch(payment.pk)
     return False
 
 
@@ -323,7 +430,7 @@ def _fail_refund_entry(payment, refund):
     if entry is None:
         return None, False
     was_counted = entry.status == Payment.Status.SUCCEEDED
-    ledger.fail_refund(entry.pk)
+    ledger.fail_refund(entry.pk, Reason.STRIPE_FAILED)
     return entry, was_counted
 
 
@@ -350,9 +457,14 @@ def _fail_stale_pending_refunds(payment, listed_refunds):
     for entry in stale:
         if str(entry.pk) in listed_entry_ids or entry.stripe_refund_id in listed_refund_ids:
             continue
-        ledger.fail_refund(entry.pk)
+        ledger.fail_refund(entry.pk, Reason.NOT_RECEIVED)
         failed += 1
     return failed
+
+
+def _current_refunds(listed):
+    """Each listed refund fetched again from Stripe, as it stands now."""
+    return [stripe.Refund.retrieve(refund["id"], api_key=_secret_key()) for refund in listed]
 
 
 def sync_refunds(payment, *, reported_total=ZERO, received_by=None, failed_ids=()):
@@ -366,15 +478,25 @@ def sync_refunds(payment, *, reported_total=ZERO, received_by=None, failed_ids=(
     total a webhook stated, in case the list is behind it. failed_ids are
     refunds a refund.failed event reported, in case the list is behind that.
 
+    The list only says which refunds exist. Each one is fetched again while
+    the booking is locked and only that answer is acted on, so a sync that
+    read its list before another sync or a refund.failed webhook changed the
+    ledger cannot undo that change.
+
     A rental refund already counted that has since failed is taken back off
     the refunded total, and only that: refunds missing from a lagging list
-    are never taken back.
+    are never taken back. A refund whose entry Stripe already reported failed
+    is never counted again, whatever an answer says.
     """
-    refunds = _list_refunds(payment)
+    listed = _list_refunds(payment)
     failed_ids = set(failed_ids)
     with transaction.atomic():
         booking = ledger.lock_booking(payment.booking_id)
-        rental = caution = taken_back = ZERO
+        payment = Payment.objects.get(pk=payment.pk)
+        if payment.failure_reason == Reason.AMOUNT_MISMATCH:
+            return
+        refunds = _current_refunds(listed)
+        rental = caution = taken_back = not_counted = ZERO
         ambiguous = reversed_entry = False
         for refund in refunds:
             amount = from_cents(refund["amount"])
@@ -386,21 +508,23 @@ def sync_refunds(payment, *, reported_total=ZERO, received_by=None, failed_ids=(
                 if counted and kind != Payment.Kind.CAUTION_REFUND:
                     taken_back += amount
                 continue
-            if kind == Payment.Kind.CAUTION_REFUND:
+            is_caution = kind == Payment.Kind.CAUTION_REFUND
+            entry = ledger.record_stripe_refund(
+                payment.pk,
+                refund["id"],
+                amount,
+                Payment.Kind.CAUTION_REFUND if is_caution else Payment.Kind.RENTAL_REFUND,
+                entry_id=_refund_entry_id(refund),
+                received_by=received_by,
+            )
+            if entry is not None and entry.status == Payment.Status.FAILED:
+                not_counted += amount
+            elif is_caution:
                 caution += amount
             else:
                 rental += amount
                 ambiguous |= kind != RENTAL_REFUND
-                kind = Payment.Kind.RENTAL_REFUND
-            ledger.record_stripe_refund(
-                payment.pk,
-                refund["id"],
-                amount,
-                kind,
-                entry_id=_refund_entry_id(refund),
-                received_by=received_by,
-            )
-        unlisted = reported_total - rental - caution
+        unlisted = reported_total - rental - caution - not_counted
         if unlisted > ZERO:
             rental += unlisted
             ambiguous = True
@@ -414,14 +538,37 @@ def sync_refunds(payment, *, reported_total=ZERO, received_by=None, failed_ids=(
         )
 
 
+# Errors Stripe raises for a 4xx answer, used when an error carries no HTTP status.
+REFUSED_ERRORS = (
+    stripe.InvalidRequestError,
+    stripe.AuthenticationError,
+    stripe.PermissionError,
+    stripe.CardError,
+    stripe.RateLimitError,
+    stripe.IdempotencyError,
+)
+
+
+def _refused_by_stripe(error):
+    """True when Stripe answered a request with a 4xx: it was refused and nothing was made."""
+    if isinstance(error, stripe.APIConnectionError):
+        return False
+    status = getattr(error, "http_status", None)
+    if status is not None:
+        return 400 <= status < 500
+    return isinstance(error, REFUSED_ERRORS)
+
+
 def _issue_refund(entry, kind):
     """Send a reserved refund through Stripe and settle its entry with the answer.
 
     The idempotency key is the entry itself, so a retry of one request cannot
     refund twice and two different refunds are never collapsed into one. When
-    Stripe refuses, the entry is failed and its money released. When Stripe
-    cannot be reached the outcome is unknown: the entry stays pending, still
-    reserving its amount, and the booking is flagged.
+    Stripe refuses the request (a 4xx answer), the entry is failed and its
+    money released. Any other error (Stripe unreachable, a 5xx, an unknown
+    answer) leaves the outcome unknown: the entry stays pending, still
+    reserving its amount, the booking is flagged, and the sync settles it from
+    what Stripe holds.
     """
     payment = entry.refund_of
     try:
@@ -437,15 +584,15 @@ def _issue_refund(entry, kind):
                 "entry_id": str(entry.pk),
             },
         )
-    except stripe.APIConnectionError:
-        with transaction.atomic():
-            ledger.flag_attention(ledger.lock_booking(payment.booking_id))
+    except stripe.StripeError as error:
+        if _refused_by_stripe(error):
+            ledger.fail_refund(entry.pk, Reason.STRIPE_REFUSED)
+        else:
+            with transaction.atomic():
+                ledger.flag_attention(ledger.lock_booking(payment.booking_id))
         raise
-    except stripe.StripeError:
-        ledger.fail_refund(entry.pk)
-        raise
-    if refund["status"] in ("failed", "canceled"):
-        ledger.fail_refund(entry.pk)
+    if refund["status"] in FAILED_REFUND_STATUSES:
+        ledger.fail_refund(entry.pk, Reason.STRIPE_FAILED)
         raise PaymentError("Stripe could not send this refund. Nothing was refunded.")
     ledger.complete_refund(entry.pk, refund["id"])
     try:
@@ -490,9 +637,8 @@ def _sync_checkout(payment):
         return
     if session["status"] != "complete":
         return
-    with transaction.atomic():
-        if not _amount_matches(payment, session):
-            return
+    if not _amount_matches(payment, session):
+        return
     intent_id = session.get("payment_intent")
     if session.get("payment_status") == "paid":
         ledger.record_success(payment.pk, payment_intent_id=intent_id)
@@ -541,8 +687,41 @@ def sync_stale_bookings():
         .values_list("booking_id", flat=True)
         .distinct()
     )
+    return _sync_each(Booking.objects.filter(pk__in=list(booking_ids)))
+
+
+def sync_recent_paid_bookings():
+    """Sync bookings paid through Stripe that changed lately or have an event coming up.
+
+    Catches refunds and disputes made in the Stripe dashboard whose webhook
+    was missed: every booking with a card or ACH payment that it or its
+    payments changed in the last RECENT_CHANGE_DAYS, or whose event is in the
+    next UPCOMING_EVENT_DAYS. Returns how many were synced.
+    """
+    now = timezone.now()
+    today = timezone.localdate()
+    changed_since = now - timedelta(days=RECENT_CHANGE_DAYS)
+    paid = Payment.objects.filter(
+        kind__in=Payment.RENTAL_KINDS,
+        status__in=(Payment.Status.SUCCEEDED, Payment.Status.REFUNDED),
+        stripe_payment_intent_id__isnull=False,
+    )
+    recent = paid.filter(
+        Q(updated_at__gte=changed_since)
+        | Q(booking__updated_at__gte=changed_since)
+        | Q(
+            booking__event_date__gte=today,
+            booking__event_date__lte=today + timedelta(days=UPCOMING_EVENT_DAYS),
+        )
+    )
+    booking_ids = recent.values_list("booking_id", flat=True).distinct()
+    return _sync_each(Booking.objects.filter(pk__in=list(booking_ids)))
+
+
+def _sync_each(bookings):
+    """Sync each booking; one Stripe cannot reach is logged and left for the next run."""
     synced = 0
-    for booking in Booking.objects.filter(pk__in=list(booking_ids)).order_by("pk"):
+    for booking in bookings.order_by("pk"):
         try:
             sync_booking(booking)
         except stripe.StripeError:
@@ -622,7 +801,9 @@ def retry_unmatched():
 
     An event still matching nothing counts an attempt, and is no longer
     retried after UNMATCHED_RETRY_LIMIT attempts. Each event is handled in its
-    own transaction, so one Stripe failure does not undo the others.
+    own transaction, so one failure does not undo the others: any error is
+    logged (and so reported to Sentry), counts an attempt, and the loop moves
+    on to the next event.
     """
     matched = 0
     open_ids = UnmatchedStripeEvent.objects.filter(
@@ -645,7 +826,7 @@ def retry_unmatched():
                     row.resolved_at = timezone.now()
                     matched += 1
                 row.save(update_fields=["attempts", "resolved_at", "updated_at"])
-        except stripe.StripeError:
+        except Exception:
             logger.exception("Unmatched Stripe event %s could not be retried.", pk)
             UnmatchedStripeEvent.objects.filter(pk=pk).update(attempts=F("attempts") + 1)
     return matched

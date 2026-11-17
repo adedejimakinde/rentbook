@@ -8,7 +8,7 @@ from django.contrib.postgres.indexes import GinIndex
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-from django.db.models import DecimalField, ExpressionWrapper, F, Q, Sum
+from django.db.models import DecimalField, ExpressionWrapper, F, ProtectedError, Q, Sum
 from django.db.models.functions import Lower
 
 from apps.core.models import TimeStampedModel
@@ -140,8 +140,18 @@ class PromoCode(TimeStampedModel):
         return self.max_uses is not None and self.uses_count >= self.max_uses
 
 
-class BookingDeleteRefused(Exception):
-    """Raised when something tries to delete a booking that holds stock or has payments."""
+class BookingDeleteRefused(ProtectedError):
+    """Raised when something tries to delete a booking that holds stock or has payments.
+
+    A ProtectedError, so callers that already handle protected deletes (the
+    admin among them) show it as a refusal rather than a server error.
+    """
+
+    def __init__(self, message, booking):
+        super().__init__(message, [booking])
+
+    def __str__(self):
+        return self.args[0]
 
 
 def check_deletable(booking):
@@ -149,9 +159,11 @@ def check_deletable(booking):
     from apps.bookings.services import lifecycle
 
     if lifecycle.holds_stock(booking):
-        raise BookingDeleteRefused(f"{booking} holds stock and cannot be deleted. Cancel it.")
+        raise BookingDeleteRefused(
+            f"{booking} holds stock and cannot be deleted. Cancel it.", booking
+        )
     if booking.payments.exists():
-        raise BookingDeleteRefused(f"{booking} has payments on it and cannot be deleted.")
+        raise BookingDeleteRefused(f"{booking} has payments on it and cannot be deleted.", booking)
 
 
 class BookingQuerySet(models.QuerySet):
@@ -252,6 +264,34 @@ class Booking(TimeStampedModel):
     )
     delivery_override_at = models.DateTimeField(null=True, blank=True)
 
+    clearing_override_note = models.TextField(
+        blank=True,
+        help_text="Cancellations and line changes made while an ACH payment was clearing.",
+    )
+    clearing_override_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="clearing_overrides",
+    )
+    clearing_override_at = models.DateTimeField(null=True, blank=True)
+
+    tax_exempt = models.BooleanField(
+        default=False, help_text="No sales tax is charged (for example a church or school)."
+    )
+    tax_exempt_certificate = models.TextField(
+        blank=True, help_text="Exemption certificate number and issuer. Required when exempt."
+    )
+    tax_exempt_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="tax_exemptions_set",
+    )
+    tax_exempt_at = models.DateTimeField(null=True, blank=True)
+
     objects = BookingQuerySet.as_manager()
 
     class Meta:
@@ -261,7 +301,12 @@ class Booking(TimeStampedModel):
                 condition=~models.Q(status="held") | models.Q(hold_expires_at__isnull=False),
                 name="held_booking_has_expiry",
             ),
+            models.CheckConstraint(
+                condition=Q(tax_exempt=False) | ~Q(tax_exempt_certificate=""),
+                name="tax_exempt_booking_has_certificate",
+            ),
         ]
+        permissions = [("can_set_tax_exemption", "Can set tax exemption")]
 
     def __str__(self):
         return f"Booking #{self.pk} for {self.customer_name} on {self.event_date}"
@@ -307,6 +352,21 @@ class Booking(TimeStampedModel):
     def caution_held(self):
         """Caution money collected and not yet refunded or kept for damage."""
         return self.payments.caution_held()
+
+    @property
+    def overpaid(self):
+        """Rental money received beyond the total: refundable to the customer."""
+        return max(self.amount_paid - self.total, Decimal("0.00"))
+
+    @property
+    def caution_due(self):
+        """Caution owed for the current lines and not yet collected."""
+        return max(self.caution_fee - self.payments.caution_collected(), Decimal("0.00"))
+
+    @property
+    def caution_excess(self):
+        """Caution held beyond what the current lines need: to refund to the customer."""
+        return max(self.caution_held - self.caution_fee, Decimal("0.00"))
 
 
 class BookingItem(TimeStampedModel):

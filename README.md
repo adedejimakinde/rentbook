@@ -75,8 +75,47 @@ docker compose -f docker-compose.prod.yml up -d --build
 docker compose -f docker-compose.prod.yml exec web python manage.py migrate
 ```
 
-This runs gunicorn (behind Cloudflare and the VPS's reverse proxy on port 8000), the
-Celery worker and Beat, with `config.settings.prod` and `requirements.txt` only.
+This runs gunicorn, the Celery worker and Beat, with `config.settings.prod` and
+`requirements.txt` only. The Tailwind CSS is built into the image at `docker build` time
+(so containers start without a build step or network access); `collectstatic` runs when
+the web container starts. `.dockerignore` keeps `.env`, `.git` and local caches out of
+the image: settings and secrets come from `.env` at run time.
+
+Set `SENTRY_DSN` in `.env` to report errors to Sentry (Django, Celery and every
+`logger.exception`); leave it empty to switch Sentry off.
+
+### Reverse proxy (Caddy)
+
+gunicorn listens on `127.0.0.1:8000` only, so it is never reachable from outside the VPS.
+Put Caddy on the VPS in front of it to terminate TLS. Traffic then runs Cloudflare →
+Caddy (443) → gunicorn (127.0.0.1:8000).
+
+1. Install Caddy on the VPS (`apt install caddy` from the official Caddy repository).
+2. Write `/etc/caddy/Caddyfile`, with your domain:
+
+   ```caddyfile
+   example.com, www.example.com {
+       encode zstd gzip
+       reverse_proxy 127.0.0.1:8000 {
+           header_up X-Forwarded-Proto {scheme}
+       }
+       request_body {
+           max_size 10MB
+       }
+   }
+   ```
+
+3. `sudo systemctl reload caddy`. Caddy gets and renews the certificate itself.
+4. In Cloudflare, set SSL/TLS to **Full (strict)** so the Cloudflare → Caddy leg is
+   encrypted and checked too. If the origin certificate cannot be issued over HTTP
+   (for example the proxy hides port 80), use a Cloudflare origin certificate in a
+   `tls` line instead.
+5. Open only ports 80 and 443 on the VPS firewall (plus SSH); never 8000.
+
+Django trusts `X-Forwarded-Proto` (`SECURE_PROXY_SSL_HEADER` in `prod.py`), which is why
+port 8000 must stay bound to localhost: only Caddy may set that header. Static files are
+served by WhiteNoise from gunicorn with long cache headers, so Caddy needs no static
+file rules.
 
 ## Front end assets
 

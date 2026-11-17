@@ -1,0 +1,13 @@
+# Kept out of the image: secrets, history, local caches and build output.
+.env
+.git
+.venv
+venv
+**/__pycache__
+.pytest_cache
+.ruff_cache
+.django_tailwind_cli
+staticfiles
+media
+static/css/tailwind.css
+celerybeat-schedule*

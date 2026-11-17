@@ -90,7 +90,15 @@ class Payment(TimeStampedModel):
         FAILED = "failed", "Failed"
         REFUNDED = "refunded", "Refunded"
 
+    class FailureReason(models.TextChoices):
+        STRIPE_FAILED = "stripe_failed", "Stripe reported it failed"
+        STRIPE_REFUSED = "stripe_refused", "Stripe refused the request"
+        NOT_RECEIVED = "not_received", "Never reached Stripe (timed out)"
+        AMOUNT_MISMATCH = "amount_mismatch", "Charged a different amount; refunded"
+
     RENTAL_KINDS = (Kind.DEPOSIT, Kind.FULL, Kind.BALANCE)
+    # Failures the app concluded itself; Stripe can still prove them wrong.
+    REVIVABLE_FAILURES = (FailureReason.NOT_RECEIVED,)
     CAUTION_RELEASE_KINDS = (Kind.CAUTION_REFUND, Kind.DAMAGE_CHARGE)
     MANUAL_METHODS = (Method.ZELLE, Method.CASHAPP, Method.BANK_DEPOSIT)
     # A refund entry in one of these statuses uses up refundable money.
@@ -142,6 +150,20 @@ class Payment(TimeStampedModel):
         related_name="payments_received",
     )
     received_at = models.DateTimeField(null=True, blank=True)
+    failure_reason = models.CharField(
+        max_length=20,
+        choices=FailureReason.choices,
+        blank=True,
+        help_text="Why a failed entry failed.",
+    )
+    mismatch_flagged_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text=(
+            "When Stripe was found to have charged a different amount than this payment "
+            "asked for. Staff resolve it with the Resolve mismatched payment action."
+        ),
+    )
 
     objects = PaymentQuerySet.as_manager()
 

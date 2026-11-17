@@ -5,6 +5,8 @@ from pathlib import Path
 
 import environ
 
+from config.sentry import init_sentry
+
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 env = environ.Env()
@@ -116,9 +118,17 @@ CELERY_BEAT_SCHEDULE = {
         "task": "bookings.release_expired_holds",
         "schedule": 60.0,
     },
-    "sync-stripe": {
-        "task": "payments.sync_stripe",
+    "retry-unmatched-stripe-events": {
+        "task": "payments.retry_unmatched_stripe_events",
         "schedule": 15 * 60,
+    },
+    "sync-stale-payments": {
+        "task": "payments.sync_stale_payments",
+        "schedule": 15 * 60,
+    },
+    "sync-recent-paid-bookings": {
+        "task": "payments.sync_recent_paid_bookings",
+        "schedule": 60 * 60,
     },
 }
 
@@ -157,6 +167,15 @@ BUSINESS_AREA = env("BUSINESS_AREA", default="DFW area")
 BUSINESS_PHONE = env("BUSINESS_PHONE", default="469-347-4687")
 BUSINESS_EMAIL = env("BUSINESS_EMAIL", default="atglaceevents.rental@gmail.com")
 WHATSAPP_NUMBER = env("WHATSAPP_NUMBER", default="14693474687")
+
+
+# Error tracking. Sentry starts only when SENTRY_DSN is set; leave it empty in development.
+SENTRY_DSN = env("SENTRY_DSN", default="")
+init_sentry(
+    SENTRY_DSN,
+    environment=env("SENTRY_ENVIRONMENT", default="production"),
+    traces_sample_rate=env.float("SENTRY_TRACES_SAMPLE_RATE", default=0.0),
+)
 
 
 def _static(path):

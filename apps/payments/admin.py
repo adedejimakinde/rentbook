@@ -12,19 +12,28 @@ from apps.payments.forms import (
     DamageChargeForm,
     ManualPaymentForm,
     RentalRefundForm,
+    ResolveMismatchForm,
 )
 from apps.payments.models import Payment, UnmatchedStripeEvent
 from apps.payments.services import stripe as stripe_service
 
 REFUND_PERMISSION = "payments.can_issue_refunds"
-# Ledger forms that send money back to a customer; they need REFUND_PERMISSION.
-REFUND_FORMS = {"caution-refund", "rental-refund"}
+TAX_EXEMPTION_PERMISSION = "bookings.can_set_tax_exemption"
+# Ledger forms that need a permission beyond changing the booking. Those that
+# send money back to a customer need REFUND_PERMISSION.
+FORM_PERMISSIONS = {
+    "caution-refund": REFUND_PERMISSION,
+    "rental-refund": REFUND_PERMISSION,
+    "resolve-mismatch": REFUND_PERMISSION,
+    "tax-exemption": TAX_EXEMPTION_PERMISSION,
+}
 
 LEDGER_FORMS = {
     "manual-payment": ManualPaymentForm,
     "caution-refund": CautionRefundForm,
     "damage-charge": DamageChargeForm,
     "rental-refund": RentalRefundForm,
+    "resolve-mismatch": ResolveMismatchForm,
 }
 
 
@@ -100,10 +109,32 @@ class BookingPaymentActionsMixin:
         "record_caution_refund",
         "record_damage_charge",
         "refund_rental_payment",
+        "resolve_mismatched_payment",
         "sync_with_stripe",
     ]
-    money_fields = ["total", "deposit_amount", "amount_paid", "balance_due", "caution_held"]
+    money_fields = [
+        "total",
+        "deposit_amount",
+        "amount_paid",
+        "balance_due",
+        "overpaid_refundable",
+        "caution_held",
+        "caution_to_collect",
+        "caution_to_refund",
+    ]
     ledger_forms = LEDGER_FORMS
+
+    @admin.display(description="Overpaid (refundable)")
+    def overpaid_refundable(self, booking):
+        return booking.overpaid
+
+    @admin.display(description="Caution to collect")
+    def caution_to_collect(self, booking):
+        return booking.caution_due
+
+    @admin.display(description="Caution to refund")
+    def caution_to_refund(self, booking):
+        return booking.caution_excess
 
     def get_readonly_fields(self, request, obj=None):
         """Show the computed money fields once the booking exists."""
@@ -144,6 +175,13 @@ class BookingPaymentActionsMixin:
     def refund_rental_payment(self, request, queryset):
         return self._open_ledger_form(request, queryset, "rental-refund")
 
+    @admin.action(
+        description="Resolve mismatched payment (Stripe charged a different amount)",
+        permissions=["issue_refunds"],
+    )
+    def resolve_mismatched_payment(self, request, queryset):
+        return self._open_ledger_form(request, queryset, "resolve-mismatch")
+
     @admin.action(description="Sync with Stripe", permissions=["change"])
     def sync_with_stripe(self, request, queryset):
         """Settle the selected bookings' pending payments and refunds from Stripe."""
@@ -167,7 +205,8 @@ class BookingPaymentActionsMixin:
         form_class = self.ledger_forms.get(action)
         if form_class is None or not self.has_change_permission(request, booking):
             raise PermissionDenied
-        if action in REFUND_FORMS and not self.has_issue_refunds_permission(request):
+        permission = FORM_PERMISSIONS.get(action)
+        if permission and not request.user.has_perm(permission):
             raise PermissionDenied
         data = request.POST if request.method == "POST" else None
         form = form_class(data, booking=booking)
