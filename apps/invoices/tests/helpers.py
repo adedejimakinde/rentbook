@@ -46,6 +46,7 @@ def online_booking(
     )
     booking.payment_choice = choice
     booking.payment_plan = plan
+    booking.terms_accepted_at = timezone.now()
     if choice != PaymentChoice.STRIPE:
         booking.hold_expires_at = timezone.now() + timedelta(hours=24)
     booking.save()

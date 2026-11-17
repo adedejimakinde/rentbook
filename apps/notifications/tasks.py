@@ -13,6 +13,6 @@ from apps.notifications.services import emails
     max_retries=5,
     ignore_result=True,
 )
-def send_email(kind, object_id):
+def send_email(kind, object_id, key_suffix=""):
     """Build and send one email of kind for object_id, unless it was already sent."""
-    emails.send(kind, object_id)
+    emails.send(kind, object_id, key_suffix)

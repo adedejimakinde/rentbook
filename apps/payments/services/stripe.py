@@ -517,6 +517,8 @@ def sync_refunds(payment, *, reported_total=ZERO, received_by=None, failed_ids=(
                 counted = was_counted if entry is not None else refund["id"] in failed_ids
                 if counted and kind != Payment.Kind.CAUTION_REFUND:
                     taken_back += amount
+                if entry is None and counted:
+                    documents.stripe_refund_reversed(refund["id"])
                 continue
             is_caution = kind == Payment.Kind.CAUTION_REFUND
             entry = ledger.record_stripe_refund(

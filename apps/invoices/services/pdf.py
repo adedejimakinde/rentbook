@@ -89,6 +89,7 @@ def document_context(invoice):
         "invoice": invoice,
         "title": invoice.get_kind_display(),
         "is_invoice": invoice.kind in invoice.INVOICE_KINDS,
+        "is_reversal": invoice.kind == invoice.Kind.REFUND_REVERSAL,
         "issued_at": timezone.localtime(invoice.issued_at),
         "s": data,
         "event": event,

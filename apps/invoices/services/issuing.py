@@ -38,7 +38,9 @@ def latest_invoice(booking):
     return booking.invoices.filter(kind__in=Invoice.INVOICE_KINDS).order_by("-pk").first()
 
 
-def _issue(booking, kind, source_key, *, payment=None, refund=None, note="", by=None):
+def _issue(
+    booking, kind, source_key, *, payment=None, refund=None, note="", by=None, reverses=None
+):
     """Write one document for a locked booking, unless source_key already has one.
 
     Returns (invoice, created).
@@ -50,6 +52,8 @@ def _issue(booking, kind, source_key, *, payment=None, refund=None, note="", by=
     supersedes = latest_invoice(booking) if kind in Invoice.INVOICE_KINDS else None
     if supersedes is not None:
         data["supersedes"] = supersedes.number
+    if reverses is not None:
+        data["reverses"] = reverses.number
     if note:
         data["note"] = note
     issued_at = timezone.now()
@@ -63,6 +67,7 @@ def _issue(booking, kind, source_key, *, payment=None, refund=None, note="", by=
         source_key=source_key,
         note=note,
         issued_by=by,
+        reverses=reverses,
         snapshot=data,
     )
     return invoice, True
@@ -132,18 +137,62 @@ def _money(data):
     return {key: data.get(key) for key in MONEY_KEYS}
 
 
+def _reverse(receipt_key, source_key):
+    """A refund reversed document for the refund receipt issued under receipt_key, if any."""
+    receipt = Invoice.objects.filter(source_key=receipt_key).first()
+    if receipt is None:
+        return None, False
+    with transaction.atomic():
+        booking = ledger.lock_booking(receipt.booking_id)
+        return _issue(
+            booking,
+            Invoice.Kind.REFUND_REVERSAL,
+            source_key,
+            payment=receipt.payment,
+            refund=receipt.snapshot.get("refund"),
+            reverses=receipt,
+        )
+
+
+def issue_refund_reversal(entry_id):
+    """Correct the refund receipt of a refund entry that failed after it had succeeded.
+
+    Returns (None, False) when no refund receipt was issued for it, since the
+    customer was then never told the refund was sent.
+    """
+    return _reverse(f"refund:{entry_id}", f"refund-reversed:{entry_id}")
+
+
+def issue_stripe_refund_reversal(refund_id):
+    """Correct the refund receipt of a Stripe dashboard refund that failed."""
+    return _reverse(f"stripe-refund:{refund_id}", f"stripe-refund-reversed:{refund_id}")
+
+
+def issue_first_invoice(booking_id):
+    """The first invoice of a booking that has lines and none yet (made in the admin).
+
+    Shares its source key with the online booking invoice, so a booking never
+    gets two first invoices. Returns (None, False) for a booking with no lines.
+    """
+    with transaction.atomic():
+        booking = ledger.lock_booking(booking_id)
+        if latest_invoice(booking) is not None or not booking.items.exists():
+            return None, False
+        return _issue(booking, Invoice.Kind.INVOICE, f"booking:{booking_id}")
+
+
 def revise_invoice(booking_id, source_key):
     """Issue a revised invoice if the booking's lines or money differ from its current invoice.
 
-    Only bookings that already have an invoice are revised; staff issue the
-    first one for a booking made in the admin with the manual invoice action.
-    Returns (invoice, created); (None, False) when nothing changed.
+    A booking with lines and no invoice yet (one made in the admin) gets its
+    first invoice instead. Returns (invoice, created); (None, False) when
+    nothing changed.
     """
     with transaction.atomic():
         booking = ledger.lock_booking(booking_id)
         current = latest_invoice(booking)
         if current is None:
-            return None, False
+            return issue_first_invoice(booking_id)
         existing = Invoice.objects.filter(source_key=source_key).first()
         if existing is not None:
             return existing, False

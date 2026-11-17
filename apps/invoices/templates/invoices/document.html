@@ -59,6 +59,7 @@
   <div>
     <h1>{{ title }}</h1>
     {% if s.supersedes %}<p class="muted">Replaces invoice {{ s.supersedes }}</p>{% endif %}
+    {% if s.reverses %}<p class="muted">Corrects refund receipt {{ s.reverses }}</p>{% endif %}
   </div>
   <table>
     <tr><td class="label">Number</td><td>{{ invoice.number }}</td></tr>
@@ -112,7 +113,7 @@
 </div>
 {% endif %}
 
-{% if payment %}
+{% if payment and not refund %}
 <div class="box">
   <h2>Payment received</h2>
   <table>
@@ -125,7 +126,13 @@
 </div>
 {% endif %}
 
-{% if refund %}
+{% if is_reversal %}
+<div class="box" style="border-color: #c2185b">
+  <h2>Refund did not go through</h2>
+  <p>The {{ refund.kind|lower }} of <strong>{{ refund.amount|usd }}</strong> shown on refund receipt {{ s.reverses }} was returned by the bank or card company and did not reach you. That receipt is corrected by this document. The money is back on your booking and the totals above include it.</p>
+  {% if refund.reference %}<p class="muted">Refund reference: {{ refund.reference }}</p>{% endif %}
+</div>
+{% elif refund %}
 <div class="box">
   <h2>{{ refund.kind }}</h2>
   <table>

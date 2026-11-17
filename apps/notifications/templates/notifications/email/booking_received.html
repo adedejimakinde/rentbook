@@ -4,7 +4,6 @@
 {% block heading %}We received your booking{% endblock %}
 {% block body %}
 <p style="margin:0 0 16px;">Hi {{ booking.customer_name }}, thank you for booking with us for <strong>{{ booking.event_date|date:"l, F j, Y" }}</strong>. Your items are on hold.</p>
-{% if manual %}
 {% if to_send is not None %}
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px;border:2px solid #6a0dad;border-radius:6px;"><tr><td style="padding:16px;font-family:Montserrat,Arial,Helvetica,sans-serif;">
   <p style="margin:0;font-size:14px;font-weight:bold;">{{ plan_label }}: amount to send by {{ choice_label }}</p>
@@ -19,7 +18,4 @@
   <tr><td style="padding:6px 0;font-weight:bold;">Memo or note</td><td align="right" style="padding:6px 0;">{{ memo }}</td></tr>
 </table>
 <p style="margin:0 0 16px;">Put <strong>{{ memo }}</strong> in the payment note so we can match it. We confirm your booking by email once the payment arrives.</p>
-{% else %}
-<p style="margin:0 0 16px;">We are holding your items until <strong>{{ deadline|date:"l, M j, Y, g:i A T" }}</strong> while you complete your payment. You will get a confirmation email as soon as it goes through.</p>
-{% endif %}
 {% endblock %}

@@ -134,6 +134,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "payments.sync_stale_payments",
         "schedule": 15 * 60,
     },
+    "issue-missing-documents": {
+        "task": "invoices.issue_missing_documents",
+        "schedule": 15 * 60,
+    },
     "sync-recent-paid-bookings": {
         "task": "payments.sync_recent_paid_bookings",
         "schedule": 60 * 60,

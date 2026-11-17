@@ -120,13 +120,12 @@ def test_bank_deposit_booking_received_lists_the_bank_details(committed, event_d
         assert detail in html(message)
 
 
-def test_card_booking_received_has_no_manual_instructions(committed, event_date, mailoutbox):
+def test_card_booking_gets_no_booking_received_email(committed, event_date, mailoutbox):
     with committed():
         online_booking(event_date, choice=PaymentChoice.STRIPE)
 
-    [message] = to_customer(mailoutbox)
-    assert "complete your payment" in message.body
-    assert "pay@rentals.example" not in message.body
+    assert to_customer(mailoutbox) == []
+    assert len(to_owner(mailoutbox)) == 1
 
 
 def test_no_booking_received_email_once_the_booking_is_already_paid(

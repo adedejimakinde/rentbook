@@ -7,6 +7,7 @@ send, so a retried job never sends it twice, and a failed send leaves no
 record and is retried.
 """
 
+import uuid
 from dataclasses import dataclass, field
 
 from django.conf import settings
@@ -27,7 +28,12 @@ from apps.payments.services import ledger
 from apps.payments.services import manual as manual_service
 
 PDF = "application/pdf"
-NO_BALANCE_LINK = (Booking.Status.CANCELLED, Booking.Status.EXPIRED)
+NO_BALANCE_LINK = (
+    Booking.Status.ENQUIRY,
+    Booking.Status.QUOTED,
+    Booking.Status.CANCELLED,
+    Booking.Status.EXPIRED,
+)
 
 
 @dataclass
@@ -70,8 +76,8 @@ def _attachment(invoice):
     return (invoice.filename, pdf.render_pdf(invoice), PDF)
 
 
-def _receipt(receipt_id):
-    return Invoice.objects.select_related("booking", "payment").get(pk=receipt_id)
+def _document(document_id):
+    return Invoice.objects.select_related("booking", "payment").get(pk=document_id)
 
 
 def _customer(kind, key, booking, subject, **context):
@@ -103,44 +109,41 @@ def _owner(kind, key, booking, subject, **context):
 
 
 def build_booking_received(booking_id):
-    """Sent when an online booking is made. Not sent once the booking is already secured."""
+    """Sent when an online booking is to be paid by Zelle, Cash App or bank deposit.
+
+    Not sent for card or ACH bookings (the confirmation follows within
+    minutes), nor once the booking is no longer on hold waiting for money.
+    """
     booking = Booking.objects.get(pk=booking_id)
-    if booking.status != Booking.Status.HELD:
+    if (
+        booking.status != Booking.Status.HELD
+        or booking.payment_choice not in MANUAL_PAYMENT_CHOICES
+    ):
         return None
-    manual = booking.payment_choice in MANUAL_PAYMENT_CHOICES
     plan = booking.payment_plan or PaymentPlan.DEPOSIT
     try:
         amount, caution = booking_flow.amount_to_pay(booking, plan)
     except ledger.PaymentError:
         amount = caution = None
-    context = {
-        "manual": manual,
-        "deadline": timezone.localtime(booking.hold_expires_at),
-        "plan_label": PaymentPlan(plan).label,
-        "amount": amount,
-        "caution": caution,
-        "to_send": amount + caution if amount is not None else None,
-    }
-    if manual:
-        context.update(
-            {
-                "choice_label": PaymentChoice(booking.payment_choice).label,
-                "details": manual_service.manual_details()[booking.payment_choice],
-                "memo": manual_service.payment_memo(booking),
-            }
-        )
     return _customer(
         "booking_received",
         f"booking-received:{booking.pk}",
         booking,
         "We received your booking",
-        **context,
+        deadline=timezone.localtime(booking.hold_expires_at),
+        plan_label=PaymentPlan(plan).label,
+        amount=amount,
+        caution=caution,
+        to_send=amount + caution if amount is not None else None,
+        choice_label=PaymentChoice(booking.payment_choice).label,
+        details=manual_service.manual_details()[booking.payment_choice],
+        memo=manual_service.payment_memo(booking),
     )
 
 
 def build_booking_confirmed(receipt_id):
     """Sent for the payment that secured the booking: invoice and receipt attached."""
-    receipt = _receipt(receipt_id)
+    receipt = _document(receipt_id)
     booking = receipt.booking
     email = _customer(
         "booking_confirmed",
@@ -158,7 +161,7 @@ def build_booking_confirmed(receipt_id):
 
 
 def build_payment_receipt(receipt_id):
-    receipt = _receipt(receipt_id)
+    receipt = _document(receipt_id)
     email = _customer(
         "payment_receipt",
         f"receipt:{receipt.pk}",
@@ -172,7 +175,7 @@ def build_payment_receipt(receipt_id):
 
 
 def build_refund_receipt(receipt_id):
-    receipt = _receipt(receipt_id)
+    receipt = _document(receipt_id)
     email = _customer(
         "refund_receipt",
         f"refund-receipt:{receipt.pk}",
@@ -182,6 +185,36 @@ def build_refund_receipt(receipt_id):
         s=receipt.snapshot,
     )
     email.attachments.append(_attachment(receipt))
+    return email
+
+
+def build_refund_reversed(reversal_id):
+    """Sent when a refund we told the customer about did not go through."""
+    reversal = _document(reversal_id)
+    email = _customer(
+        "refund_reversed",
+        f"refund-reversed:{reversal.pk}",
+        reversal.booking,
+        "Your refund did not go through",
+        reversal=reversal,
+        s=reversal.snapshot,
+    )
+    email.attachments.append(_attachment(reversal))
+    return email
+
+
+def build_invoice(invoice_id):
+    """The booking's invoice, sent at staff request with its PDF attached."""
+    invoice = _document(invoice_id)
+    email = _customer(
+        "invoice",
+        f"invoice:{invoice.pk}",
+        invoice.booking,
+        f"Your invoice {invoice.number}",
+        invoice=invoice,
+        s=invoice.snapshot,
+    )
+    email.attachments.append(_attachment(invoice))
     return email
 
 
@@ -216,7 +249,7 @@ def build_owner_new_booking(booking_id):
 
 
 def build_owner_payment(receipt_id):
-    receipt = _receipt(receipt_id)
+    receipt = _document(receipt_id)
     booking = receipt.booking
     payment = receipt.snapshot["payment"]
     return _owner(
@@ -234,6 +267,8 @@ BUILDERS = {
     "booking_confirmed": build_booking_confirmed,
     "payment_receipt": build_payment_receipt,
     "refund_receipt": build_refund_receipt,
+    "refund_reversed": build_refund_reversed,
+    "invoice": build_invoice,
     "ach_processing": build_ach_processing,
     "owner_new_booking": build_owner_new_booking,
     "owner_payment": build_owner_payment,
@@ -247,10 +282,16 @@ def render(email):
     return text, html
 
 
-def send(kind, object_id):
-    """Build and send one email, once. Returns True when it was sent now."""
+def send(kind, object_id, key_suffix=""):
+    """Build and send one email, once. Returns True when it was sent now.
+
+    key_suffix makes a separate email of one that may be sent more than once
+    on purpose (an invoice staff send again); retries of it still send once.
+    """
     builder = BUILDERS[kind]
     email = builder(object_id)
+    if email is not None and key_suffix:
+        email.key = f"{email.key}:{key_suffix}"
     if email is None or SentEmail.objects.filter(key=email.key).exists():
         return False
     text, html = render(email)
@@ -279,3 +320,16 @@ def send(kind, object_id):
             return False
         message.send()
     return True
+
+
+def queue_latest_invoice(booking):
+    """Email the booking's current invoice to the customer, after commit. Returns it, or None.
+
+    Each call sends again: staff may need to resend an invoice.
+    """
+    from apps.notifications import hooks
+
+    invoice = issuing.latest_invoice(booking)
+    if invoice is not None:
+        hooks.send_invoice(invoice, uuid.uuid4().hex)
+    return invoice

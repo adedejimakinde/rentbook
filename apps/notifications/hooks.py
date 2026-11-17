@@ -25,6 +25,15 @@ def refund_receipt(receipt_id):
     _after_commit("refund_receipt", receipt_id)
 
 
+def refund_reversed(reversal_id):
+    _after_commit("refund_reversed", reversal_id)
+
+
+def send_invoice(invoice, key_suffix):
+    """Email an invoice to the customer now, at staff request (each request sends again)."""
+    _after_commit("invoice", invoice.pk, key_suffix)
+
+
 def ach_processing(payment):
     _after_commit("ach_processing", payment.pk)
 

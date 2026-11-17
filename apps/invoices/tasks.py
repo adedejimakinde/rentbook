@@ -4,7 +4,7 @@ from decimal import Decimal
 
 from celery import shared_task
 
-from apps.invoices.services import issuing
+from apps.invoices.services import issuing, sweep
 from apps.notifications import hooks as notify
 
 RETRY = {
@@ -22,6 +22,18 @@ def issue_booking_invoice(booking_id):
     issuing.issue_booking_invoice(booking_id)
     notify.booking_received(booking_id)
     notify.owner_new_booking(booking_id)
+
+
+@shared_task(name="invoices.issue_first_invoice", **RETRY)
+def issue_first_invoice(booking_id):
+    """First invoice for a booking made in the admin. Not emailed; staff send it."""
+    issuing.issue_first_invoice(booking_id)
+
+
+@shared_task(name="invoices.issue_missing_documents", ignore_result=True)
+def issue_missing_documents():
+    """Issue documents whose job was lost, and queue their emails. Every 15 minutes."""
+    return sweep.issue_missing()
 
 
 @shared_task(name="invoices.issue_payment_documents", **RETRY)
@@ -50,6 +62,22 @@ def issue_stripe_refund_documents(payment_id, refund_id, amount):
     """Refund receipt for a refund made in the Stripe dashboard, emailed to the customer."""
     receipt, _ = issuing.issue_stripe_refund_receipt(payment_id, refund_id, Decimal(amount))
     notify.refund_receipt(receipt.pk)
+
+
+@shared_task(name="invoices.issue_refund_reversal_documents", **RETRY)
+def issue_refund_reversal_documents(entry_id):
+    """Refund reversed document for a refund receipt whose refund failed, emailed."""
+    reversal, _ = issuing.issue_refund_reversal(entry_id)
+    if reversal is not None:
+        notify.refund_reversed(reversal.pk)
+
+
+@shared_task(name="invoices.issue_stripe_refund_reversal_documents", **RETRY)
+def issue_stripe_refund_reversal_documents(refund_id):
+    """Refund reversed document for a failed Stripe dashboard refund, emailed."""
+    reversal, _ = issuing.issue_stripe_refund_reversal(refund_id)
+    if reversal is not None:
+        notify.refund_reversed(reversal.pk)
 
 
 @shared_task(name="invoices.revise_invoice", **RETRY)

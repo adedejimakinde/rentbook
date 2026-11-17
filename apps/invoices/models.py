@@ -42,6 +42,7 @@ class Invoice(TimeStampedModel):
         RECEIPT = "receipt", "Receipt"
         REFUND_RECEIPT = "refund_receipt", "Refund receipt"
         MANUAL_INVOICE = "manual_invoice", "Manual invoice"
+        REFUND_REVERSAL = "refund_reversal", "Refund reversed"
 
     INVOICE_KINDS = (Kind.INVOICE, Kind.MANUAL_INVOICE)
 
@@ -66,6 +67,14 @@ class Invoice(TimeStampedModel):
         blank=True,
         related_name="superseded_by",
         help_text="The earlier invoice this one replaces.",
+    )
+    reverses = models.ForeignKey(
+        "self",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="reversed_by",
+        help_text="The refund receipt a refund reversed document corrects.",
     )
     source_key = models.CharField(max_length=120, unique=True)
     note = models.TextField(blank=True)

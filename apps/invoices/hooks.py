@@ -21,6 +21,11 @@ def booking_created(booking):
     _after_commit("issue_booking_invoice", booking.pk)
 
 
+def first_invoice(booking):
+    """A booking made in the admin may have its first lines: invoice it, without an email."""
+    _after_commit("issue_first_invoice", booking.pk)
+
+
 def payment_succeeded(payment, *, confirmed):
     """Rental money arrived. confirmed: this payment secured the booking."""
     _after_commit("issue_payment_documents", payment.pk, confirmed)
@@ -38,6 +43,16 @@ def stripe_refund_counted(payment, refund_id, amount):
     if Invoice.objects.filter(source_key=f"stripe-refund:{refund_id}").exists():
         return
     _after_commit("issue_stripe_refund_documents", payment.pk, refund_id, str(amount))
+
+
+def refund_reversed(entry):
+    """A refund entry that had succeeded failed at Stripe: correct its refund receipt."""
+    _after_commit("issue_refund_reversal_documents", entry.pk)
+
+
+def stripe_refund_reversed(refund_id):
+    """A Stripe dashboard refund that had been counted failed: correct its refund receipt."""
+    _after_commit("issue_stripe_refund_reversal_documents", refund_id)
 
 
 def booking_changed(booking):

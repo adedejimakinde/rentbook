@@ -508,9 +508,12 @@ def fail_refund(entry_id, reason):
         lock_booking(booking_id)
         entry = Payment.objects.select_for_update().get(pk=entry_id, refund_of__isnull=False)
         if entry.status != Payment.Status.FAILED:
+            had_succeeded = entry.status == Payment.Status.SUCCEEDED
             entry.status = Payment.Status.FAILED
             entry.failure_reason = reason
             entry.save()
+            if had_succeeded:
+                documents.refund_reversed(entry)
         elif entry.failure_reason in Payment.REVIVABLE_FAILURES and reason != entry.failure_reason:
             entry.failure_reason = reason
             entry.save(update_fields=["failure_reason", "updated_at"])
