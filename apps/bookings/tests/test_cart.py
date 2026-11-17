@@ -7,7 +7,7 @@ from django.urls import reverse
 
 from apps.bookings.services import cart as cart_service
 from apps.bookings.services.quote import LineRequest, build_quote
-from apps.bookings.tests.factories import PromoCodeFactory
+from apps.bookings.tests.factories import ItemVariantFactory, PromoCodeFactory
 from apps.bookings.tests.flow_helpers import HX, ZIP, add, catalogue, set_details
 
 pytestmark = pytest.mark.django_db
@@ -247,3 +247,53 @@ def test_call_for_price_rentals_cannot_be_added(client, items):
     item_html = client.get(items["chair"].item.get_absolute_url()).content.decode()
     package_html = client.get(items["package"].get_absolute_url()).content.decode()
     assert "to booking" not in item_html and "to booking" not in package_html
+    assert "Ask for a price" in item_html and "Ask for a price" in package_html
+
+
+def test_call_for_price_item_offers_a_prefilled_whatsapp_price_request(client, items, settings):
+    settings.WHATSAPP_NUMBER = "14695550100"
+    item = items["chair"].item
+    item.base_price = Decimal("0.00")
+    item.save()
+    gold = ItemVariantFactory(item=item, name="Gold", stock_quantity=5)
+
+    plain = client.get(item.get_absolute_url()).content.decode()
+    picked = client.get(
+        reverse("catalogue:availability", args=[item.slug]),
+        {"variant": gold.pk, "date": "2027-06-12", "quantity": 1},
+    ).content.decode()
+
+    assert "Ask for a price" in plain and "Add to booking" not in plain
+    assert "https://wa.me/14695550100?text=" in plain
+    assert unescape_url(plain).count("price for the Chair?") == 1, "no option or date yet"
+    assert "Ask for a price" in picked
+    assert "price for the Chair (Gold) for my event on Saturday, June 12, 2027?" in (
+        unescape_url(picked)
+    )
+
+
+def test_call_for_price_package_offers_a_price_request_with_the_chosen_date(
+    client, items, event_date
+):
+    items["package"].package_price = Decimal("0.00")
+    items["package"].save()
+    set_details(client, event_date)
+
+    html = client.get(items["package"].get_absolute_url()).content.decode()
+
+    assert "Ask for a price" in html and "Add to booking" not in html
+    expected = f"price for the Party set package for my event on {event_date:%A, %B} "
+    assert expected in unescape_url(html)
+
+
+def test_priced_rentals_do_not_show_ask_for_a_price(client, items):
+    for url in (items["chair"].item.get_absolute_url(), items["package"].get_absolute_url()):
+        html = client.get(url).content.decode()
+        assert "Ask for a price" not in html and "to booking" in html
+
+
+def unescape_url(html):
+    from html import unescape
+    from urllib.parse import unquote
+
+    return unquote(unescape(html))

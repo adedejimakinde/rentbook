@@ -8,7 +8,7 @@
 
   <section class="mt-4" aria-labelledby="details-heading">
     <h2 id="details-heading" class="text-lg font-bold text-primary">Your event</h2>
-    <dl class="mt-2 space-y-1">
+    <dl class="mt-2 space-y-1 [overflow-wrap:anywhere]">
       <div><dt class="inline font-bold">Date:</dt> <dd class="inline">{{ cart.event_date|date:"l, M j, Y" }}, starts {{ start_time|time:"g:i A" }}, set up by {{ setup_by_time|time:"g:i A" }}</dd></div>
       <div><dt class="inline font-bold">Event:</dt> <dd class="inline">{{ event_type_label }}</dd></div>
       <div><dt class="inline font-bold">Delivery to:</dt> <dd class="inline whitespace-pre-line">{{ address }}</dd></div>

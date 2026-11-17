@@ -7,4 +7,4 @@
 <p>Pick your event date to see live availability.</p>
 {% endif %}
 {% if selected %}<p class="mt-2 text-sm">Price: <strong>{% include "catalogue/_price.html" with price=selected.unit_price %}</strong>{% if selected.unit_price and quantity > 1 %} each{% endif %}</p>{% endif %}
-{% if selected and selected.unit_price and not date_error %}{% include "bookings/_add_form.html" with kind="variant" id=selected.pk quantity=quantity %}{% endif %}
+{% if ask_price_url %}{% include "catalogue/_ask_price.html" %}{% elif selected and not date_error %}{% include "bookings/_add_form.html" with kind="variant" id=selected.pk quantity=quantity %}{% endif %}

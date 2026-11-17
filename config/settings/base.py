@@ -16,6 +16,8 @@ if env_file.exists():
 
 SECRET_KEY = env("SECRET_KEY")
 DEBUG = env.bool("DEBUG", default=False)
+# True only in config.settings.prod; production-only system checks look at it.
+IS_PRODUCTION = False
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=[])
 
 ADMIN_URL = env("ADMIN_URL").strip("/") + "/"

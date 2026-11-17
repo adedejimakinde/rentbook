@@ -4,7 +4,7 @@
 <div class="mx-auto max-w-xl px-4 py-6">
   <h1 class="text-2xl font-bold text-primary">Booking #{{ booking.pk }}</h1>
   <p class="mt-1 inline-block rounded bg-surface px-2 py-1 font-bold">{{ booking.get_status_display }}</p>
-  <dl class="mt-4 space-y-1">
+  <dl class="mt-4 space-y-1 [overflow-wrap:anywhere]">
     <div><dt class="inline font-bold">Event date:</dt> <dd class="inline">{{ booking.event_date|date:"l, M j, Y" }}{% if booking.event_start_time %}, starts {{ booking.event_start_time|time:"g:i A" }}{% endif %}</dd></div>
     <div><dt class="inline font-bold">Delivery to:</dt> <dd class="inline whitespace-pre-line">{{ booking.delivery_address }}</dd></div>
   </dl>

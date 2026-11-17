@@ -67,3 +67,11 @@ def test_robots_keeps_private_booking_pages_out(client):
 
     for path in ("/cart/", "/book/", "/booking/", "/payments/"):
         assert f"Disallow: {path}" in text
+
+
+def test_page_headings_scale_down_and_wrap_on_small_screens(client):
+    html = client.get(reverse("core:about")).content.decode()
+
+    heading = html[html.index("<h1") : html.index(">", html.index("<h1"))]
+    assert "text-2xl" in heading and "sm:text-3xl" in heading
+    assert "text-balance" in heading and "[overflow-wrap:anywhere]" in heading
