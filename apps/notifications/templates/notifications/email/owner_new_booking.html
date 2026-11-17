@@ -1,0 +1,9 @@
+{% extends "notifications/email/base.html" %}{% load money %}
+{% block title %}New booking{% endblock %}
+{% block heading %}New booking #{{ booking.pk }}{% endblock %}
+{% block body %}
+<p style="margin:0 0 8px;"><strong>{{ booking.customer_name }}</strong><br>{{ booking.email }} · {{ booking.phone }}</p>
+<p style="margin:0 0 8px;">Event: <strong>{{ booking.event_date|date:"l, M j, Y" }}</strong>{% if booking.event_start_time %}, starts {{ booking.event_start_time|time:"g:i A" }}{% endif %}<br><span style="white-space:pre-line;">{{ booking.delivery_address }}</span></p>
+<p style="margin:0 0 8px;">Rental total: <strong>{{ total|usd }}</strong>{% if caution_fee %} · Caution: {{ caution_fee|usd }}{% endif %}<br>Paying by: {{ booking.get_payment_choice_display|default:"not chosen" }}{% if booking.payment_plan %} ({{ booking.get_payment_plan_display|lower }}){% endif %}<br>Hold ends: {{ booking.hold_expires_at|date:"M j, g:i A T"|default:"no hold" }}</p>
+<p style="margin:0 0 8px;"><a href="{{ admin_url }}" style="color:#6a0dad;font-weight:bold;">Open in the admin</a></p>
+{% endblock %}

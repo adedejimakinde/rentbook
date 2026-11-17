@@ -24,6 +24,8 @@ from apps.bookings.models import (
     PromoCode,
 )
 from apps.bookings.services import availability, lifecycle, quote
+from apps.invoices.admin import documents_table
+from apps.invoices.forms import ManualInvoiceForm
 from apps.payments.admin import TAX_EXEMPTION_PERMISSION, BookingPaymentActionsMixin
 
 # Statuses staff may set by hand. Every other status is reached through a
@@ -181,8 +183,13 @@ class BookingAdmin(BookingPaymentActionsMixin, ModelAdmin):
         "mark_returned",
         "cancel_booking",
         "reopen_booking",
+        "issue_manual_invoice",
     ]
-    ledger_forms = {**BookingPaymentActionsMixin.ledger_forms, **LIFECYCLE_FORMS}
+    ledger_forms = {
+        **BookingPaymentActionsMixin.ledger_forms,
+        **LIFECYCLE_FORMS,
+        "manual-invoice": ManualInvoiceForm,
+    }
     search_fields = ["customer_name", "email", "phone"]
     date_hierarchy = "event_date"
     readonly_fields = [
@@ -208,8 +215,13 @@ class BookingAdmin(BookingPaymentActionsMixin, ModelAdmin):
         "terms_accepted_at",
         "payment_choice",
         "payment_plan",
+        "invoices_and_receipts",
     ]
     inlines = [BookingItemInline, BookingPackageInline]
+
+    @admin.display(description="Invoices and receipts")
+    def invoices_and_receipts(self, booking):
+        return documents_table(booking)
 
     def get_form(self, request, obj=None, change=False, **kwargs):
         """Tell the form whether this user can edit the lines, so it knows what to check."""
@@ -291,6 +303,10 @@ class BookingAdmin(BookingPaymentActionsMixin, ModelAdmin):
     @admin.action(description="Reopen cancelled booking")
     def reopen_booking(self, request, queryset):
         return self._open_ledger_form(request, queryset, "reopen")
+
+    @admin.action(description="Issue manual invoice (deal agreed offline)")
+    def issue_manual_invoice(self, request, queryset):
+        return self._open_ledger_form(request, queryset, "manual-invoice")
 
 
 @admin.register(DeliveryZone)

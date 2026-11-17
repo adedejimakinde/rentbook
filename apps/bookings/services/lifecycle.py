@@ -12,6 +12,7 @@ from django.utils import timezone
 
 from apps.bookings.models import Booking, BookingItem
 from apps.bookings.services import availability, quote
+from apps.invoices import hooks as documents
 from apps.payments.models import Payment
 from apps.payments.services import ledger
 from apps.payments.services.ledger import PaymentError
@@ -295,6 +296,7 @@ def change_item(booking, variant, *, quantity, unit_price=None, by=None, overrid
             line.save(update_fields=["quantity", "unit_price", "updated_at"])
         _reprice(booking, extra_fields=OVERRIDE_FIELDS + ["needs_attention"])
         ledger.reassess_after_change(booking)
+        documents.booking_changed(booking)
     return booking
 
 
@@ -348,4 +350,5 @@ def set_tax_exemption(booking, *, exempt, certificate, by):
             ]
         )
         ledger.reassess_after_change(booking)
+        documents.booking_changed(booking)
     return booking

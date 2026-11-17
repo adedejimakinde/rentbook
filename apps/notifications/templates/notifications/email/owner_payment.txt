@@ -1,0 +1,9 @@
+{% extends "notifications/email/base.txt" %}{% load money %}
+{% block heading %}Payment on booking #{{ booking.pk }}{% endblock %}
+{% block body %}{{ s.payment.total|usd }} ({{ s.payment.kind }}{% if s.payment.method %}, {{ s.payment.method }}{% endif %}){% if s.payment.caution_amount|nonzero %}, including {{ s.payment.caution_amount|usd }} caution{% endif %}{% if s.payment.reference %}, reference {{ s.payment.reference }}{% endif %}.
+{{ booking.customer_name }} · {{ booking.event_date|date:"l, M j, Y" }} · now {{ booking.get_status_display }}
+
+{% include "notifications/email/_amounts.txt" %}
+
+Receipt {{ receipt.number }} was issued. Open in the admin: {{ admin_url }}
+{% endblock %}

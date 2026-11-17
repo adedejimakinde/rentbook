@@ -5,8 +5,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+# Pango, HarfBuzz and fonts are the system libraries WeasyPrint needs to render PDFs.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl \
+    && apt-get install -y --no-install-recommends \
+        curl \
+        libpango-1.0-0 \
+        libpangoft2-1.0-0 \
+        libharfbuzz-subset0 \
+        fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
 # requirements-dev.txt for local development; docker-compose.prod.yml passes

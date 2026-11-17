@@ -1,0 +1,8 @@
+{% extends "notifications/email/base.txt" %}{% load money %}
+{% block heading %}Payment received{% endblock %}
+{% block body %}Hi {{ booking.customer_name }}, thank you. We received your payment of {{ s.payment.total|usd }}{% if s.payment.method %} by {{ s.payment.method }}{% endif %} for your event on {{ booking.event_date|date:"l, F j, Y" }}.
+
+{% include "notifications/email/_amounts.txt" %}
+
+Your receipt {{ receipt.number }} is attached as a PDF.
+{% endblock %}

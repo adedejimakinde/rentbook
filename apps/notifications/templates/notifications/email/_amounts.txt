@@ -1,0 +1,4 @@
+{% load money %}Rental total: {{ s.total|usd }}
+Paid so far: {{ s.amount_paid|usd }}
+Balance due: {{ s.balance_due|usd }}{% if s.caution_fee|nonzero or s.caution_held|nonzero %}
+Refundable caution deposit held: {{ s.caution_held|usd }}{% endif %}

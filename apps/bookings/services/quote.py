@@ -24,6 +24,7 @@ from apps.bookings.models import (
 )
 from apps.bookings.services import availability
 from apps.catalogue.models import ItemVariant, Package
+from apps.invoices import hooks as documents
 
 ZERO = Decimal("0.00")
 CENT = Decimal("0.01")
@@ -380,6 +381,7 @@ def reprice_booking(booking):
     booking.tax = booking_tax(booking)
     booking.caution_fee = booking_caution(booking)
     booking.save(update_fields=["tax", "caution_fee", "updated_at"])
+    documents.booking_changed(booking)
     return booking
 
 
@@ -454,4 +456,5 @@ def create_booking_from_quote(
             raise RuntimeError(
                 f"Booking total ${booking.total} does not match its quote ${quote.rental_total}."
             )
+        documents.booking_created(booking)
     return booking

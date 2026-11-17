@@ -1,0 +1,8 @@
+{% extends "notifications/email/base.html" %}{% load money %}
+{% block title %}Your bank payment is processing{% endblock %}
+{% block preheader %}Bank payments take a few business days to clear.{% endblock %}
+{% block heading %}Your bank payment is processing{% endblock %}
+{% block body %}
+<p style="margin:0 0 16px;">Hi {{ booking.customer_name }}, your bank payment of <strong>{{ payment.charged_total|usd }}</strong> for your event on {{ booking.event_date|date:"l, F j, Y" }} has started.</p>
+<p style="margin:0 0 16px;">Bank (ACH) payments usually take 3 to 5 business days to clear. We keep your items on hold meanwhile (for up to {{ ach_days }} days) and email you a confirmation as soon as the money arrives. You do not need to do anything.</p>
+{% endblock %}

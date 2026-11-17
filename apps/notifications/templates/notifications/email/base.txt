@@ -1,0 +1,13 @@
+{% load money %}{% autoescape off %}{% block heading %}{% endblock %}
+
+Booking reference: {{ reference }}
+
+{% block body %}{% endblock %}
+{% if balance_url %}
+Balance due: {{ balance_due|usd }}. Pay by card or bank account: {{ balance_url }}
+{% endif %}
+View your booking and download your documents: {{ status_url }}
+
+{{ business_name }}
+Questions? Call {{ business_phone }} or reply to this email and quote {{ reference }}.
+{% endautoescape %}

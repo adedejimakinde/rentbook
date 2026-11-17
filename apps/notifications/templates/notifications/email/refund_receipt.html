@@ -1,0 +1,10 @@
+{% extends "notifications/email/base.html" %}{% load money %}
+{% block title %}Your refund{% endblock %}
+{% block preheader %}We sent you a refund of {{ s.refund.amount|usd }}.{% endblock %}
+{% block heading %}Your refund{% endblock %}
+{% block body %}
+<p style="margin:0 0 16px;">Hi {{ booking.customer_name }}, we sent you a {{ s.refund.kind|lower }} of <strong>{{ s.refund.amount|usd }}</strong>{% if s.refund.method %} by {{ s.refund.method }}{% endif %}.</p>
+<p style="margin:0 0 16px;">Card and bank refunds can take 5 to 10 business days to appear on your statement.</p>
+{% include "notifications/email/_amounts.html" %}
+<p style="margin:0 0 16px;">Your refund receipt {{ receipt.number }} is attached as a PDF.</p>
+{% endblock %}

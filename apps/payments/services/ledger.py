@@ -14,6 +14,8 @@ from django.utils import timezone
 
 from apps.bookings.models import Booking, PromoCode
 from apps.bookings.services import availability
+from apps.invoices import hooks as documents
+from apps.notifications import hooks as notify
 from apps.payments.models import Payment
 
 ZERO = Decimal("0.00")
@@ -110,6 +112,18 @@ def release_promo(booking):
 def redeem_promo(booking):
     """Count the promo use again on a reopened booking that still has money on it."""
     _redeem_promo(booking)
+
+
+def _money_in(booking, payment):
+    """Apply rental money that arrived on a locked booking, and queue its receipt.
+
+    The receipt goes out as the booking confirmation when this payment is the
+    one that secured the booking.
+    """
+    was_secured = booking.status in (*SECURED_STATUSES, *FULFILLED_STATUSES)
+    _apply_money_in(booking)
+    confirmed = not was_secured and booking.status in SECURED_STATUSES
+    documents.payment_succeeded(payment, confirmed=confirmed)
 
 
 def _apply_money_in(booking):
@@ -229,7 +243,7 @@ def record_success(payment_id, *, payment_intent_id=None, method=None):
         if payment.failure_reason == Payment.FailureReason.AMOUNT_MISMATCH:
             return payment
         _mark_succeeded(payment, payment_intent_id, method)
-        _apply_money_in(booking)
+        _money_in(booking, payment)
     return payment
 
 
@@ -249,6 +263,7 @@ def record_processing(payment_id, *, payment_intent_id=None):
             payment.stripe_payment_intent_id = payment_intent_id
         payment.save()
         _hold_while_clearing(booking)
+        notify.ach_processing(payment)
     return payment
 
 
@@ -305,7 +320,7 @@ def record_refund(payment_id, refunded_total, *, ambiguous=False, allow_decrease
             return payment
         if payment.status in (Payment.Status.PENDING, Payment.Status.FAILED):
             _mark_succeeded(payment)
-            _apply_money_in(booking)
+            _money_in(booking, payment)
         refunded_total = max(min(refunded_total, payment.charged_total), ZERO)
         if refunded_total < payment.refunded_amount and allow_decrease:
             payment.refunded_amount = refunded_total
@@ -388,6 +403,7 @@ def record_stripe_refund(payment_id, refund_id, amount, kind, *, entry_id=None, 
         entry.reference = refund_id
         entry.received_at = entry.received_at or timezone.now()
         entry.save()
+        documents.refund_succeeded(entry)
         if booking.caution_held < ZERO:
             flag_attention(booking)
     return entry
@@ -596,6 +612,7 @@ def record_manual_rental_refund(payment, *, amount, method, reference, received_
             received_at=received_at,
         )
         record_refund(payment.pk, payment.refunded_amount + amount)
+        documents.refund_succeeded(entry)
     return entry
 
 
@@ -735,7 +752,9 @@ def record_manual_payment(
             received_at=received_at,
         )
         if amount > ZERO:
-            _apply_money_in(booking)
+            _money_in(booking, payment)
+        else:
+            documents.payment_succeeded(payment, confirmed=False)
     return payment
 
 
@@ -747,7 +766,7 @@ def _release_caution(booking, kind, *, amount, method, reference, received_at, r
         free = booking.payments.caution_available()
         if amount > free:
             raise PaymentError(f"Amount is more than the caution deposit still held (${free}).")
-        return Payment.objects.create(
+        entry = Payment.objects.create(
             booking=booking,
             amount=amount,
             method=method,
@@ -757,6 +776,9 @@ def _release_caution(booking, kind, *, amount, method, reference, received_at, r
             received_by=received_by,
             received_at=received_at,
         )
+        if kind == Payment.Kind.CAUTION_REFUND:
+            documents.refund_succeeded(entry)
+        return entry
 
 
 def record_caution_refund(booking, *, amount, method, reference, received_at, received_by):

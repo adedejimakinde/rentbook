@@ -17,6 +17,7 @@ from django.db.models import F, Q
 from django.utils import timezone
 
 from apps.bookings.models import Booking
+from apps.invoices import hooks as documents
 from apps.payments.models import Payment, StripeEvent, UnmatchedStripeEvent
 from apps.payments.services import ledger
 from apps.payments.services.ledger import PaymentError
@@ -526,6 +527,8 @@ def sync_refunds(payment, *, reported_total=ZERO, received_by=None, failed_ids=(
                 entry_id=_refund_entry_id(refund),
                 received_by=received_by,
             )
+            if entry is None and not is_caution:
+                documents.stripe_refund_counted(payment, refund["id"], amount)
             if entry is not None and entry.status == Payment.Status.FAILED:
                 not_counted += amount
             elif is_caution:

@@ -1,0 +1,6 @@
+{% extends "notifications/email/base.txt" %}{% load money %}
+{% block heading %}Your bank payment is processing{% endblock %}
+{% block body %}Hi {{ booking.customer_name }}, your bank payment of {{ payment.charged_total|usd }} for your event on {{ booking.event_date|date:"l, F j, Y" }} has started.
+
+Bank (ACH) payments usually take 3 to 5 business days to clear. We keep your items on hold meanwhile (for up to {{ ach_days }} days) and email you a confirmation as soon as the money arrives. You do not need to do anything.
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "notifications/email/base.html" %}{% load money %}
+{% block title %}We received your booking{% endblock %}
+{% block preheader %}Your booking for {{ booking.event_date|date:"M j, Y" }} is on hold.{% endblock %}
+{% block heading %}We received your booking{% endblock %}
+{% block body %}
+<p style="margin:0 0 16px;">Hi {{ booking.customer_name }}, thank you for booking with us for <strong>{{ booking.event_date|date:"l, F j, Y" }}</strong>. Your items are on hold.</p>
+{% if manual %}
+{% if to_send is not None %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px;border:2px solid #6a0dad;border-radius:6px;"><tr><td style="padding:16px;font-family:Montserrat,Arial,Helvetica,sans-serif;">
+  <p style="margin:0;font-size:14px;font-weight:bold;">{{ plan_label }}: amount to send by {{ choice_label }}</p>
+  <p style="margin:4px 0;font-size:28px;line-height:34px;font-weight:bold;color:#6a0dad;">{{ to_send|usd }}</p>
+  {% if caution|nonzero %}<p style="margin:0 0 8px;font-size:14px;">Includes a {{ caution|usd }} refundable caution deposit.</p>{% endif %}
+  <p style="margin:8px 0 0;font-weight:bold;color:#c2185b;">Pay by {{ deadline|date:"l, M j, Y, g:i A T" }}</p>
+  <p style="margin:4px 0 0;font-size:14px;">If the payment has not arrived by then, the hold ends and the items are released.</p>
+</td></tr></table>
+{% endif %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px;border-collapse:collapse;font-family:Montserrat,Arial,Helvetica,sans-serif;font-size:16px;">
+  {% for label, value in details %}<tr><td style="padding:6px 0;border-bottom:1px solid #e3d6f3;font-weight:bold;">{{ label }}</td><td align="right" style="padding:6px 0;border-bottom:1px solid #e3d6f3;">{{ value|default:"Ask us" }}</td></tr>{% endfor %}
+  <tr><td style="padding:6px 0;font-weight:bold;">Memo or note</td><td align="right" style="padding:6px 0;">{{ memo }}</td></tr>
+</table>
+<p style="margin:0 0 16px;">Put <strong>{{ memo }}</strong> in the payment note so we can match it. We confirm your booking by email once the payment arrives.</p>
+{% else %}
+<p style="margin:0 0 16px;">We are holding your items until <strong>{{ deadline|date:"l, M j, Y, g:i A T" }}</strong> while you complete your payment. You will get a confirmation email as soon as it goes through.</p>
+{% endif %}
+{% endblock %}
