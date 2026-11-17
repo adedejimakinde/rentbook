@@ -31,6 +31,10 @@ def item_form(item, rows):
         "variants-INITIAL_FORMS": len(rows),
         "variants-MIN_NUM_FORMS": 1,
         "variants-MAX_NUM_FORMS": 1000,
+        "images-TOTAL_FORMS": 0,
+        "images-INITIAL_FORMS": 0,
+        "images-MIN_NUM_FORMS": 0,
+        "images-MAX_NUM_FORMS": 1000,
     }
     for index, row in enumerate(rows):
         variant = row["variant"]

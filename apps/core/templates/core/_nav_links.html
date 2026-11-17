@@ -1,0 +1,6 @@
+{% if wrap %}<li>{% endif %}<a href="{% url 'catalogue:list' %}" class="{{ link_class }}">Rentals</a>{% if wrap %}</li>{% endif %}
+{% if wrap %}<li>{% endif %}<a href="{% url 'catalogue:packages' %}" class="{{ link_class }}">Packages</a>{% if wrap %}</li>{% endif %}
+{% if wrap %}<li>{% endif %}<a href="{% url 'catalogue:gallery' %}" class="{{ link_class }}">Gallery</a>{% if wrap %}</li>{% endif %}
+{% if wrap %}<li>{% endif %}<a href="{% url 'core:about' %}" class="{{ link_class }}">About</a>{% if wrap %}</li>{% endif %}
+{% if wrap %}<li>{% endif %}<a href="{% url 'core:faq' %}" class="{{ link_class }}">FAQs</a>{% if wrap %}</li>{% endif %}
+{% if wrap %}<li>{% endif %}<a href="{% url 'core:contact' %}" class="{{ link_class }}">Contact</a>{% if wrap %}</li>{% endif %}

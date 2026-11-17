@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="mx-auto max-w-3xl px-4 py-10">
+  <nav aria-label="Breadcrumb" class="mb-4 text-sm"><a href="{% url 'catalogue:packages' %}" class="underline">Packages</a></nav>
+  <h1 class="flex items-center gap-2 text-3xl font-bold text-primary">{% include "core/_sparkle.html" %}{{ package.name }}</h1>
+  <p class="mt-2 text-2xl font-bold">{% include "catalogue/_price.html" with price=package.package_price %}</p>
+  <h2 class="mt-6 text-xl font-bold text-primary">What is in it</h2>
+  <ul class="mt-2 divide-y divide-primary/10">
+    {% for line in lines %}
+    <li class="flex justify-between gap-4 py-2"><a href="{{ line.variant.item.get_absolute_url }}" class="font-bold underline">{{ line.variant.item.name }}{% if line.variant.name != "Default" %} ({{ line.variant.name }}){% endif %}</a><span>x {{ line.quantity }}</span></li>
+    {% endfor %}
+  </ul>
+  <div class="mt-8 space-y-2">
+    <button type="button" disabled aria-disabled="true" class="min-h-12 w-full cursor-not-allowed rounded-lg bg-accent px-6 font-bold text-white opacity-60 sm:w-auto">Add to booking</button>
+    <p class="text-sm">Online booking opens soon. <a href="https://wa.me/{{ whatsapp_number }}?text=Hi%2C%20I%27d%20like%20the%20{{ package.name|urlencode }}%20package" class="font-bold text-primary underline" rel="noopener">Message us on WhatsApp</a> to reserve it.</p>
+  </div>
+</div>
+{% endblock %}

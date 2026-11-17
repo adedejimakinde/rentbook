@@ -1,0 +1,9 @@
+{% if date_error %}
+<p role="alert" class="rounded-lg bg-[#fee2e2] p-3 font-bold text-[#7f1d1d]">{{ date_error }}</p>
+{% elif status %}
+<p class="font-bold">{{ selected.name }} on {{ event_date|date:"F j, Y" }}</p>
+<p class="mt-1">{% include "catalogue/_status.html" %}</p>
+{% else %}
+<p>Pick your event date to see live availability.</p>
+{% endif %}
+{% if selected %}<p class="mt-2 text-sm">Price: <strong>{% include "catalogue/_price.html" with price=selected.unit_price %}</strong>{% if selected.unit_price and quantity > 1 %} each{% endif %}</p>{% endif %}

@@ -1,0 +1,27 @@
+<title>{{ meta_title }} | {{ business_name }}</title>
+{% if date_error %}<p role="alert" class="mb-4 rounded-lg bg-[#fee2e2] p-3 font-bold text-[#7f1d1d]">{{ date_error }}</p>{% endif %}
+{% if event_date %}<p class="mb-4 font-bold">Showing availability for {{ event_date|date:"l, F j, Y" }}.</p>{% else %}<p class="mb-4">Pick an event date above to see availability on each item.</p>{% endif %}
+<nav aria-label="Categories" class="-mx-4 mb-6 overflow-x-auto px-4">
+  <ul class="flex gap-2 whitespace-nowrap pb-2">
+    <li><a href="{% url 'catalogue:list' %}" hx-get="{% url 'catalogue:list' %}" hx-target="#catalogue-results" hx-push-url="true" {% if not category %}aria-current="page"{% endif %} class="inline-flex min-h-11 items-center rounded-full border-2 px-4 font-bold {% if not category %}border-primary bg-primary text-white{% else %}border-primary/40 text-primary{% endif %}">All</a></li>
+    {% for chip in categories %}
+    <li><a href="{{ chip.get_absolute_url }}" hx-get="{{ chip.get_absolute_url }}" hx-target="#catalogue-results" hx-push-url="true" {% if category.pk == chip.pk %}aria-current="page"{% endif %} class="inline-flex min-h-11 items-center rounded-full border-2 px-4 font-bold {% if category.pk == chip.pk %}border-primary bg-primary text-white{% else %}border-primary/40 text-primary{% endif %}">{{ chip.name }}</a></li>
+    {% endfor %}
+  </ul>
+</nav>
+{% if page.object_list %}
+<ul class="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
+  {% for item in page.object_list %}
+  <li>{% include "catalogue/_item_card.html" with eager=forloop.first %}</li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="rounded-lg bg-surface p-6">Nothing is listed here yet. Call or WhatsApp us and we will help you find what you need.</p>
+{% endif %}
+{% if page.paginator.num_pages > 1 %}
+<nav aria-label="Pagination" class="mt-8 flex items-center justify-between gap-3">
+  {% if page.has_previous %}<a href="?page={{ page.previous_page_number }}" hx-get="?page={{ page.previous_page_number }}" hx-target="#catalogue-results" hx-push-url="true" hx-swap="innerHTML show:top" rel="prev" class="inline-flex min-h-11 items-center rounded-lg border-2 border-primary px-4 font-bold text-primary">Previous</a>{% else %}<span class="min-h-11"></span>{% endif %}
+  <p>Page {{ page.number }} of {{ page.paginator.num_pages }}</p>
+  {% if page.has_next %}<a href="?page={{ page.next_page_number }}" hx-get="?page={{ page.next_page_number }}" hx-target="#catalogue-results" hx-push-url="true" hx-swap="innerHTML show:top" rel="next" class="inline-flex min-h-11 items-center rounded-lg border-2 border-primary px-4 font-bold text-primary">Next</a>{% else %}<span class="min-h-11"></span>{% endif %}
+</nav>
+{% endif %}

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="bg-surface">
+  <div class="mx-auto max-w-5xl px-4 py-8 md:py-12">
+    <h1 class="flex items-center gap-2 text-2xl font-bold text-primary md:text-4xl">{% include "core/_sparkle.html" %}{% if category %}{{ category.name }}{% else %}Browse rentals{% endif %}</h1>
+    <p class="mt-2 max-w-2xl">{% if category and category.description %}{{ category.description }}{% else %}Delivered, set up and picked up across DFW. Choose your event date to see what is free.{% endif %}</p>
+    <form method="get" action="{{ request.path }}" hx-get="{{ request.path }}" hx-target="#catalogue-results" hx-push-url="true" class="mt-5 flex flex-wrap items-end gap-3">
+      <div>
+        <label for="event-date" class="block text-sm font-bold">Event date</label>
+        <input id="event-date" type="date" name="date" value="{{ event_date|date:'Y-m-d' }}" class="min-h-11 rounded-lg border-2 border-primary/40 bg-white px-3">
+      </div>
+      <button type="submit" class="min-h-11 rounded-lg bg-primary px-4 font-bold text-white hover:bg-primary-light">Show availability</button>
+      {% if event_date %}<a href="{{ request.path }}?date=" hx-get="{{ request.path }}?date=" hx-target="#catalogue-results" hx-push-url="true" class="inline-flex min-h-11 items-center font-bold text-primary underline">Clear date</a>{% endif %}
+    </form>
+  </div>
+</section>
+<div id="catalogue-results" class="mx-auto max-w-5xl px-4 pt-6">
+  {% include "catalogue/_results.html" %}
+</div>
+{% endblock %}

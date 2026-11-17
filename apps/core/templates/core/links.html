@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block header %}{% endblock %}
+{% block footer %}{% endblock %}
+{% block whatsapp_fab %}{% endblock %}
+{% block content %}
+<div class="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-4 px-4 py-10 text-center">
+  <h1 class="flex items-center justify-center gap-2 text-2xl font-bold text-primary">{% include "core/_sparkle.html" %}{{ business_name }}{% include "core/_sparkle.html" %}</h1>
+  <p>{{ business_tagline }} across DFW.</p>
+  <a href="{% url 'core:home' %}#check" class="flex min-h-16 items-center justify-center rounded-xl bg-accent px-6 text-lg font-bold text-white hover:bg-accent-dark">Book now</a>
+  <a href="{% url 'catalogue:list' %}" class="flex min-h-16 items-center justify-center rounded-xl bg-primary px-6 text-lg font-bold text-white hover:bg-primary-light">Browse rentals</a>
+  <a href="https://wa.me/{{ whatsapp_number }}" rel="noopener" class="flex min-h-16 items-center justify-center rounded-xl bg-whatsapp px-6 text-lg font-bold text-white">Chat on WhatsApp</a>
+  <a href="tel:{{ business_phone_href }}" class="flex min-h-16 items-center justify-center rounded-xl border-2 border-primary px-6 text-lg font-bold text-primary">Call {{ business_phone }}</a>
+</div>
+{% endblock %}

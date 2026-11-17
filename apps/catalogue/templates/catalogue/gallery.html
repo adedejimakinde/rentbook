@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load catalogue_media %}
+{% block content %}
+<div class="mx-auto max-w-5xl px-4 py-10">
+  <h1 class="flex items-center gap-2 text-3xl font-bold text-primary">{% include "core/_sparkle.html" %}Gallery</h1>
+  {% if page.object_list %}
+  <ul class="mt-6 grid grid-cols-2 gap-3 md:grid-cols-3">
+    {% for photo in page.object_list %}
+    <li class="relative {% if forloop.first %}col-span-2 md:col-span-2{% endif %}">
+      {% picture photo name=photo.item.name sizes="(min-width: 768px) 33vw, 50vw" eager=forloop.first %}
+      <p class="mt-1 text-sm"><a href="{{ photo.item.get_absolute_url }}" class="font-bold text-primary underline after:absolute after:inset-0">{{ photo.item.name }}</a></p>
+    </li>
+    {% endfor %}
+  </ul>
+  {% if page.paginator.num_pages > 1 %}
+  <nav aria-label="Pagination" class="mt-8 flex items-center justify-between gap-3">
+    {% if page.has_previous %}<a href="?page={{ page.previous_page_number }}" rel="prev" class="inline-flex min-h-11 items-center rounded-lg border-2 border-primary px-4 font-bold text-primary">Previous</a>{% else %}<span></span>{% endif %}
+    <p>Page {{ page.number }} of {{ page.paginator.num_pages }}</p>
+    {% if page.has_next %}<a href="?page={{ page.next_page_number }}" rel="next" class="inline-flex min-h-11 items-center rounded-lg border-2 border-primary px-4 font-bold text-primary">Next</a>{% else %}<span></span>{% endif %}
+  </nav>
+  {% endif %}
+  {% else %}
+  <p class="mt-6 rounded-lg bg-surface p-6">Photos from real events are on their way. Meanwhile, <a href="{% url 'catalogue:list' %}" class="font-bold text-primary underline">browse the rentals</a>.</p>
+  {% endif %}
+</div>
+{% endblock %}
