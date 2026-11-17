@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.sitemaps",
     "django_tailwind_cli",
     "apps.core",
     "apps.catalogue",
@@ -97,6 +98,9 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
+
+MEDIA_URL = "media/"
+MEDIA_ROOT = BASE_DIR / "media"
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
@@ -167,6 +171,16 @@ BUSINESS_AREA = env("BUSINESS_AREA", default="DFW area")
 BUSINESS_PHONE = env("BUSINESS_PHONE", default="469-347-4687")
 BUSINESS_EMAIL = env("BUSINESS_EMAIL", default="atglaceevents.rental@gmail.com")
 WHATSAPP_NUMBER = env("WHATSAPP_NUMBER", default="14693474687")
+# Public URL of the site, used for absolute links in the sitemap, Open Graph and JSON-LD.
+SITE_URL = env("SITE_URL", default="http://localhost:8000").rstrip("/")
+
+EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.smtp.EmailBackend")
+EMAIL_HOST = env("EMAIL_HOST", default="localhost")
+EMAIL_PORT = env.int("EMAIL_PORT", default=25)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=False)
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default=BUSINESS_EMAIL)
 
 
 # Error tracking. Sentry starts only when SENTRY_DSN is set; leave it empty in development.
