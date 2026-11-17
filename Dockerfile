@@ -17,6 +17,12 @@ RUN pip install --no-cache-dir -r "$REQUIREMENTS"
 
 COPY . .
 
+# Build the Tailwind CSS into the image, so containers start without a build
+# step or network access. The standalone CLI is downloaded for this step only
+# and removed afterwards. The dev settings are used just to run the command.
+RUN DJANGO_SETTINGS_MODULE=config.settings.dev python manage.py tailwind build \
+    && rm -rf .django_tailwind_cli
+
 RUN useradd --create-home app && chown -R app:app /app
 USER app
 
