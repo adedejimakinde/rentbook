@@ -118,9 +118,17 @@ CELERY_BEAT_SCHEDULE = {
         "task": "bookings.release_expired_holds",
         "schedule": 60.0,
     },
-    "sync-stripe": {
-        "task": "payments.sync_stripe",
+    "retry-unmatched-stripe-events": {
+        "task": "payments.retry_unmatched_stripe_events",
         "schedule": 15 * 60,
+    },
+    "sync-stale-payments": {
+        "task": "payments.sync_stale_payments",
+        "schedule": 15 * 60,
+    },
+    "sync-recent-paid-bookings": {
+        "task": "payments.sync_recent_paid_bookings",
+        "schedule": 60 * 60,
     },
 }
 

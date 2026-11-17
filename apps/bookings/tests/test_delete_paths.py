@@ -1,12 +1,15 @@
 """No path deletes a booking that holds stock or has money on it."""
 
 from datetime import timedelta
+from unittest import mock
 
 import pytest
 from django.contrib.auth import get_user_model
 from django.db.models import ProtectedError
+from django.urls import reverse
 from django.utils import timezone
 
+from apps.bookings.admin import BookingAdmin
 from apps.bookings.models import Booking, BookingDeleteRefused
 from apps.bookings.tests.factories import (
     BookingFactory,
@@ -84,4 +87,27 @@ def test_deleting_what_a_booking_points_at_never_cascades_to_it():
     for related in (item.variant, item.variant.item, line.package, booking.promo_code, user):
         with pytest.raises((ProtectedError, BookingDeleteRefused)):
             related.delete()
+    assert Booking.objects.filter(pk=booking.pk).exists()
+
+
+def test_refused_delete_is_a_protected_error():
+    booking = live_hold()
+
+    with pytest.raises(ProtectedError) as raised:
+        booking.delete()
+
+    assert list(raised.value.protected_objects) == [booking]
+
+
+def test_a_delete_refused_after_the_admin_permission_check_shows_an_error(admin_client):
+    """A booking can be put on hold between the admin's permission check and the delete."""
+    booking = live_hold()
+    url = reverse("admin:bookings_booking_delete", args=[booking.pk])
+
+    with mock.patch.object(BookingAdmin, "has_delete_permission", return_value=True):
+        response = admin_client.post(url, {"post": "yes"}, follow=True)
+
+    assert response.status_code == 200
+    text = " ".join(str(message) for message in response.context["messages"])
+    assert "cannot be deleted" in text
     assert Booking.objects.filter(pk=booking.pk).exists()

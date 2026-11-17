@@ -76,8 +76,7 @@ class ManualPaymentForm(DatedLedgerForm):
 
     def record(self, user):
         data = self.cleaned_data
-        stripe_service.close_open_checkouts(self.booking)
-        ledger.record_manual_payment(
+        stripe_service.record_manual_payment(
             self.booking,
             method=data["method"],
             amount=data["amount"],
@@ -210,3 +209,39 @@ class RentalRefundForm(DatedLedgerForm):
             received_at=self.received_at(),
             received_by=user,
         )
+
+
+class MismatchedPaymentField(forms.ModelChoiceField):
+    """Lists a booking's payments Stripe charged a different amount for."""
+
+    def label_from_instance(self, payment):
+        return (
+            f"{payment.get_kind_display()} #{payment.pk}: asked ${payment.charged_total} "
+            f"(session {payment.stripe_checkout_session_id})"
+        )
+
+
+class ResolveMismatchForm(LedgerForm):
+    """Get a booking out of a checkout Stripe charged the wrong amount for.
+
+    What Stripe charged is read from Stripe when the form is saved.
+    """
+
+    title = "Resolve mismatched payment"
+
+    payment = MismatchedPaymentField(label="Payment", queryset=Payment.objects.none())
+    resolution = forms.ChoiceField(
+        label="Resolution",
+        choices=stripe_service.Resolution.CHOICES,
+        widget=forms.RadioSelect,
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["payment"].queryset = self.booking.payments.in_progress().filter(
+            mismatch_flagged_at__isnull=False
+        )
+
+    def record(self, user):
+        data = self.cleaned_data
+        stripe_service.resolve_mismatch(data["payment"], data["resolution"], by=user)

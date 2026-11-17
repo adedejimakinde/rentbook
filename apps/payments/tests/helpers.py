@@ -141,6 +141,7 @@ class FakeStripeRefunds:
     def __init__(self):
         self.refunds = []
         self.create_calls = []
+        self.retrieve_calls = []
         self.on_create = None
 
     def add(self, payment, amount, kind=None, status="succeeded"):
@@ -170,6 +171,11 @@ class FakeStripeRefunds:
         }
         self.refunds.append(refund)
         return refund
+
+    def retrieve(self, refund_id, **kwargs):
+        """The refund as Stripe holds it now."""
+        self.retrieve_calls.append(refund_id)
+        return next(r for r in self.refunds if r["id"] == refund_id)
 
     def list(self, **kwargs):
         """One page of refunds, newest first, paged as Stripe pages them (10 by default)."""

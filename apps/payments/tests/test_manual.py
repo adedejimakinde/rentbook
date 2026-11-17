@@ -173,6 +173,42 @@ def test_admin_manual_payment_is_refused_when_the_checkout_was_just_paid(client,
     assert booking.payments.count() == 1
 
 
+def manual_form(amount="200.00", reference="ZL-9"):
+    return {
+        "method": "zelle",
+        "amount": amount,
+        "caution_amount": "0",
+        "date": "2027-06-01",
+        "reference": reference,
+    }
+
+
+@pytest.mark.parametrize(
+    ("amount", "reference", "error"),
+    [
+        ("250.00", "ZL-NEW", "more than the balance due"),
+        ("50.00", "ZL-1", "already recorded"),
+    ],
+)
+def test_a_refused_manual_payment_leaves_the_open_checkout_alone(
+    client, staff, sessions, amount, reference, error
+):
+    """The payment is checked before any checkout is expired at Stripe."""
+    booking = held_booking(total="200.00")
+    manual(booking, "50.00", staff, reference="ZL-1")
+    booking.refresh_from_db()
+    checkout, _ = start_checkout(booking, Payment.Kind.BALANCE)
+    client.force_login(staff)
+
+    response = client.post(ledger_url(booking, "manual-payment"), manual_form(amount, reference))
+
+    assert response.status_code == 200
+    assert error in response.content.decode()
+    assert sessions.expire_calls == []
+    checkout.refresh_from_db()
+    assert checkout.status == Payment.Status.PENDING
+
+
 def test_caution_refund_and_damage_charge_leave_amount_paid_untouched(staff):
     booking = held_booking(total="200.00", caution_fee="100.00")
     manual(booking, "200.00", staff, caution_amount=D("100.00"))

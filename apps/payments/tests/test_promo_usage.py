@@ -180,3 +180,23 @@ def test_booking_without_a_promo_pays_as_before(client, promo):
     assert booking.total == D("200.00")
     assert booking.promo_redeemed_at is None
     assert promo.uses_count == 0
+
+
+def test_a_refund_that_fails_takes_the_promo_use_back(client, promo, refunds):
+    """A full refund gave the use back; the refund failing puts the money and the use back."""
+    booking = booking_with_promo()
+    payment = pay(client, booking, Payment.Kind.FULL)
+    stripe_service.refund_rental(payment, payment.amount)
+    promo.refresh_from_db()
+    booking.refresh_from_db()
+    assert promo.uses_count == 0
+    assert booking.promo_redeemed_at is None
+
+    refunds.refunds[0]["status"] = "failed"
+    post_event(client, event("refund.failed", refunds.refunds[0]))
+
+    promo.refresh_from_db()
+    booking.refresh_from_db()
+    assert booking.amount_paid == D("180.00")
+    assert promo.uses_count == 1
+    assert booking.promo_redeemed_at is not None

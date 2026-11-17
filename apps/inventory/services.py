@@ -1,5 +1,6 @@
 """Inventory: units out of service, and the stock changes that can leave bookings short."""
 
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Sum
 from django.utils import timezone
@@ -71,16 +72,51 @@ def save_adjustment(adjustment):
         return _left_short([adjustment.variant_id])
 
 
-def save_variants(variants):
-    """Save changed variants (their stock) and return the bookings left short.
+def check_variants_under_lock(changed, deleted=(), exclude=None):
+    """Lock the variants being changed or deleted and validate them again under the locks.
 
-    Locks the rows and validates each again under the lock before saving.
+    Run from the admin's form validation, inside the request's transaction,
+    so the locks are held until the save and a problem shows as a form error.
+    Raises ValidationError naming each variant that is no longer valid, and
+    each variant to be deleted that a booking now uses. exclude names fields
+    not to validate (the item, on a form for an item not saved yet).
     """
-    variants = list(variants)
+    from apps.bookings.models import BookingItem
+
+    changed, deleted = list(changed), list(deleted)
+    _lock_variants([variant.pk for variant in changed + deleted if variant.pk])
+    problems = []
+    for variant in changed:
+        try:
+            variant.full_clean(exclude=exclude)
+        except ValidationError as error:
+            problems += [f"{variant}: {message}" for message in error.messages]
+    booked = set(
+        BookingItem.objects.filter(variant__in=[v for v in deleted if v.pk]).values_list(
+            "variant_id", flat=True
+        )
+    )
+    problems += [
+        f"{variant} is on bookings and cannot be deleted."
+        for variant in deleted
+        if variant.pk in booked
+    ]
+    if problems:
+        raise ValidationError(problems)
+
+
+def save_variants(variants, deleted=()):
+    """Save changed variants (their stock), delete removed ones, and return bookings left short.
+
+    Locks every row first and validates each again under the lock before
+    saving or deleting.
+    """
+    variants, deleted = list(variants), list(deleted)
     with transaction.atomic():
-        _lock_variants([variant.pk for variant in variants if variant.pk])
+        check_variants_under_lock(variants, deleted)
+        for variant in deleted:
+            variant.delete()
         for variant in variants:
-            variant.full_clean()
             variant.save()
         return _left_short([variant.pk for variant in variants])
 

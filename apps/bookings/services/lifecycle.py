@@ -11,7 +11,8 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.bookings.models import Booking, BookingItem
-from apps.bookings.services import availability
+from apps.bookings.services import availability, quote
+from apps.payments.models import Payment
 from apps.payments.services import ledger
 from apps.payments.services.ledger import PaymentError
 
@@ -29,11 +30,54 @@ def holds_stock(booking, now=None):
     return booking.status in availability.STOCK_HOLDING_STATUSES
 
 
-def cancel_booking(booking):
+def _clearing_ach(entries):
+    """The entries that are ACH payments still clearing (and nothing else)."""
+    return entries.filter(
+        kind__in=Payment.RENTAL_KINDS,
+        method=Payment.Method.ACH,
+        mismatch_flagged_at__isnull=True,
+    )
+
+
+def _check_or_override(booking, blocking, *, action, by, override_note, refusal):
+    """Refuse action while blocking entries are moving, unless only ACH is clearing.
+
+    An ACH payment can take days to clear, so staff may go ahead anyway with
+    an override note. The note, the action, who and when are recorded on the
+    booking, which is flagged: when the ACH settles, staff refund or collect
+    the difference. Card checkouts and refunds in progress cannot be
+    overridden. Saves nothing itself; the caller saves the booking.
+    """
+    if not blocking.exists():
+        return
+    override_note = (override_note or "").strip()
+    only_ach = not blocking.exclude(pk__in=_clearing_ach(blocking)).exists()
+    if not only_ach:
+        raise BookingStateError(refusal)
+    if not override_note:
+        raise BookingStateError(
+            "An ACH bank payment on this booking is still clearing. Wait for it, or enter "
+            "an override note to go ahead anyway."
+        )
+    now = timezone.now()
+    line = f"{timezone.localtime(now):%Y-%m-%d %H:%M} {action} by {by}: {override_note}"
+    booking.clearing_override_note = "\n".join(
+        part for part in (booking.clearing_override_note, line) if part
+    )
+    booking.clearing_override_by = by
+    booking.clearing_override_at = now
+    booking.needs_attention = True
+
+
+OVERRIDE_FIELDS = ["clearing_override_note", "clearing_override_by", "clearing_override_at"]
+
+
+def cancel_booking(booking, *, by=None, override_note=""):
     """Cancel a booking and release its stock and its promo code use.
 
-    Refused while a payment or refund is still in progress. Money still on the
-    booking (rental paid or caution held) flags it, so staff refund it.
+    Refused while a payment or refund is still in progress, except an ACH
+    payment still clearing, which staff can override with a note. Money still
+    on the booking (rental paid or caution held) flags it, so staff refund it.
     """
     with transaction.atomic():
         booking = ledger.lock_booking(booking.pk)
@@ -41,11 +85,17 @@ def cancel_booking(booking):
             raise BookingStateError("This booking is already cancelled.")
         if booking.status in ledger.FULFILLED_STATUSES:
             raise BookingStateError("This booking has been delivered and cannot be cancelled.")
-        if booking.payments.in_progress().exists():
-            raise BookingStateError(
+        _check_or_override(
+            booking,
+            booking.payments.in_progress(),
+            action="Cancelled",
+            by=by,
+            override_note=override_note,
+            refusal=(
                 "A payment or refund on this booking is still in progress. "
                 "Wait for it to finish before cancelling."
-            )
+            ),
+        )
         booking.status = Booking.Status.CANCELLED
         booking.hold_expires_at = None
         if booking.amount_paid > ZERO or booking.caution_held > ZERO:
@@ -57,6 +107,7 @@ def cancel_booking(booking):
                 "hold_expires_at",
                 "needs_attention",
                 "promo_redeemed_at",
+                *OVERRIDE_FIELDS,
                 "updated_at",
             ]
         )
@@ -185,13 +236,16 @@ def mark_returned(booking):
     return booking
 
 
-def change_item(booking, variant, *, quantity, unit_price=None):
+def change_item(booking, variant, *, quantity, unit_price=None, by=None, override_note=""):
     """Set how many units of a variant a booking has; zero removes the line.
 
     The way to change lines once a booking has payments. Stock is locked and
-    checked, an open checkout (which would charge the old total) refuses the
-    change, and the booking is then re-checked against its payments and
-    flagged so staff collect or refund the difference.
+    checked, and an open checkout (which would charge the old total) refuses
+    the change; an ACH payment still clearing can be overridden with a note.
+    Tax and the caution owed are then recomputed from the new lines. More
+    caution owed is collected with the balance, as its own checkout line; less
+    leaves caution to refund. The booking is re-checked against its payments
+    and flagged so staff collect or refund the difference.
     """
     if quantity < 0:
         raise BookingStateError("Quantity cannot be negative.")
@@ -201,11 +255,17 @@ def change_item(booking, variant, *, quantity, unit_price=None):
         booking = ledger.lock_booking(booking.pk)
         if booking.status in (Booking.Status.CANCELLED, *ledger.FULFILLED_STATUSES):
             raise BookingStateError("Items cannot be changed on a booking in this status.")
-        if booking.payments.open_checkouts().exists():
-            raise BookingStateError(
+        _check_or_override(
+            booking,
+            booking.payments.open_checkouts(),
+            action="Changed items",
+            by=by,
+            override_note=override_note,
+            refusal=(
                 "A card or bank payment for this booking is in progress and would charge "
                 "the old total. Wait for it to finish before changing items."
-            )
+            ),
+        )
         line = booking.items.select_for_update().filter(variant=variant).first()
         if line is None and quantity == 0:
             raise BookingStateError("This booking has no line for that item.")
@@ -233,5 +293,59 @@ def change_item(booking, variant, *, quantity, unit_price=None):
             if unit_price is not None:
                 line.unit_price = unit_price
             line.save(update_fields=["quantity", "unit_price", "updated_at"])
+        _reprice(booking, extra_fields=OVERRIDE_FIELDS + ["needs_attention"])
+        ledger.reassess_after_change(booking)
+    return booking
+
+
+def _reprice(booking, extra_fields=()):
+    """Recompute a locked booking's tax and caution owed from its lines, and save them.
+
+    Caution held beyond the new amount owed flags the booking for a refund.
+    """
+    booking.tax = quote.booking_tax(booking)
+    booking.caution_fee = quote.booking_caution(booking)
+    if booking.caution_excess > ZERO:
+        booking.needs_attention = True
+    booking.save(
+        update_fields=["tax", "caution_fee", "needs_attention", *extra_fields, "updated_at"]
+    )
+
+
+def set_tax_exemption(booking, *, exempt, certificate, by):
+    """Mark a booking tax exempt (with its certificate) or taxable again, and reprice it.
+
+    Needs the "can set tax exemption" permission, which the admin checks.
+    Refused while a checkout is open, since it would charge the old total.
+    Who made the change and when are recorded; tax is recomputed (zero when
+    exempt) and the booking is re-checked against its payments.
+    """
+    certificate = (certificate or "").strip()
+    if exempt and not certificate:
+        raise BookingStateError("Enter the exemption certificate to mark the booking tax exempt.")
+    with transaction.atomic():
+        booking = ledger.lock_booking(booking.pk)
+        if booking.status in (Booking.Status.CANCELLED, *ledger.FULFILLED_STATUSES):
+            raise BookingStateError("Tax cannot be changed on a booking in this status.")
+        if booking.payments.open_checkouts().exists():
+            raise BookingStateError(
+                "A card or bank payment for this booking is in progress and would charge "
+                "the old total. Wait for it to finish before changing its tax."
+            )
+        booking.tax_exempt = exempt
+        booking.tax_exempt_certificate = certificate if exempt else ""
+        booking.tax_exempt_by = by
+        booking.tax_exempt_at = timezone.now()
+        booking.tax = quote.booking_tax(booking)
+        booking.save(
+            update_fields=[
+                "tax_exempt",
+                "tax_exempt_certificate",
+                "tax_exempt_by",
+                "tax_exempt_at",
+                "tax",
+                "updated_at",
+            ]
+        )
         ledger.reassess_after_change(booking)
     return booking

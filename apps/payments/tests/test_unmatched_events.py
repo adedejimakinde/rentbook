@@ -26,12 +26,18 @@ pytestmark = pytest.mark.django_db
 D = Decimal
 
 
-def test_checkout_event_before_its_payment_is_saved_is_kept_and_matched_later(client):
-    """The webhook can arrive before the transaction that saved the session id commits."""
+def test_checkout_event_matching_no_payment_is_kept_and_credited_on_retry(client):
+    """An event whose session id matches no payment is kept, then credited once one matches.
+
+    The payment's session id is cleared to stand in for any reason the lookup
+    misses. The event's metadata still names the payment, and is not used to
+    match it: events are matched by session id only. Once the session id is on
+    the payment, the retry credits it, resolves the event and does not run it
+    again.
+    """
     booking = held_booking(total="200.00")
     payment, _ = start_checkout(booking, Payment.Kind.FULL)
     session = session_object(payment)
-    session["metadata"]["payment_id"] = "0"
     Payment.objects.filter(pk=payment.pk).update(stripe_checkout_session_id=None)
 
     response = post_event(client, event("checkout.session.completed", session))
@@ -120,13 +126,13 @@ def test_retry_counts_attempts_and_gives_up_after_the_limit(client):
     assert stored.resolved_at is None
 
 
-def test_periodic_job_is_scheduled_every_15_minutes():
-    job = django_settings.CELERY_BEAT_SCHEDULE["sync-stripe"]
-    assert job["task"] == "payments.sync_stripe"
-    assert job["schedule"] == 15 * 60
+def test_unmatched_retry_and_stale_sync_are_scheduled_every_15_minutes():
+    schedule = django_settings.CELERY_BEAT_SCHEDULE
+    assert schedule["retry-unmatched-stripe-events"]["schedule"] == 15 * 60
+    assert schedule["sync-stale-payments"]["schedule"] == 15 * 60
 
 
-def test_periodic_job_retries_unmatched_events_and_syncs_stale_payments(client, refunds):
+def test_scheduled_jobs_retry_unmatched_events_and_sync_stale_payments(client, refunds):
     booking = held_booking(total="200.00")
     payment, _ = start_checkout(booking, Payment.Kind.FULL)
     stripe_service.stripe.checkout.Session.complete(payment.stripe_checkout_session_id)
@@ -136,20 +142,20 @@ def test_periodic_job_retries_unmatched_events_and_syncs_stale_payments(client, 
     )
     post_event(client, event("refund.failed", {"id": "re_x", "object": "refund"}))
 
-    result = tasks.sync_stripe()
+    assert tasks.retry_unmatched_stripe_events() == 0
+    assert tasks.sync_stale_payments() == 1
 
     payment.refresh_from_db()
     assert payment.status == Payment.Status.SUCCEEDED
-    assert result == {"unmatched_resolved": 0, "bookings_synced": 1}
     assert UnmatchedStripeEvent.objects.get().attempts == 1
 
 
-def test_periodic_job_leaves_fresh_checkouts_alone():
+def test_stale_sync_leaves_fresh_checkouts_alone():
     booking = held_booking(total="200.00")
     payment, _ = start_checkout(booking, Payment.Kind.FULL)
     stripe_service.stripe.checkout.Session.complete(payment.stripe_checkout_session_id)
 
-    tasks.sync_stripe()
+    tasks.sync_stale_payments()
 
     payment.refresh_from_db()
     assert payment.status == Payment.Status.PENDING
