@@ -36,7 +36,7 @@ def test_base_has_logo_icons_and_default_og_image(client):
     html = client.get(reverse("core:home")).content.decode()
     assert 'alt="Atglace Events &amp; Rentals LLC"' in html
     assert "atglace-logo-header-320.webp" in html
-    assert "atglace-logo-header-white.webp" in html
+    assert "atglace-logo-header-white-320.webp" in html
     assert "apple-touch-icon.png" in html
     assert "og-icon-512.png" in html
     assert "Logo placeholder" not in html
