@@ -1,0 +1,8 @@
+{% extends "notifications/email/base.txt" %}{% load money %}
+{% block heading %}Your refund did not go through{% endblock %}
+{% block body %}Hi {{ booking.customer_name }}, the {{ s.refund.kind|lower }} of {{ s.refund.amount|usd }} on receipt {{ s.reverses }} was returned to us by the bank or card company, so it did not reach you. The money is back on your booking.
+
+We will contact you to send it another way. Your refund receipt {{ s.reverses }} is replaced by the attached correction {{ reversal.number }}.
+
+{% include "notifications/email/_amounts.txt" %}
+{% endblock %}

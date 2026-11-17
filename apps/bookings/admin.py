@@ -24,6 +24,9 @@ from apps.bookings.models import (
     PromoCode,
 )
 from apps.bookings.services import availability, lifecycle, quote
+from apps.invoices.admin import documents_table
+from apps.invoices.forms import ManualInvoiceForm
+from apps.notifications.services import emails as email_service
 from apps.payments.admin import TAX_EXEMPTION_PERMISSION, BookingPaymentActionsMixin
 
 # Statuses staff may set by hand. Every other status is reached through a
@@ -181,8 +184,14 @@ class BookingAdmin(BookingPaymentActionsMixin, ModelAdmin):
         "mark_returned",
         "cancel_booking",
         "reopen_booking",
+        "issue_manual_invoice",
+        "send_invoice_to_customer",
     ]
-    ledger_forms = {**BookingPaymentActionsMixin.ledger_forms, **LIFECYCLE_FORMS}
+    ledger_forms = {
+        **BookingPaymentActionsMixin.ledger_forms,
+        **LIFECYCLE_FORMS,
+        "manual-invoice": ManualInvoiceForm,
+    }
     search_fields = ["customer_name", "email", "phone"]
     date_hierarchy = "event_date"
     readonly_fields = [
@@ -208,8 +217,13 @@ class BookingAdmin(BookingPaymentActionsMixin, ModelAdmin):
         "terms_accepted_at",
         "payment_choice",
         "payment_plan",
+        "invoices_and_receipts",
     ]
     inlines = [BookingItemInline, BookingPackageInline]
+
+    @admin.display(description="Invoices and receipts")
+    def invoices_and_receipts(self, booking):
+        return documents_table(booking)
 
     def get_form(self, request, obj=None, change=False, **kwargs):
         """Tell the form whether this user can edit the lines, so it knows what to check."""
@@ -291,6 +305,29 @@ class BookingAdmin(BookingPaymentActionsMixin, ModelAdmin):
     @admin.action(description="Reopen cancelled booking")
     def reopen_booking(self, request, queryset):
         return self._open_ledger_form(request, queryset, "reopen")
+
+    @admin.action(description="Send invoice to customer")
+    def send_invoice_to_customer(self, request, queryset):
+        """Email each selected booking's current invoice, with its PDF, to the customer."""
+        sent, missing = [], []
+        for booking in queryset.order_by("pk"):
+            invoice = email_service.queue_latest_invoice(booking)
+            (sent if invoice else missing).append(f"#{booking.pk}")
+        if sent:
+            self.message_user(
+                request, f"Invoice emailed for booking {', '.join(sent)}.", messages.SUCCESS
+            )
+        if missing:
+            self.message_user(
+                request,
+                f"No invoice yet for booking {', '.join(missing)}. Add lines or issue a "
+                "manual invoice first.",
+                messages.ERROR,
+            )
+
+    @admin.action(description="Issue manual invoice (deal agreed offline)")
+    def issue_manual_invoice(self, request, queryset):
+        return self._open_ledger_form(request, queryset, "manual-invoice")
 
 
 @admin.register(DeliveryZone)

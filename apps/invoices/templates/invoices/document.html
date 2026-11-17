@@ -1,0 +1,178 @@
+{% load money %}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ title }} {{ invoice.number }}</title>
+<style>
+  {% if font_regular %}@font-face { font-family: "Montserrat"; font-weight: 500; src: url("{{ font_regular }}") format("woff2"); }{% endif %}
+  {% if font_bold %}@font-face { font-family: "Montserrat"; font-weight: 700; src: url("{{ font_bold }}") format("woff2"); }{% endif %}
+  @page {
+    size: Letter;
+    margin: 0.6in 0.6in 0.75in;
+    @bottom-center { content: "{{ s.business.name|css_string }} · {{ invoice.number|css_string }} · Page " counter(page) " of " counter(pages); font-family: "Montserrat", Arial, Helvetica, sans-serif; font-size: 11pt; color: #5b4a70; }
+  }
+  * { box-sizing: border-box; }
+  body { font-family: "Montserrat", Arial, Helvetica, sans-serif; font-size: 11pt; line-height: 1.4; color: #2a1b3d; margin: 0; }
+  h1 { font-size: 22pt; color: #6a0dad; margin: 0; }
+  h2 { font-size: 13pt; color: #6a0dad; margin: 0 0 4pt; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3pt solid #6a0dad; padding-bottom: 10pt; }
+  .logo { width: 1.9in; height: auto; }
+  .business { text-align: right; }
+  .business strong { font-size: 12pt; }
+  .meta { display: flex; justify-content: space-between; margin-top: 14pt; }
+  .meta table td { padding: 1pt 8pt 1pt 0; vertical-align: top; }
+  .label { color: #5b4a70; font-weight: 700; }
+  .parties { display: flex; gap: 24pt; margin-top: 14pt; }
+  .parties > div { flex: 1; background: #f8f2fd; padding: 10pt; border-radius: 4pt; }
+  table.lines { width: 100%; border-collapse: collapse; margin-top: 16pt; }
+  table.lines th { text-align: left; background: #6a0dad; color: #fff; padding: 5pt 6pt; font-weight: 700; }
+  table.lines td { padding: 5pt 6pt; border-bottom: 0.75pt solid #e3d6f3; vertical-align: top; }
+  .num, table.lines th.num { text-align: right; white-space: nowrap; }
+  .totals { width: 55%; margin-left: auto; margin-top: 10pt; border-collapse: collapse; }
+  .totals td { padding: 3pt 6pt; }
+  .totals .grand td { border-top: 1.5pt solid #2a1b3d; font-weight: 700; font-size: 12pt; }
+  .box { margin-top: 14pt; padding: 10pt; border: 1.5pt solid #6a0dad; border-radius: 4pt; page-break-inside: avoid; }
+  .caution { border-color: #d4af37; background: #fdf9ec; }
+  .due { font-size: 14pt; font-weight: 700; color: #c2185b; }
+  .paid-in-full { font-size: 13pt; font-weight: 700; color: #0b6b3a; }
+  a { color: #6a0dad; word-break: break-all; }
+  .muted { color: #5b4a70; }
+  .instructions { display: flex; gap: 12pt; }
+  .instructions > div { flex: 1; }
+  .note { margin-top: 14pt; white-space: pre-line; }
+</style>
+</head>
+<body>
+<div class="header">
+  {% if logo %}<img class="logo" src="{{ logo }}" alt="{{ s.business.name }}">{% else %}<strong>{{ s.business.name }}</strong>{% endif %}
+  <div class="business">
+    <strong>{{ s.business.name }}</strong><br>
+    {{ s.business.tagline }}<br>
+    {{ s.business.area }}<br>
+    {{ s.business.phone }}<br>
+    {{ s.business.email }}<br>
+    {{ s.business.website }}
+  </div>
+</div>
+
+<div class="meta">
+  <div>
+    <h1>{{ title }}</h1>
+    {% if s.supersedes %}<p class="muted">Replaces invoice {{ s.supersedes }}</p>{% endif %}
+    {% if s.reverses %}<p class="muted">Corrects refund receipt {{ s.reverses }}</p>{% endif %}
+  </div>
+  <table>
+    <tr><td class="label">Number</td><td>{{ invoice.number }}</td></tr>
+    <tr><td class="label">Issued</td><td>{{ issued_at|date:"M j, Y" }}</td></tr>
+    <tr><td class="label">Reference</td><td>{{ booking.reference }}</td></tr>
+  </table>
+</div>
+
+<div class="parties">
+  <div>
+    <h2>Billed to</h2>
+    {{ s.billed_to.name }}<br>
+    {{ s.billed_to.email }}<br>
+    {{ s.billed_to.phone }}
+  </div>
+  <div>
+    <h2>Event</h2>
+    {{ event.date|date:"l, F j, Y" }}{% if event.start_time %}, starts {{ event.start_time|time:"g:i A" }}{% endif %}<br>
+    <span style="white-space: pre-line">{{ event.address }}</span>
+  </div>
+</div>
+
+<table class="lines">
+  <thead><tr><th>Description</th><th class="num">Qty</th><th class="num">Unit price</th><th class="num">Amount</th></tr></thead>
+  <tbody>
+    {% for line in s.packages %}<tr><td>{{ line.name }} (package)</td><td class="num">{{ line.quantity }}</td><td class="num">{{ line.unit_price|usd }}</td><td class="num">{{ line.amount|usd }}</td></tr>{% endfor %}
+    {% for line in s.items %}<tr><td>{{ line.name }}</td><td class="num">{{ line.quantity }}</td><td class="num">{{ line.unit_price|usd }}</td><td class="num">{{ line.amount|usd }}</td></tr>{% endfor %}
+  </tbody>
+</table>
+
+<table class="totals">
+  <tr><td>Subtotal</td><td class="num">{{ s.subtotal|usd }}</td></tr>
+  {% if s.discount|nonzero %}<tr><td>Discount{% if s.promo_code %} ({{ s.promo_code }}){% endif %}</td><td class="num">-{{ s.discount|usd }}</td></tr>{% endif %}
+  {% if s.delivery_fee|nonzero %}<tr><td>Delivery</td><td class="num">{{ s.delivery_fee|usd }}</td></tr>{% endif %}
+  {% if s.setup_fee|nonzero %}<tr><td>Setup</td><td class="num">{{ s.setup_fee|usd }}</td></tr>{% endif %}
+  {% if s.tax_exempt %}
+  <tr><td>Sales tax: exempt{% if s.tax_exempt_certificate %} (certificate {{ s.tax_exempt_certificate }}){% endif %}</td><td class="num">{{ s.tax|usd }}</td></tr>
+  {% elif s.tax|nonzero %}
+  <tr><td>Sales tax ({{ s.tax_rate }}%)</td><td class="num">{{ s.tax|usd }}</td></tr>
+  {% endif %}
+  <tr class="grand"><td>Rental total</td><td class="num">{{ s.total|usd }}</td></tr>
+  <tr><td>Amount paid</td><td class="num">{{ s.amount_paid|usd }}</td></tr>
+  <tr class="grand"><td>Balance due</td><td class="num">{{ s.balance_due|usd }}</td></tr>
+</table>
+
+{% if s.caution_fee|nonzero or s.caution_held|nonzero %}
+<div class="box caution">
+  <h2>Refundable caution deposit</h2>
+  <p>Caution deposit: <strong>{{ s.caution_fee|usd }}</strong>. This is not part of the rental total. It is held against damage or loss and refunded after your items are returned in good condition.</p>
+  <p>Held so far: {{ s.caution_held|usd }}{% if s.caution_due|nonzero %} · Still to pay: {{ s.caution_due|usd }}{% endif %}</p>
+</div>
+{% endif %}
+
+{% if payment and not refund %}
+<div class="box">
+  <h2>Payment received</h2>
+  <table>
+    <tr><td class="label">Amount</td><td>{{ payment.total|usd }}{% if payment.caution_amount|nonzero %} ({{ payment.amount|usd }} rental + {{ payment.caution_amount|usd }} refundable caution deposit){% endif %}</td></tr>
+    <tr><td class="label">For</td><td>{{ payment.kind }}</td></tr>
+    {% if payment.method %}<tr><td class="label">Method</td><td>{{ payment.method }}</td></tr>{% endif %}
+    {% if payment.received_at %}<tr><td class="label">Date</td><td>{{ payment.received_at|date:"M j, Y" }}</td></tr>{% endif %}
+    {% if payment.reference %}<tr><td class="label">Reference</td><td>{{ payment.reference }}</td></tr>{% endif %}
+  </table>
+</div>
+{% endif %}
+
+{% if is_reversal %}
+<div class="box" style="border-color: #c2185b">
+  <h2>Refund did not go through</h2>
+  <p>The {{ refund.kind|lower }} of <strong>{{ refund.amount|usd }}</strong> shown on refund receipt {{ s.reverses }} was returned by the bank or card company and did not reach you. That receipt is corrected by this document. The money is back on your booking and the totals above include it.</p>
+  {% if refund.reference %}<p class="muted">Refund reference: {{ refund.reference }}</p>{% endif %}
+</div>
+{% elif refund %}
+<div class="box">
+  <h2>{{ refund.kind }}</h2>
+  <table>
+    <tr><td class="label">Amount refunded</td><td>{{ refund.amount|usd }}</td></tr>
+    {% if refund.method %}<tr><td class="label">Method</td><td>{{ refund.method }}</td></tr>{% endif %}
+    {% if refund.refunded_at %}<tr><td class="label">Date</td><td>{{ refund.refunded_at|date:"M j, Y" }}</td></tr>{% endif %}
+    {% if refund.reference %}<tr><td class="label">Reference</td><td>{{ refund.reference }}</td></tr>{% endif %}
+  </table>
+  <p class="muted">Card and bank refunds can take 5 to 10 business days to appear.</p>
+</div>
+{% endif %}
+
+<div class="box">
+  {% if s.balance_due|nonzero %}
+  <p class="due">Balance due: {{ s.balance_due|usd }}</p>
+  <p>Pay by card or bank account online: <a href="{{ balance_url }}">{{ balance_url }}</a></p>
+  {% if booking.hold_expires_at and not refund %}<p>Pay by {{ booking.hold_expires_at|date:"l, M j, Y, g:i A T" }} to keep your booking.</p>{% endif %}
+  {% else %}
+  <p class="paid-in-full">Rental paid in full. Thank you!</p>
+  {% endif %}
+  <p>View your booking: <a href="{{ status_url }}">{{ status_url }}</a></p>
+</div>
+
+{% if s.balance_due|nonzero and not refund %}
+<div class="box">
+  <h2>Paying by Zelle, Cash App or bank deposit</h2>
+  <p>Put <strong>{{ s.payment_memo }}</strong> in the payment note so we can match your payment.</p>
+  <div class="instructions">
+    {% for option in s.payment_instructions %}
+    <div>
+      <strong>{{ option.method }}</strong><br>
+      {% for label, value in option.details %}{{ label }}: {{ value|default:"Ask us" }}<br>{% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% if s.note %}<div class="note"><strong>Note:</strong> {{ s.note }}</div>{% endif %}
+
+<p class="muted" style="margin-top: 16pt">Questions? Call {{ s.business.phone }} or email {{ s.business.email }} and quote {{ booking.reference }}.</p>
+</body>
+</html>

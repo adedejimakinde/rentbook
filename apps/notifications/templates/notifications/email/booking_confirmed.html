@@ -1,0 +1,9 @@
+{% extends "notifications/email/base.html" %}{% load money %}
+{% block title %}Your booking is confirmed{% endblock %}
+{% block preheader %}We received {{ s.payment.total|usd }}. See you on {{ booking.event_date|date:"M j, Y" }}.{% endblock %}
+{% block heading %}Your booking is confirmed{% endblock %}
+{% block body %}
+<p style="margin:0 0 16px;">Hi {{ booking.customer_name }}, we received your payment of <strong>{{ s.payment.total|usd }}</strong> and your booking for <strong>{{ booking.event_date|date:"l, F j, Y" }}</strong> is confirmed.</p>
+{% include "notifications/email/_amounts.html" %}
+<p style="margin:0 0 16px;">Your invoice and your receipt ({{ receipt.number }}) are attached as PDFs.</p>
+{% endblock %}

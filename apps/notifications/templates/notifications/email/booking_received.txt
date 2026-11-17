@@ -1,0 +1,12 @@
+{% extends "notifications/email/base.txt" %}{% load money %}
+{% block heading %}We received your booking{% endblock %}
+{% block body %}Hi {{ booking.customer_name }}, thank you for booking with us for {{ booking.event_date|date:"l, F j, Y" }}. Your items are on hold.
+{% if to_send is not None %}
+{{ plan_label }}: send {{ to_send|usd }} by {{ choice_label }}{% if caution|nonzero %} (includes a {{ caution|usd }} refundable caution deposit){% endif %}.
+Pay by {{ deadline|date:"l, M j, Y, g:i A T" }}. If the payment has not arrived by then, the hold ends and the items are released.
+{% endif %}
+{% for label, value in details %}{{ label }}: {{ value|default:"Ask us" }}
+{% endfor %}Memo or note: {{ memo }}
+
+Put {{ memo }} in the payment note so we can match it. We confirm your booking by email once the payment arrives.
+{% endblock %}

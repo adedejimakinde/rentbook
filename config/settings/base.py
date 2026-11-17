@@ -134,6 +134,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "payments.sync_stale_payments",
         "schedule": 15 * 60,
     },
+    "issue-missing-documents": {
+        "task": "invoices.issue_missing_documents",
+        "schedule": 15 * 60,
+    },
     "sync-recent-paid-bookings": {
         "task": "payments.sync_recent_paid_bookings",
         "schedule": 60 * 60,
@@ -205,6 +209,9 @@ EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
 EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=False)
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default=BUSINESS_EMAIL)
+# Resend, through django-anymail, sends email in production (see prod.py).
+RESEND_API_KEY = env("RESEND_API_KEY", default="")
+ANYMAIL = {"RESEND_API_KEY": RESEND_API_KEY}
 
 
 # Error tracking. Sentry starts only when SENTRY_DSN is set; leave it empty in development.

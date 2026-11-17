@@ -1,0 +1,8 @@
+{% extends "notifications/email/base.html" %}{% load money %}
+{% block title %}Your invoice {{ invoice.number }}{% endblock %}
+{% block preheader %}Invoice {{ invoice.number }} for your event on {{ booking.event_date|date:"M j, Y" }}.{% endblock %}
+{% block heading %}Your invoice{% endblock %}
+{% block body %}
+<p style="margin:0 0 16px;">Hi {{ booking.customer_name }}, here is invoice <strong>{{ invoice.number }}</strong> for your event on <strong>{{ booking.event_date|date:"l, F j, Y" }}</strong>. It is attached as a PDF.</p>
+{% include "notifications/email/_amounts.html" %}
+{% endblock %}

@@ -1,0 +1,6 @@
+{% extends "notifications/email/base.txt" %}{% load money %}
+{% block heading %}Your invoice{% endblock %}
+{% block body %}Hi {{ booking.customer_name }}, here is invoice {{ invoice.number }} for your event on {{ booking.event_date|date:"l, F j, Y" }}. It is attached as a PDF.
+
+{% include "notifications/email/_amounts.txt" %}
+{% endblock %}

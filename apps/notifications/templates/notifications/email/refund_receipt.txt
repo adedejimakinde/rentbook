@@ -1,0 +1,10 @@
+{% extends "notifications/email/base.txt" %}{% load money %}
+{% block heading %}Your refund{% endblock %}
+{% block body %}Hi {{ booking.customer_name }}, we sent you a {{ s.refund.kind|lower }} of {{ s.refund.amount|usd }}{% if s.refund.method %} by {{ s.refund.method }}{% endif %}.
+
+Card and bank refunds can take 5 to 10 business days to appear on your statement.
+
+{% include "notifications/email/_amounts.txt" %}
+
+Your refund receipt {{ receipt.number }} is attached as a PDF.
+{% endblock %}

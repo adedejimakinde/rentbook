@@ -1,0 +1,8 @@
+{% extends "notifications/email/base.txt" %}{% load money %}
+{% block heading %}Your booking is confirmed{% endblock %}
+{% block body %}Hi {{ booking.customer_name }}, we received your payment of {{ s.payment.total|usd }} and your booking for {{ booking.event_date|date:"l, F j, Y" }} is confirmed.
+
+{% include "notifications/email/_amounts.txt" %}
+
+Your invoice and your receipt ({{ receipt.number }}) are attached as PDFs.
+{% endblock %}

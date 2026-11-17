@@ -298,4 +298,6 @@ def status(request, token):
         return render(request, "bookings/link_invalid.html", {}, status=404)
     context = status_summary(booking)
     context["meta_title"] = f"Booking #{booking.pk}"
+    context["token"] = token
+    context["documents"] = list(booking.invoices.order_by("issued_at", "pk"))
     return render(request, "bookings/status.html", context)

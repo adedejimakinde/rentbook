@@ -1,0 +1,9 @@
+{% extends "notifications/email/base.html" %}{% load money %}
+{% block title %}Your refund did not go through{% endblock %}
+{% block preheader %}The refund of {{ s.refund.amount|usd }} on receipt {{ s.reverses }} did not go through.{% endblock %}
+{% block heading %}Your refund did not go through{% endblock %}
+{% block body %}
+<p style="margin:0 0 16px;">Hi {{ booking.customer_name }}, the {{ s.refund.kind|lower }} of <strong>{{ s.refund.amount|usd }}</strong> on receipt {{ s.reverses }} was returned to us by the bank or card company, so it did not reach you. The money is back on your booking.</p>
+<p style="margin:0 0 16px;">We will contact you to send it another way. Your refund receipt {{ s.reverses }} is replaced by the attached correction {{ reversal.number }}.</p>
+{% include "notifications/email/_amounts.html" %}
+{% endblock %}

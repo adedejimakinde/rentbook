@@ -1,0 +1,14 @@
+{% extends "notifications/email/base.txt" %}{% load money %}
+{% block heading %}New booking #{{ booking.pk }}{% endblock %}
+{% block body %}{{ booking.customer_name }}
+{{ booking.email }} · {{ booking.phone }}
+
+Event: {{ booking.event_date|date:"l, M j, Y" }}{% if booking.event_start_time %}, starts {{ booking.event_start_time|time:"g:i A" }}{% endif %}
+{{ booking.delivery_address }}
+
+Rental total: {{ total|usd }}{% if caution_fee %} · Caution: {{ caution_fee|usd }}{% endif %}
+Paying by: {{ booking.get_payment_choice_display|default:"not chosen" }}{% if booking.payment_plan %} ({{ booking.get_payment_plan_display|lower }}){% endif %}
+Hold ends: {{ booking.hold_expires_at|date:"M j, g:i A T"|default:"no hold" }}
+
+Open in the admin: {{ admin_url }}
+{% endblock %}

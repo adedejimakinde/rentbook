@@ -18,6 +18,7 @@ from apps.bookings.services import booking_flow, links
 from apps.bookings.services import cart as cart_service
 from apps.payments.models import Payment
 from apps.payments.services import ledger
+from apps.payments.services import manual as manual_service
 from apps.payments.services import status as payment_status
 from apps.payments.services import stripe as stripe_service
 
@@ -51,23 +52,6 @@ def _booking_or_error(request, token, purpose):
         return None, render(request, "bookings/link_invalid.html", {}, status=404)
 
 
-def manual_details():
-    """Zelle, Cash App and bank details from settings, for the instructions page."""
-    return {
-        PaymentChoice.ZELLE: [
-            ("Send to", settings.ZELLE_RECIPIENT),
-            ("Name shown", settings.ZELLE_NAME),
-        ],
-        PaymentChoice.CASHAPP: [("Cash App tag", settings.CASHAPP_TAG)],
-        PaymentChoice.BANK_DEPOSIT: [
-            ("Bank", settings.BANK_NAME),
-            ("Account name", settings.BANK_ACCOUNT_NAME),
-            ("Account number", settings.BANK_ACCOUNT_NUMBER),
-            ("Routing number", settings.BANK_ROUTING_NUMBER),
-        ],
-    }
-
-
 @never_cache
 @require_GET
 def manual(request, token):
@@ -83,13 +67,13 @@ def manual(request, token):
     choice = booking.payment_choice or PaymentChoice.ZELLE
     context = {
         "booking": booking,
-        "reference": f"Booking {booking.pk}",
+        "reference": manual_service.payment_memo(booking),
         "amount": amount,
         "caution": caution,
         "to_send": amount + caution if amount is not None else None,
         "plan_label": PaymentPlan(plan).label,
         "choice_label": PaymentChoice(choice).label,
-        "details": manual_details().get(choice, []),
+        "details": manual_service.manual_details().get(choice, []),
         "deadline": booking.hold_expires_at,
         "status_url": reverse("bookings:status", args=[links.make_token(booking, links.STATUS)]),
         "meta_title": "How to pay",

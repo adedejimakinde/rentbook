@@ -1,0 +1,6 @@
+{% load money %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 16px;border-collapse:collapse;font-family:Montserrat,Arial,Helvetica,sans-serif;font-size:16px;">
+  <tr><td style="padding:6px 0;border-bottom:1px solid #e3d6f3;">Rental total</td><td align="right" style="padding:6px 0;border-bottom:1px solid #e3d6f3;">{{ s.total|usd }}</td></tr>
+  <tr><td style="padding:6px 0;border-bottom:1px solid #e3d6f3;">Paid so far</td><td align="right" style="padding:6px 0;border-bottom:1px solid #e3d6f3;">{{ s.amount_paid|usd }}</td></tr>
+  <tr><td style="padding:6px 0;border-bottom:1px solid #e3d6f3;font-weight:bold;">Balance due</td><td align="right" style="padding:6px 0;border-bottom:1px solid #e3d6f3;font-weight:bold;">{{ s.balance_due|usd }}</td></tr>
+  {% if s.caution_fee|nonzero or s.caution_held|nonzero %}<tr><td style="padding:6px 0;">Refundable caution deposit held</td><td align="right" style="padding:6px 0;">{{ s.caution_held|usd }}</td></tr>{% endif %}
+</table>
