@@ -5,6 +5,7 @@ from django.contrib import messages
 from django.db import connection
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
+from django.templatetags.static import static
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
@@ -175,6 +176,24 @@ def links(request):
         "Book party rentals, browse our catalogue, chat on WhatsApp or call Atglace Events & "
         "Rentals in DFW.",
     )
+
+
+@require_GET
+def manifest(request):
+    """Web app manifest listing the site icons."""
+    data = {
+        "name": settings.BUSINESS_NAME,
+        "short_name": "Atglace",
+        "start_url": "/",
+        "display": "browser",
+        "theme_color": "#6A0DAD",
+        "background_color": "#FFFFFF",
+        "icons": [
+            {"src": static("brand/icon-192.png"), "sizes": "192x192", "type": "image/png"},
+            {"src": static("brand/icon-512.png"), "sizes": "512x512", "type": "image/png"},
+        ],
+    }
+    return JsonResponse(data, content_type="application/manifest+json")
 
 
 @require_GET

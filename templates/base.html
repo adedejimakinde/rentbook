@@ -12,8 +12,15 @@
   <meta property="og:description" content="{{ meta_description|default:business_tagline }}">
   <meta property="og:url" content="{{ site_url }}{{ request.path }}">
   {% og_image_url meta_image as og_image %}{% if og_image %}<meta property="og:image" content="{{ og_image }}">
-  <meta name="twitter:card" content="summary_large_image">{% else %}<meta name="twitter:card" content="summary">{% endif %}
+  <meta name="twitter:card" content="summary_large_image">{% else %}<meta property="og:image" content="{{ site_url }}{% static 'brand/og-icon-512.png' %}">
+  <meta property="og:image:width" content="512">
+  <meta property="og:image:height" content="512">
+  <meta name="twitter:card" content="summary">{% endif %}
   <meta name="theme-color" content="#6A0DAD">
+  <link rel="icon" href="{% static 'brand/favicon.ico' %}" sizes="48x48">
+  <link rel="icon" href="{% static 'brand/icon-192.png' %}" type="image/png" sizes="192x192">
+  <link rel="apple-touch-icon" href="{% static 'brand/apple-touch-icon.png' %}">
+  <link rel="manifest" href="{% url 'core:manifest' %}">
   <link rel="preload" href="{% static 'fonts/montserrat-latin-500-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
   {% tailwind_css %}
   <script src="{% static 'js/htmx.min.js' %}" defer></script>
@@ -28,11 +35,7 @@
   <header class="border-b-4 border-gold bg-white" x-data="{ open: false }">
     <div class="mx-auto flex max-w-5xl items-center justify-between gap-2 px-4 py-2">
       <a href="{% url 'core:home' %}" class="flex min-h-11 items-center gap-2 font-bold text-primary" aria-label="{{ business_name }} home">
-        <svg width="40" height="40" viewBox="0 0 40 40" role="img" aria-label="Logo placeholder" class="shrink-0">
-          <rect width="40" height="40" rx="8" fill="#6A0DAD"/>
-          <text x="20" y="27" text-anchor="middle" font-size="20" font-weight="700" fill="#fff" font-family="system-ui, sans-serif">A</text>
-        </svg>
-        <span class="text-lg leading-none">Atglace</span>
+        <img src="{% static 'brand/atglace-logo-header-320.webp' %}" width="320" height="170" alt="Atglace Events &amp; Rentals LLC" class="h-12 w-auto">
       </a>
 
       <nav class="hidden items-center gap-5 md:flex" aria-label="Main">
@@ -66,7 +69,7 @@
   {% block footer %}
   <footer class="mt-12 border-t-4 border-gold bg-ink text-white">
     <div class="mx-auto max-w-5xl space-y-2 px-4 py-8">
-      <p class="text-lg font-bold">{{ business_name }}</p>
+      <img src="{% static 'brand/atglace-logo-header-white.webp' %}" width="640" height="339" alt="Atglace Events &amp; Rentals LLC" loading="lazy" decoding="async" class="h-16 w-auto">
       <nav aria-label="Footer" class="flex flex-wrap gap-x-5">
         {% include "core/_nav_links.html" with link_class="inline-flex min-h-11 items-center underline" %}
       </nav>
