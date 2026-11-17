@@ -255,8 +255,8 @@ def test_sms_box_is_unticked_with_the_exact_wording(client, items, event_date, t
     html = page(client.get(CONTACT))
     assert SMS_CONSENT_TEXT in html
     assert (
-        "Text me booking updates and reminders. Message and data rates may apply. "
-        "Reply STOP to opt out."
+        "Text or WhatsApp me booking updates and reminders. Message and data rates may "
+        "apply. Reply STOP to opt out."
     ) == SMS_CONSENT_TEXT
     box = html[html.index('name="sms_consent"') :].split(">")[0]
     assert "checked" not in box
@@ -270,7 +270,7 @@ def test_sms_consent_is_stored_with_version_and_time(client, items, event_date, 
     client.post(REVIEW, review_data())
     booking = Booking.objects.get()
     assert booking.sms_consent
-    assert booking.sms_consent_version == SMS_CONSENT_VERSION
+    assert booking.sms_consent_version == SMS_CONSENT_VERSION == "v2"
     assert before <= booking.sms_consent_at <= timezone.now()
 
 

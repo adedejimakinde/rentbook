@@ -40,10 +40,19 @@ REMINDER_KINDS = set(REMINDER_SWITCHES)
 ACTIVE_STATUSES = (Booking.Status.DEPOSIT_PAID, Booking.Status.PAID, Booking.Status.DELIVERED)
 FINISHED_STATUSES = (*ACTIVE_STATUSES, Booking.Status.RETURNED)
 
-PREPARE = (
-    "please clear the setup area, have a power outlet within reach for inflatables and "
-    "machines, and keep pets away"
-)
+POWER_LINE = "have a power outlet within reach for inflatables and machines"
+
+
+def needs_power(booking):
+    """True when any item on the booking (including package contents) needs an outlet."""
+    return booking.items.filter(variant__item__needs_power=True).exists()
+
+
+def prepare_text(booking):
+    """What the customer should do before the crew arrives."""
+    if needs_power(booking):
+        return f"please clear the setup area, {POWER_LINE}, and keep pets away"
+    return "please clear the setup area and keep pets away"
 
 
 def is_owner_kind(kind):
@@ -148,7 +157,7 @@ def build(kind, booking, extra=None):
         address = " ".join(booking.delivery_address.split())
         text = (
             f"See you tomorrow! Booking {ref}{setup} at {address}. Before we arrive, "
-            f"{PREPARE}. Questions? Call {settings.BUSINESS_PHONE}."
+            f"{prepare_text(booking)}. Questions? Call {settings.BUSINESS_PHONE}."
         )
     elif kind == "thank_you":
         link = settings.REVIEW_URL

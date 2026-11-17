@@ -106,6 +106,7 @@ class ItemAdminForm(forms.ModelForm):
             "base_price",
             "caution_fee",
             "is_featured",
+            "needs_power",
             "is_active",
         ]
 

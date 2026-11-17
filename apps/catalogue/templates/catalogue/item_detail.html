@@ -63,10 +63,10 @@
       <ul class="mt-2 list-disc space-y-1 pl-5">{% for line in item.whats_included %}<li>{{ line }}</li>{% endfor %}</ul>
     </section>
     {% endif %}
-    {% if item.specs %}
+    {% if item.specs or item.needs_power %}
     <section>
       <h2 class="flex items-center gap-2 text-xl font-bold text-primary">{% include "core/_sparkle.html" %}Specs</h2>
-      <dl class="mt-2 divide-y divide-primary/10">{% for spec in item.specs %}<div class="flex justify-between gap-4 py-2"><dt class="font-bold">{{ spec.name }}</dt><dd>{{ spec.value }}</dd></div>{% endfor %}</dl>
+      <dl class="mt-2 divide-y divide-primary/10">{% for spec in item.specs %}<div class="flex justify-between gap-4 py-2"><dt class="font-bold">{{ spec.name }}</dt><dd>{{ spec.value }}</dd></div>{% endfor %}{% if item.needs_power %}<div class="flex justify-between gap-4 py-2"><dt class="font-bold">Power</dt><dd>Needs a power outlet</dd></div>{% endif %}</dl>
     </section>
     {% endif %}
   </div>

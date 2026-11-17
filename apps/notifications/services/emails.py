@@ -314,7 +314,7 @@ def build_pre_event(booking_id):
         f"pre_event:{booking.pk}",
         booking,
         "See you tomorrow",
-        prepare=messages.PREPARE,
+        prepare=messages.prepare_text(booking),
     )
 
 

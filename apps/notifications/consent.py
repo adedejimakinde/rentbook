@@ -1,7 +1,10 @@
-"""The SMS consent wording shown at the contact step. Change the version with the wording."""
+"""Consent to texts (SMS and WhatsApp) at the contact step. Change the version with the wording.
 
-SMS_CONSENT_VERSION = "v1"
+v1 (SMS only): "Text me booking updates and reminders. ..." stays on older bookings.
+"""
+
+SMS_CONSENT_VERSION = "v2"
 SMS_CONSENT_TEXT = (
-    "Text me booking updates and reminders. Message and data rates may apply. "
+    "Text or WhatsApp me booking updates and reminders. Message and data rates may apply. "
     "Reply STOP to opt out."
 )

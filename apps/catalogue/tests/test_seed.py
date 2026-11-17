@@ -79,3 +79,31 @@ def test_seed_never_overwrites_staff_edits():
     assert item.base_price == Decimal("150.00")
     assert item.short_description == "Edited by staff"
     assert (variant.stock_quantity, variant.stock_confirmed) == (4, True)
+
+
+POWERED = {
+    "Bounce house",
+    "Combo bounce house",
+    "Water slide",
+    "Obstacle course",
+    "Popcorn machine",
+    "Cotton candy machine",
+    "Margarita machine",
+    "Slushy machine",
+    "Golf simulator",
+}
+
+
+def test_seed_marks_the_items_that_need_power():
+    seed()
+    powered = set(Item.objects.filter(needs_power=True).values_list("name", flat=True))
+    assert powered == POWERED
+
+
+def test_seed_never_overwrites_a_staff_power_edit():
+    seed()
+    Item.objects.filter(name="Bounce house").update(needs_power=False)
+    Item.objects.filter(name="Generator").update(needs_power=True)
+    seed()
+    assert not Item.objects.get(name="Bounce house").needs_power
+    assert Item.objects.get(name="Generator").needs_power

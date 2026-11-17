@@ -9,6 +9,7 @@ from django.conf import settings as django_settings
 from django.utils import timezone
 
 from apps.bookings.models import Booking
+from apps.catalogue.models import Item
 from apps.core import site_settings
 from apps.notifications.models import Notification
 from apps.notifications.services import messages, reminders
@@ -230,6 +231,7 @@ def test_pre_event_reminder_the_day_before_at_10_am(setup):
         setup_by_time=datetime.min.time().replace(hour=14),
         delivery_address="12 Oak Lane\nPlano, TX 75024",
     )
+    Item.objects.filter(variants__booking_items__booking=booking).update(needs_power=True)
     setup(on(0, 9, 45))
     assert emails(setup.outbox, "See you tomorrow") == []
     setup(on(0, 10, 0))
@@ -249,6 +251,28 @@ def test_pre_event_reminder_the_day_before_at_10_am(setup):
     setup(on(0, 20))
     assert len(emails(setup.outbox, "See you tomorrow")) == 1
     assert booking.notifications.filter(kind="pre_event", channel="sms").count() == 1
+
+
+def test_pre_event_reminder_leaves_out_the_power_line_when_nothing_needs_power(setup):
+    full_booking(event_date=TODAY + timedelta(days=1))
+    setup(on(0, 10))
+    (email,) = emails(setup.outbox, "See you tomorrow")
+    (sms,) = setup.twilio.to(CUSTOMER_PHONE)
+    for body in (email.body, sms["body"]):
+        assert "power outlet" not in body
+        assert "clear the setup area and keep pets away" in body
+
+
+def test_power_line_comes_from_package_contents_too(setup):
+    from apps.bookings.tests.factories import BookingItemFactory, ItemVariantFactory
+
+    booking = full_booking(event_date=TODAY + timedelta(days=1))
+    machine = ItemVariantFactory(item__name="Popcorn machine", item__needs_power=True)
+    BookingItemFactory(booking=booking, variant=machine, quantity=1, package_quantity=1)
+    assert messages.needs_power(booking)
+    setup(on(0, 10))
+    (sms,) = setup.twilio.to(CUSTOMER_PHONE)
+    assert "power outlet within reach" in sms["body"]
 
 
 def test_no_pre_event_reminder_when_cancelled(setup):

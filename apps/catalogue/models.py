@@ -80,6 +80,9 @@ class Item(TimeStampedModel):
         help_text='Ordered list of {"name": ..., "value": ...} pairs, e.g. Size: 13 x 13 ft.',
     )
     is_featured = models.BooleanField(default=False)
+    needs_power = models.BooleanField(
+        default=False, help_text="Needs a power outlet at the setup spot (inflatables, machines)."
+    )
     base_price = models.DecimalField(
         max_digits=10, decimal_places=2, validators=[MinValueValidator(0)]
     )
