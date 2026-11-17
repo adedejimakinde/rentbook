@@ -13,11 +13,11 @@
     <input id="cart-zip" type="text" name="zip_code" value="{{ cart.zip_code }}" inputmode="numeric" autocomplete="postal-code" maxlength="10" class="min-h-11 w-full rounded-lg border-2 border-primary/40 bg-white px-3"{% if cart.errors.zip or zip_error %} aria-invalid="true" aria-describedby="cart-zip-error"{% endif %}>
     {% if zip_error %}<p id="cart-zip-error" role="alert" class="mt-1 text-sm font-bold text-[#7f1d1d]">{{ zip_error }}</p>{% else %}{% include "bookings/_field_errors.html" with errors=cart.errors.zip id="cart-zip" %}{% endif %}
   </div>
-  <div>
+  {% if cart.promo_enabled %}<div>
     <label for="cart-promo" class="block font-bold">Promo code (optional)</label>
     <input id="cart-promo" type="text" name="promo_code" value="{{ cart.promo_code }}" maxlength="40" autocomplete="off" class="min-h-11 w-full rounded-lg border-2 border-primary/40 bg-white px-3"{% if cart.errors.promo %} aria-invalid="true" aria-describedby="cart-promo-error"{% endif %}>
     {% include "bookings/_field_errors.html" with errors=cart.errors.promo id="cart-promo" %}
-  </div>
+  </div>{% endif %}
   <button type="submit" class="min-h-11 rounded-lg border-2 border-primary px-4 font-bold text-primary sm:col-span-3 sm:justify-self-start">Update quote</button>
 </form>
 

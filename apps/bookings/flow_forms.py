@@ -9,7 +9,9 @@ from django.utils.safestring import mark_safe
 from apps.bookings.models import EventType, PaymentChoice, PaymentPlan, Surface, normalise_zip
 from apps.bookings.services.availability import notice_problem
 from apps.bookings.services.quote import zone_for_zip
+from apps.core import site_settings
 from apps.core.forms import INPUT
+from apps.notifications.consent import SMS_CONSENT_TEXT
 
 CHOICE_INPUT = "h-5 w-5 accent-primary"
 
@@ -141,6 +143,20 @@ class ContactForm(forms.Form):
         required=False,
         widget=forms.TextInput(attrs={"class": INPUT}),
     )
+    sms_consent = forms.BooleanField(
+        label=SMS_CONSENT_TEXT,
+        required=False,
+        widget=forms.CheckboxInput(attrs={"class": CHOICE_INPUT}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        """Leave out the SMS box when texts are off, and tax exemption when requests are off."""
+        super().__init__(*args, **kwargs)
+        if not site_settings.sms().active:
+            del self.fields["sms_consent"]
+        if not site_settings.tax_exempt_requests_enabled():
+            for name in ("tax_exempt", "org_name", "cert_number"):
+                del self.fields[name]
 
     def clean_phone(self):
         phone = self.cleaned_data["phone"].strip()
@@ -159,7 +175,7 @@ class ContactForm(forms.Form):
 
     def to_session(self):
         data = self.cleaned_data
-        exempt = data["tax_exempt"]
+        exempt = data.get("tax_exempt", False)
         return {
             "name": data["name"].strip(),
             "email": data["email"],
@@ -167,6 +183,7 @@ class ContactForm(forms.Form):
             "tax_exempt": exempt,
             "org_name": data["org_name"].strip() if exempt else "",
             "cert_number": data["cert_number"].strip() if exempt else "",
+            "sms_consent": data.get("sms_consent", False),
         }
 
 
@@ -190,7 +207,17 @@ class ReviewForm(forms.Form):
     )
 
     def __init__(self, *args, **kwargs):
+        """Offer only the plans and payment methods the owner has switched on."""
         super().__init__(*args, **kwargs)
+        if not site_settings.deposit_allowed():
+            self.fields["plan"].choices = [(PaymentPlan.FULL, PaymentPlan.FULL.label)]
+            self.fields["plan"].initial = PaymentPlan.FULL
+        active = site_settings.active_payment_choices()
+        self.fields["choice"].choices = [
+            (value, label) for value, label in PaymentChoice.choices if value in active
+        ]
+        if active and self.fields["choice"].initial not in active:
+            self.fields["choice"].initial = active[0]
         terms_url = reverse("core:terms")
         self.fields["accept_terms"].label = mark_safe(  # noqa: S308
             f'I have read and accept the <a href="{terms_url}" target="_blank" '

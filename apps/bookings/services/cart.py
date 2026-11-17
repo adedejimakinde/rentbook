@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 
 from apps.bookings.services import quote as quote_service
 from apps.catalogue.models import ItemVariant, Package
+from apps.core import site_settings
 from apps.core.services import get_event_date, get_event_zip
 
 CART_KEY = "cart"
@@ -136,6 +137,9 @@ def clear(request):
 
 
 def get_promo(request):
+    """The promo code entered in the cart, or "" while promo codes are switched off."""
+    if not site_settings.promo_codes_enabled():
+        return ""
     return request.session.get(PROMO_KEY, "")
 
 
@@ -155,6 +159,7 @@ class CartView:
     event_date: object
     zip_code: str
     promo_code: str
+    promo_enabled: bool = True
     quote: object = None
     errors: dict = field(default_factory=dict)
     line_errors: dict = field(default_factory=dict)
@@ -195,6 +200,7 @@ def cart_view(request, event_date=None, zip_code=None):
     zip_code = zip_code if zip_code is not None else get_event_zip(request)
     view = CartView(lines=[], event_date=event_date, zip_code=zip_code, promo_code="")
     view.promo_code = get_promo(request)
+    view.promo_enabled = site_settings.promo_codes_enabled()
     if not lines:
         view.errors["general"] = ["Your cart is empty. Add rentals to get a quote."]
         return view

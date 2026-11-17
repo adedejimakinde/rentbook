@@ -26,7 +26,9 @@ from apps.bookings.models import (
 from apps.bookings.services import availability, lifecycle, quote
 from apps.invoices.admin import documents_table
 from apps.invoices.forms import ManualInvoiceForm
+from apps.notifications.admin import notifications_table
 from apps.notifications.services import emails as email_service
+from apps.notifications.services import reminders
 from apps.payments.admin import TAX_EXEMPTION_PERMISSION, BookingPaymentActionsMixin
 
 # Statuses staff may set by hand. Every other status is reached through a
@@ -186,6 +188,7 @@ class BookingAdmin(BookingPaymentActionsMixin, ModelAdmin):
         "reopen_booking",
         "issue_manual_invoice",
         "send_invoice_to_customer",
+        "resend_last_reminder",
     ]
     ledger_forms = {
         **BookingPaymentActionsMixin.ledger_forms,
@@ -217,13 +220,21 @@ class BookingAdmin(BookingPaymentActionsMixin, ModelAdmin):
         "terms_accepted_at",
         "payment_choice",
         "payment_plan",
+        "sms_consent",
+        "sms_consent_version",
+        "sms_consent_at",
         "invoices_and_receipts",
+        "notification_log",
     ]
     inlines = [BookingItemInline, BookingPackageInline]
 
     @admin.display(description="Invoices and receipts")
     def invoices_and_receipts(self, booking):
         return documents_table(booking)
+
+    @admin.display(description="Notification log")
+    def notification_log(self, booking):
+        return notifications_table(booking)
 
     def get_form(self, request, obj=None, change=False, **kwargs):
         """Tell the form whether this user can edit the lines, so it knows what to check."""
@@ -323,6 +334,25 @@ class BookingAdmin(BookingPaymentActionsMixin, ModelAdmin):
                 f"No invoice yet for booking {', '.join(missing)}. Add lines or issue a "
                 "manual invoice first.",
                 messages.ERROR,
+            )
+
+    @admin.action(description="Resend last reminder")
+    def resend_last_reminder(self, request, queryset):
+        """Send each booking's latest reminder again (consent and quiet hours still apply)."""
+        sent, none = [], []
+        for booking in queryset.order_by("pk"):
+            kind = reminders.resend_last(booking)
+            (sent if kind else none).append(f"#{booking.pk}")
+        if sent:
+            self.message_user(
+                request, f"Reminder sent again for booking {', '.join(sent)}.", messages.SUCCESS
+            )
+        if none:
+            self.message_user(
+                request,
+                f"No reminder to resend for booking {', '.join(none)} (none sent yet, or it no "
+                "longer applies).",
+                messages.WARNING,
             )
 
     @admin.action(description="Issue manual invoice (deal agreed offline)")

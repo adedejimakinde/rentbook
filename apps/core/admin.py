@@ -1,0 +1,101 @@
+"""Site settings: the owner's switches, one row, every change logged with who and when."""
+
+from django.contrib import admin
+from django.shortcuts import redirect
+from django.urls import reverse
+from django.utils import timezone
+from django.utils.html import format_html, format_html_join
+from unfold.admin import ModelAdmin
+
+from apps.core import site_settings
+from apps.core.models import SiteSettings, SiteSettingsChange
+
+
+@admin.register(SiteSettings)
+class SiteSettingsAdmin(ModelAdmin):
+    fieldsets = [
+        ("Status", {"fields": ["availability", "change_history"]}),
+        ("Booking", {"fields": ["online_booking_enabled", "allow_deposit"]}),
+        (
+            "Payment methods",
+            {
+                "fields": [
+                    "card_ach_enabled",
+                    "zelle_enabled",
+                    "cashapp_enabled",
+                    "bank_deposit_enabled",
+                ]
+            },
+        ),
+        ("Quotes", {"fields": ["promo_codes_enabled", "tax_exempt_requests_enabled"]}),
+        ("Messages", {"fields": ["sms_enabled", "whatsapp_enabled", "owner_alerts_enabled"]}),
+        (
+            "Reminders",
+            {
+                "fields": [
+                    "reminder_payment_deadline",
+                    "reminder_balance_due",
+                    "reminder_balance_final",
+                    "reminder_owner_unpaid",
+                    "reminder_pre_event",
+                    "reminder_thank_you",
+                ]
+            },
+        ),
+    ]
+    readonly_fields = ["availability", "change_history"]
+
+    @admin.display(description="What customers can use now")
+    def availability(self, row):
+        rows = []
+        for item in site_settings.all_availability(row):
+            if item.active:
+                state = "Available"
+            elif not item.configured:
+                state = f"Unavailable: not configured (set {', '.join(item.missing)})"
+            else:
+                state = "Off: switched off below"
+            rows.append((item.label, state))
+        return format_html(
+            "<ul>{}</ul>", format_html_join("", "<li><strong>{}</strong>: {}</li>", rows)
+        )
+
+    @admin.display(description="Change history")
+    def change_history(self, row):
+        changes = row.changes.select_related("changed_by")[:20] if row.pk else []
+        items = [
+            (
+                timezone.localtime(change.created_at).strftime("%b %d, %Y %H:%M"),
+                change.changed_by or "unknown",
+                ", ".join(
+                    f"{name}: {'on' if new else 'off'}" for name, (_, new) in change.changes.items()
+                ),
+            )
+            for change in changes
+        ]
+        if not items:
+            return "No changes yet."
+        return format_html("<ul>{}</ul>", format_html_join("", "<li>{} by {}: {}</li>", items))
+
+    def has_add_permission(self, request):
+        return not SiteSettings.objects.exists()
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def changelist_view(self, request, extra_context=None):
+        """There is one row: open it."""
+        row = site_settings.get()
+        return redirect(reverse("admin:core_sitesettings_change", args=[row.pk]))
+
+    def save_model(self, request, obj, form, change):
+        """Save, and record which switches changed, from what to what, and by whom."""
+        changes = {
+            name: [form.initial.get(name), form.cleaned_data.get(name)]
+            for name in form.changed_data
+        }
+        super().save_model(request, obj, form, change)
+        if changes:
+            SiteSettingsChange.objects.create(
+                settings=obj, changed_by=request.user, changes=changes
+            )

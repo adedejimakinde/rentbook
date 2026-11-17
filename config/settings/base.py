@@ -142,6 +142,14 @@ CELERY_BEAT_SCHEDULE = {
         "task": "payments.sync_recent_paid_bookings",
         "schedule": 60 * 60,
     },
+    "run-reminders": {
+        "task": "notifications.run_reminders",
+        "schedule": 15 * 60,
+    },
+    "send-due-notifications": {
+        "task": "notifications.send_due_notifications",
+        "schedule": 5 * 60,
+    },
 }
 
 # Days before and after an event during which its items stay unavailable.
@@ -235,3 +243,20 @@ UNFOLD = {
     # Every admin page: forms submit once, so a double click cannot save twice.
     "SCRIPTS": [lambda request: _static("core/js/submit_once.js")],
 }
+
+# Text messages through Twilio. SMS goes only to customers who ticked the consent
+# box; WhatsApp stays off unless WHATSAPP_ENABLED is true and the message kind has
+# an approved template. Owner alerts go to OWNER_PHONE.
+TWILIO_ACCOUNT_SID = env("TWILIO_ACCOUNT_SID", default="")
+TWILIO_AUTH_TOKEN = env("TWILIO_AUTH_TOKEN", default="")
+TWILIO_FROM_NUMBER = env("TWILIO_FROM_NUMBER", default="")
+WHATSAPP_ENABLED = env.bool("WHATSAPP_ENABLED", default=False)
+TWILIO_WHATSAPP_FROM = env("TWILIO_WHATSAPP_FROM", default="")
+# Approved WhatsApp templates (Twilio Content SIDs) by message kind, as
+# kind=HX...,kind=HX... A kind with no template is not sent on WhatsApp.
+WHATSAPP_TEMPLATES = env.dict("WHATSAPP_TEMPLATES", default={})
+OWNER_PHONE = env("OWNER_PHONE", default="")
+# Days before the event the first balance reminder goes out.
+BALANCE_DUE_DAYS_BEFORE = env.int("BALANCE_DUE_DAYS_BEFORE", default=7)
+# Link in the thank-you message after the event; no thank-you is sent without it.
+REVIEW_URL = env("REVIEW_URL", default="")
