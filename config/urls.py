@@ -20,6 +20,7 @@ urlpatterns = [
     path(settings.ADMIN_URL, admin.site.urls),
     path("sitemap.xml", sitemap, {"sitemaps": SITEMAPS}, name="sitemap"),
     path("payments/", include("apps.payments.urls")),
+    path("", include("apps.bookings.urls")),
     path("", include("apps.catalogue.urls")),
     path("", include("apps.core.urls")),
 ]

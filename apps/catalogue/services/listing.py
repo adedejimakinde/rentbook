@@ -1,7 +1,9 @@
 """Catalogue queries and the availability wording shown to visitors."""
 
 from dataclasses import dataclass
+from urllib.parse import quote
 
+from django.conf import settings
 from django.core.paginator import Paginator
 from django.db.models import Count, Prefetch, Q
 
@@ -106,3 +108,21 @@ def related_items(item, limit=4):
     return list(
         active_items().filter(category=item.category).exclude(pk=item.pk).order_by("name")[:limit]
     )
+
+
+DEFAULT_VARIANT_NAME = "Default"
+
+
+def price_enquiry_url(name, variant_name="", event_date=None):
+    """A WhatsApp link asking for a price, prefilled with the rental, option and event date.
+
+    For rentals with no online price ("Call for price"), which cannot go in the cart.
+    """
+    rental = name
+    if variant_name and variant_name != DEFAULT_VARIANT_NAME:
+        rental = f"{name} ({variant_name})"
+    message = f"Hi, could I get a price for the {rental}"
+    if event_date:
+        message += f" for my event on {event_date:%A, %B} {event_date.day}, {event_date.year}"
+    message += "?"
+    return f"https://wa.me/{settings.WHATSAPP_NUMBER}?text={quote(message)}"

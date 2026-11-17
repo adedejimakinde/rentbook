@@ -43,7 +43,8 @@
       </nav>
 
       <div class="flex items-center gap-2">
-        <a href="{% url 'catalogue:list' %}" class="inline-flex min-h-11 items-center rounded-lg bg-accent px-4 font-bold text-white hover:bg-accent-dark">Book now</a>
+        {% include "bookings/_cart_count.html" %}
+        <a href="{% url 'catalogue:list' %}" class="inline-flex min-h-11 items-center whitespace-nowrap rounded-lg bg-accent px-3 font-bold text-white hover:bg-accent-dark sm:px-4">Book now</a>
         <button type="button" class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-primary text-primary md:hidden"
                 @click="open = !open" :aria-expanded="open.toString()" aria-controls="mobile-menu" aria-label="Menu">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
@@ -63,6 +64,7 @@
   {% endblock %}
 
   <main id="main" class="flex-1">
+    {% block messages %}{% if messages %}<div class="mx-auto max-w-5xl px-4 pt-4">{% for message in messages %}<p role="status" class="mb-2 rounded-lg {% if message.level_tag == 'error' %}bg-[#fee2e2] text-[#7f1d1d]{% else %}bg-surface text-ink{% endif %} p-3 font-bold">{{ message }}</p>{% endfor %}</div>{% endif %}{% endblock %}
     {% block content %}{% endblock %}
   </main>
 
@@ -73,6 +75,7 @@
       <nav aria-label="Footer" class="flex flex-wrap gap-x-5">
         {% include "core/_nav_links.html" with link_class="inline-flex min-h-11 items-center underline" %}
       </nav>
+      <p><a href="{% url 'core:terms' %}" class="inline-flex min-h-11 items-center underline">Rental terms</a></p>
       <p>{{ business_tagline }}</p>
       <p>Serving the {{ business_area }}</p>
       <p>

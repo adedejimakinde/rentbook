@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block head_extra %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-xl px-4 py-6">
+  {% include "bookings/_progress.html" %}
+  <h1 class="text-2xl font-bold text-primary">{{ step_title }}</h1>
+  {% if submit_error %}<p role="alert" class="mt-4 rounded-lg bg-[#fee2e2] p-3 font-bold text-[#7f1d1d]">{{ submit_error }}</p>{% endif %}
+
+  <section class="mt-4" aria-labelledby="details-heading">
+    <h2 id="details-heading" class="text-lg font-bold text-primary">Your event</h2>
+    <dl class="mt-2 space-y-1 [overflow-wrap:anywhere]">
+      <div><dt class="inline font-bold">Date:</dt> <dd class="inline">{{ cart.event_date|date:"l, M j, Y" }}, starts {{ start_time|time:"g:i A" }}, set up by {{ setup_by_time|time:"g:i A" }}</dd></div>
+      <div><dt class="inline font-bold">Event:</dt> <dd class="inline">{{ event_type_label }}</dd></div>
+      <div><dt class="inline font-bold">Delivery to:</dt> <dd class="inline whitespace-pre-line">{{ address }}</dd></div>
+      <div><dt class="inline font-bold">Surface:</dt> <dd class="inline">{{ surface_label }}</dd></div>
+      {% if flow.delivery.crew_notes %}<div><dt class="inline font-bold">Crew notes:</dt> <dd class="inline">{{ flow.delivery.crew_notes }}</dd></div>{% endif %}
+      <div><dt class="inline font-bold">Contact:</dt> <dd class="inline">{{ flow.contact.name }}, {{ flow.contact.email }}, {{ flow.contact.phone }}</dd></div>
+    </dl>
+    <p class="mt-2 text-sm"><a href="{% url 'bookings:step' 'event' %}" class="font-bold text-primary underline">Change details</a></p>
+  </section>
+
+  <section class="mt-6" aria-labelledby="items-heading">
+    <h2 id="items-heading" class="text-lg font-bold text-primary">Rentals</h2>
+    {% for error in cart.errors.general %}<p role="alert" class="mt-2 rounded-lg bg-[#fee2e2] p-3 font-bold text-[#7f1d1d]">{{ error }}</p>{% endfor %}
+    {% for key, errors in cart.errors.items %}{% if key != "general" %}{% for error in errors %}<p role="alert" class="mt-2 rounded-lg bg-[#fee2e2] p-3 font-bold text-[#7f1d1d]">{{ error }}</p>{% endfor %}{% endif %}{% endfor %}
+    <ul class="mt-2 divide-y divide-primary/10">
+      {% for line in cart.lines %}
+      <li class="py-2"><div class="flex justify-between gap-4"><span>{{ line.quantity }} x {{ line.name }}</span>{% if line.priced %}<span>${{ line.priced.line_total|floatformat:"2g" }}</span>{% endif %}</div>
+      {% if line.error %}<p role="alert" class="mt-1 text-sm font-bold text-[#7f1d1d]">{{ line.error }}</p>{% endif %}</li>
+      {% endfor %}
+    </ul>
+    <p class="mt-1 text-sm"><a href="{% url 'bookings:cart' %}" class="font-bold text-primary underline">Edit cart</a></p>
+    {% if cart.quote %}<div class="mt-4">{% include "bookings/_quote.html" %}</div>{% endif %}
+    {% if flow.contact.tax_exempt %}<p class="mt-3 rounded-lg bg-surface p-3 text-sm"><span class="font-bold">Tax exemption requested for {{ flow.contact.org_name }}.</span> The quote includes sales tax. Our staff verify your certificate and then remove the tax from your booking.</p>{% endif %}
+  </section>
+
+  {% if cart.is_bookable %}
+  <form method="post" class="mt-6 space-y-5" novalidate>
+    {% csrf_token %}
+    {% include "bookings/_form_field.html" with field=form.plan %}
+    <p class="-mt-3 text-sm">The deposit holds your date. The balance and any refundable caution deposit are paid before your event.</p>
+    {% include "bookings/_form_field.html" with field=form.choice %}
+    <p class="-mt-3 text-sm">Card and bank account (ACH) payments go through Stripe. For Zelle, Cash App or bank deposit we show you how to pay next, and hold your booking for {{ manual_hold_hours }} hours while the payment arrives.</p>
+    <div class="rounded-lg bg-surface p-4">{% include "bookings/_form_field.html" with field=form.accept_terms %}</div>
+    <button type="submit" class="min-h-12 w-full rounded-lg bg-accent px-6 font-bold text-white hover:bg-accent-dark">Book now</button>
+    <a href="{% url 'bookings:step' 'contact' %}" class="inline-flex min-h-12 w-full items-center justify-center rounded-lg border-2 border-primary px-6 font-bold text-primary">Back</a>
+  </form>
+  {% else %}
+  <p class="mt-6 font-bold">Your quote has a problem. <a href="{% url 'bookings:cart' %}" class="text-primary underline">Go back to your cart</a> to fix it.</p>
+  {% endif %}
+</div>
+{% endblock %}

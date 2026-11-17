@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="mx-auto max-w-3xl px-4 py-10">
+  <h1 class="flex items-center gap-2 text-2xl leading-tight font-bold text-balance text-primary [overflow-wrap:anywhere] sm:text-3xl">{% include "core/_sparkle.html" %}Rental terms</h1>
+  <p class="mt-2 text-sm">Version {{ terms_version }}</p>
+  <p class="mt-4">These terms apply to every booking with {{ business_name }}. You accept them when you book online.</p>
+  <nav aria-label="Sections" class="mt-6">
+    <ul class="list-disc space-y-1 pl-5">
+      {% for anchor, title in sections %}<li><a href="#{{ anchor }}" class="font-bold text-primary underline">{{ title }}</a></li>{% endfor %}
+    </ul>
+  </nav>
+  {% for anchor, title in sections %}
+  <section id="{{ anchor }}" class="mt-8">
+    <h2 class="text-xl font-bold text-primary">{{ title }}</h2>
+    <p class="mt-2 rounded-lg border-2 border-dashed border-primary/40 bg-surface p-4">To be completed by {{ business_name }} before launch.</p>
+  </section>
+  {% endfor %}
+  <p class="mt-8">Questions about these terms? <a href="{% url 'core:contact' %}" class="font-bold text-primary underline">Contact us</a>.</p>
+</div>
+{% endblock %}

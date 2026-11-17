@@ -4,6 +4,7 @@ from celery import shared_task
 from django.apps import apps
 
 from apps.catalogue.services import images
+from apps.core.services import clear_section_flags
 
 
 @shared_task(
@@ -19,3 +20,4 @@ def process_image(model_label, pk):
     instance = model.objects.filter(pk=pk).first()
     if instance is not None:
         images.process_image(instance)
+        clear_section_flags()

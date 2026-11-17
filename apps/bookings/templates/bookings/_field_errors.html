@@ -1,0 +1,1 @@
+{% for error in errors %}<p{% if forloop.first %} id="{{ id }}-error"{% endif %} role="alert" class="mt-1 text-sm font-bold text-[#7f1d1d]">{{ error }}</p>{% endfor %}

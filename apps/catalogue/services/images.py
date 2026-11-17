@@ -86,6 +86,30 @@ def make_placeholder(image):
     return "data:image/jpeg;base64," + base64.b64encode(data).decode("ascii")
 
 
+def strip_upload_metadata(instance):
+    """Remove EXIF, GPS and other metadata from a newly uploaded original, before it is stored.
+
+    Runs synchronously on save so a photo's location never reaches storage,
+    even before the rendition task runs. Orientation is applied first so the
+    image stays upright. Files already in storage are left alone.
+    """
+    upload = instance.image
+    if not upload or getattr(upload, "_committed", True):
+        return
+    upload.seek(0)
+    with Image.open(upload) as source:
+        source_format = source.format
+        source.load()
+        clean = sanitise(source)
+    out_format = source_format if source_format in ORIGINAL_FORMATS else "JPEG"
+    extension, options = ORIGINAL_FORMATS[out_format]
+    if out_format == "JPEG":
+        clean = _flatten(clean)
+    stem, _ = posixpath.splitext(posixpath.basename(upload.name))
+    data = _encode(clean, out_format, options)
+    upload.save(f"{stem}.{extension}", ContentFile(data), save=False)
+
+
 def delete_renditions(instance):
     """Remove every generated file of an instance from storage."""
     storage = instance.image.storage

@@ -16,6 +16,8 @@ if env_file.exists():
 
 SECRET_KEY = env("SECRET_KEY")
 DEBUG = env.bool("DEBUG", default=False)
+# True only in config.settings.prod; production-only system checks look at it.
+IS_PRODUCTION = False
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=[])
 
 ADMIN_URL = env("ADMIN_URL").strip("/") + "/"
@@ -71,6 +73,8 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "apps.core.context_processors.business",
+                "apps.core.context_processors.site_sections",
+                "apps.bookings.context_processors.cart",
             ],
         },
     },
@@ -164,6 +168,26 @@ TAX_DELIVERY = env.bool("TAX_DELIVERY", default=False)
 TAX_SETUP = env.bool("TAX_SETUP", default=False)
 
 ACH_HOLD_DAYS = env.int("ACH_HOLD_DAYS", default=7)
+# Hours a booking paid by Zelle, Cash App or bank deposit stays held while staff
+# wait for the money. Staff can extend a hold in the admin.
+MANUAL_PAY_HOLD_HOURS = env.int("MANUAL_PAY_HOLD_HOURS", default=24)
+# Payment details shown to customers who choose a manual method.
+ZELLE_RECIPIENT = env("ZELLE_RECIPIENT", default="")
+ZELLE_NAME = env("ZELLE_NAME", default="")
+CASHAPP_TAG = env("CASHAPP_TAG", default="")
+BANK_NAME = env("BANK_NAME", default="")
+BANK_ACCOUNT_NAME = env("BANK_ACCOUNT_NAME", default="")
+BANK_ACCOUNT_NUMBER = env("BANK_ACCOUNT_NUMBER", default="")
+BANK_ROUTING_NUMBER = env("BANK_ROUTING_NUMBER", default="")
+
+# Signed links sent to customers. A balance link lasts until the end of the
+# event date or BALANCE_LINK_DAYS from when it was made, whichever is later.
+BALANCE_LINK_DAYS = env.int("BALANCE_LINK_DAYS", default=14)
+STATUS_LINK_DAYS = env.int("STATUS_LINK_DAYS", default=180)
+
+# Version of the rental terms customers accept at checkout. Change it whenever
+# the terms page changes; each booking records the version accepted.
+TERMS_VERSION = env("TERMS_VERSION", default="2026-11-draft")
 
 BUSINESS_NAME = env("BUSINESS_NAME", default="Atglace Events & Rentals LLC")
 BUSINESS_TAGLINE = env("BUSINESS_TAGLINE", default="Your one-stop shop for event rentals")

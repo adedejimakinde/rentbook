@@ -235,6 +235,15 @@ def _amount_due(booking, kind):
     return amount, caution
 
 
+def amount_due(booking, kind):
+    """(rental amount, caution) a deposit, full or balance payment would take now.
+
+    The same amounts create_checkout_session charges, for showing to customers
+    who pay by hand. Raises PaymentError when nothing can be paid.
+    """
+    return _amount_due(booking, kind)
+
+
 def _line_item(name, amount):
     return {
         "quantity": 1,

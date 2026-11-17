@@ -174,6 +174,39 @@ class BookingQuerySet(models.QuerySet):
         return super().delete()
 
 
+class EventType(models.TextChoices):
+    BIRTHDAY = "birthday", "Birthday party"
+    WEDDING = "wedding", "Wedding"
+    CORPORATE = "corporate", "Corporate event"
+    SCHOOL = "school", "School event"
+    CHURCH = "church", "Church event"
+    COMMUNITY = "community", "Community or festival"
+    OTHER = "other", "Other"
+
+
+class Surface(models.TextChoices):
+    GRASS = "grass", "Grass"
+    CONCRETE = "concrete", "Concrete or pavement"
+    INDOOR = "indoor", "Indoor"
+
+
+class PaymentChoice(models.TextChoices):
+    """How the customer said they would pay when booking online."""
+
+    STRIPE = "stripe", "Card or bank account (ACH)"
+    ZELLE = "zelle", "Zelle"
+    CASHAPP = "cashapp", "Cash App"
+    BANK_DEPOSIT = "bank_deposit", "Bank deposit"
+
+
+MANUAL_PAYMENT_CHOICES = (PaymentChoice.ZELLE, PaymentChoice.CASHAPP, PaymentChoice.BANK_DEPOSIT)
+
+
+class PaymentPlan(models.TextChoices):
+    DEPOSIT = "deposit", "Pay deposit"
+    FULL = "full", "Pay in full"
+
+
 class Booking(TimeStampedModel):
     """A customer's request for items on one event date."""
 
@@ -291,6 +324,36 @@ class Booking(TimeStampedModel):
         related_name="tax_exemptions_set",
     )
     tax_exempt_at = models.DateTimeField(null=True, blank=True)
+
+    event_start_time = models.TimeField(null=True, blank=True)
+    setup_by_time = models.TimeField(
+        null=True, blank=True, help_text="Time the customer needs everything set up by."
+    )
+    event_type = models.CharField(max_length=20, choices=EventType.choices, blank=True)
+    surface = models.CharField(
+        max_length=20, choices=Surface.choices, blank=True, help_text="Setup surface."
+    )
+    crew_notes = models.TextField(blank=True, help_text="Customer's notes for the delivery crew.")
+
+    tax_exempt_requested = models.BooleanField(
+        default=False,
+        help_text=(
+            "The customer said they are tax exempt. Tax stays on until staff verify the "
+            "certificate and use the Set tax exemption action."
+        ),
+    )
+    tax_exempt_org_name = models.CharField(max_length=200, blank=True)
+    tax_exempt_cert_number = models.CharField(max_length=100, blank=True)
+
+    terms_version = models.CharField(max_length=40, blank=True)
+    terms_accepted_at = models.DateTimeField(null=True, blank=True)
+    payment_choice = models.CharField(
+        max_length=20,
+        choices=PaymentChoice.choices,
+        blank=True,
+        help_text="How the customer said they would pay when booking online.",
+    )
+    payment_plan = models.CharField(max_length=10, choices=PaymentPlan.choices, blank=True)
 
     objects = BookingQuerySet.as_manager()
 

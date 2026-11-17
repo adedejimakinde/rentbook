@@ -208,3 +208,28 @@ def test_only_one_primary_image_per_item(upload):
         ItemImage.objects.create(
             item=item, image=upload(name="b.jpg"), alt_text="b", is_primary=True
         )
+
+
+def test_upload_is_stripped_of_exif_and_gps_before_the_task_runs(upload, media_root):
+    item = ItemFactory(name="Chiavari chair")
+    with mock.patch.object(tasks.process_image, "delay") as queued:
+        photo = ItemImage.objects.create(
+            item=item, image=upload(size=(1200, 800), orientation=6, gps=True), alt_text="x"
+        )
+
+    files = stored_files(media_root)
+    assert len(files) == 1, "only the original exists before renditions"
+    with Image.open(files[0]) as stored:
+        assert len(stored.getexif()) == 0
+        assert not stored.getexif().get_ifd(0x8825)
+        assert stored.size == (800, 1200), "orientation applied before stripping"
+    assert photo.renditions_ready is False
+    queued.assert_not_called()  # still queued on commit, outside this test transaction
+
+
+def test_category_upload_is_also_stripped(upload, media_root):
+    CategoryFactory(image=upload(size=(600, 400), gps=True))
+
+    (stored_path,) = stored_files(media_root)
+    with Image.open(stored_path) as stored:
+        assert len(stored.getexif()) == 0

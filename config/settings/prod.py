@@ -4,6 +4,7 @@ from .base import *  # noqa: F403
 from .base import ALLOWED_HOSTS, MIDDLEWARE, env
 
 DEBUG = False
+IS_PRODUCTION = True
 
 MIDDLEWARE = [
     MIDDLEWARE[0],

@@ -82,6 +82,11 @@ def _availability_context(request, item):
         "event_date": event_date,
         "date_error": date_error,
         "status": status,
+        "ask_price_url": (
+            listing.price_enquiry_url(item.name, selected.name, event_date)
+            if selected is not None and not selected.unit_price
+            else ""
+        ),
     }
 
 
@@ -143,6 +148,13 @@ def package_detail(request, slug):
         {
             "package": package,
             "lines": lines,
+            "ask_price_url": (
+                ""
+                if package.package_price
+                else listing.price_enquiry_url(
+                    f"{package.name} package", event_date=get_event_date(request)
+                )
+            ),
             "meta_title": f"{package.name} package",
             "meta_description": f"{package.name}: {names}. Delivered and set up across DFW.",
         },
