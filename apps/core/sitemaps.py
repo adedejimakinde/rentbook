@@ -17,6 +17,7 @@ class StaticPagesSitemap(Sitemap):
         "core:faq",
         "core:contact",
         "core:links",
+        "core:terms",
     )
 
     def items(self):

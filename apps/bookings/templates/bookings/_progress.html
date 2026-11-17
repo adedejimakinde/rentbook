@@ -1,0 +1,6 @@
+<div class="mb-6">
+  <p class="text-sm font-bold">Step {{ step_number }} of {{ step_count }}: {{ step_title }}</p>
+  <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-surface" role="progressbar" aria-label="Booking progress" aria-valuemin="0" aria-valuemax="{{ step_count }}" aria-valuenow="{{ step_number }}" aria-valuetext="Step {{ step_number }} of {{ step_count }}">
+    <div class="h-full rounded-full bg-primary" style="width: {{ progress }}%"></div>
+  </div>
+</div>

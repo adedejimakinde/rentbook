@@ -17,6 +17,7 @@ from apps.bookings.tests.factories import (
 )
 from apps.catalogue.admin import ItemAdminForm
 from apps.catalogue.models import Item
+from apps.core.services import section_flags
 
 pytestmark = pytest.mark.django_db
 
@@ -246,7 +247,7 @@ def test_item_detail_availability_partial_responds_to_variant_and_quantity(clien
     assert "Only 1 available for this date" in white_html
 
 
-def test_item_detail_sections_and_placeholder_button(client):
+def test_item_detail_sections_and_add_to_booking_form(client):
     item, _ = make_item(
         name="Photo backdrop",
         slug="photo-backdrop",
@@ -262,8 +263,8 @@ def test_item_detail_sections_and_placeholder_button(client):
 
     assert "Backdrop stand" in html and "Width" in html and "8 ft" in html
     assert "Neon sign" in html
-    assert 'disabled aria-disabled="true"' in html
-    assert "Add to booking" in html
+    assert 'disabled aria-disabled="true"' not in html
+    assert "Add to booking" in html and 'action="/cart/add/"' in html
     assert 'for="item-date"' in html and 'for="item-qty"' in html
 
 
@@ -293,6 +294,7 @@ def test_catalogue_page_stays_within_ten_queries(client, event_date):
         ItemVariantFactory(item=item)
         ItemVariantFactory(item=item, name="Alt")
 
+    section_flags()  # shared cache, warm for every visitor after the first
     url = f"/rentals/?date={event_date:%Y-%m-%d}"
     with CaptureQueriesContext(connection) as first:
         client.get(url)

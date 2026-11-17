@@ -1,0 +1,14 @@
+{% with q=cart.quote %}
+<dl class="divide-y divide-primary/10">
+  {% if q.items_subtotal %}<div class="flex justify-between gap-4 py-2"><dt>Items</dt><dd>${{ q.items_subtotal|floatformat:"2g" }}</dd></div>{% endif %}
+  {% if q.package_subtotal %}<div class="flex justify-between gap-4 py-2"><dt>Packages</dt><dd>${{ q.package_subtotal|floatformat:"2g" }}</dd></div>{% endif %}
+  {% if q.discount %}<div class="flex justify-between gap-4 py-2 text-[#14532d]"><dt>Discount{% if q.promo %} ({{ q.promo.code }}){% endif %}</dt><dd>&minus;${{ q.discount|floatformat:"2g" }}</dd></div>{% endif %}
+  <div class="flex justify-between gap-4 py-2"><dt>Delivery{% if q.zone %} ({{ q.zone.name }}){% endif %}</dt><dd>${{ q.delivery_fee|floatformat:"2g" }}</dd></div>
+  <div class="flex justify-between gap-4 py-2"><dt>Setup</dt><dd>${{ q.setup_fee|floatformat:"2g" }}</dd></div>
+  <div class="flex justify-between gap-4 py-2"><dt>Sales tax</dt><dd>${{ q.tax|floatformat:"2g" }}</dd></div>
+  <div class="flex justify-between gap-4 py-2 font-bold"><dt>Rental total</dt><dd>${{ q.rental_total|floatformat:"2g" }}</dd></div>
+  {% if q.caution %}<div class="py-2"><div class="flex justify-between gap-4"><dt class="font-bold">Refundable caution deposit</dt><dd>${{ q.caution|floatformat:"2g" }}</dd></div><p class="mt-1 text-sm">Not part of the rental price. Collected with your final payment and returned after pickup when the equipment comes back in good condition.</p></div>{% endif %}
+  <div class="flex justify-between gap-4 py-3 text-lg font-bold text-primary"><dt>Total{% if q.caution %} with caution{% endif %}</dt><dd>${{ q.total|floatformat:"2g" }}</dd></div>
+  <div class="flex justify-between gap-4 rounded-lg bg-surface px-3 py-2 font-bold"><dt>Deposit to book ({{ deposit_percent }}%)</dt><dd>${{ q.deposit_amount|floatformat:"2g" }}</dd></div>
+</dl>
+{% endwith %}

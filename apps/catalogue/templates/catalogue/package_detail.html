@@ -10,9 +10,9 @@
     <li class="flex justify-between gap-4 py-2"><a href="{{ line.variant.item.get_absolute_url }}" class="font-bold underline">{{ line.variant.item.name }}{% if line.variant.name != "Default" %} ({{ line.variant.name }}){% endif %}</a><span>x {{ line.quantity }}</span></li>
     {% endfor %}
   </ul>
-  <div class="mt-8 space-y-2">
-    <button type="button" disabled aria-disabled="true" class="min-h-12 w-full cursor-not-allowed rounded-lg bg-accent px-6 font-bold text-white opacity-60 sm:w-auto">Add to booking</button>
-    <p class="text-sm">Online booking opens soon. <a href="https://wa.me/{{ whatsapp_number }}?text=Hi%2C%20I%27d%20like%20the%20{{ package.name|urlencode }}%20package" class="font-bold text-primary underline" rel="noopener">Message us on WhatsApp</a> to reserve it.</p>
+  <div class="mt-8">
+    {% if package.package_price %}{% include "bookings/_add_form.html" with kind="package" id=package.pk quantity=None %}{% endif %}
+    <p class="mt-3 text-sm">Questions about this package? <a href="https://wa.me/{{ whatsapp_number }}?text=Hi%2C%20I%27d%20like%20the%20{{ package.name|urlencode }}%20package" class="font-bold text-primary underline" rel="noopener">Message us on WhatsApp</a>.</p>
   </div>
 </div>
 {% endblock %}

@@ -1,0 +1,60 @@
+{% for error in cart.errors.general %}<p role="alert" class="mb-4 rounded-lg bg-[#fee2e2] p-3 font-bold text-[#7f1d1d]">{{ error }}</p>{% endfor %}
+{% if update_error %}<p role="alert" class="mb-4 rounded-lg bg-[#fee2e2] p-3 font-bold text-[#7f1d1d]">{{ update_error }}</p>{% endif %}
+{% if cart.lines %}
+<form method="post" action="{% url 'bookings:cart_details' %}" hx-post="{% url 'bookings:cart_details' %}" hx-target="#cart-body" class="grid grid-cols-1 gap-3 rounded-lg bg-surface p-4 sm:grid-cols-3">
+  {% csrf_token %}
+  <div>
+    <label for="cart-date" class="block font-bold">Event date</label>
+    <input id="cart-date" type="date" name="date" value="{{ cart.event_date|date:'Y-m-d' }}" class="min-h-11 w-full rounded-lg border-2 border-primary/40 bg-white px-3"{% if cart.errors.date or date_error %} aria-invalid="true" aria-describedby="cart-date-error"{% endif %}>
+    {% if date_error %}<p id="cart-date-error" role="alert" class="mt-1 text-sm font-bold text-[#7f1d1d]">{{ date_error }}</p>{% else %}{% include "bookings/_field_errors.html" with errors=cart.errors.date id="cart-date" %}{% endif %}
+  </div>
+  <div>
+    <label for="cart-zip" class="block font-bold">Delivery ZIP</label>
+    <input id="cart-zip" type="text" name="zip_code" value="{{ cart.zip_code }}" inputmode="numeric" autocomplete="postal-code" maxlength="10" class="min-h-11 w-full rounded-lg border-2 border-primary/40 bg-white px-3"{% if cart.errors.zip or zip_error %} aria-invalid="true" aria-describedby="cart-zip-error"{% endif %}>
+    {% if zip_error %}<p id="cart-zip-error" role="alert" class="mt-1 text-sm font-bold text-[#7f1d1d]">{{ zip_error }}</p>{% else %}{% include "bookings/_field_errors.html" with errors=cart.errors.zip id="cart-zip" %}{% endif %}
+  </div>
+  <div>
+    <label for="cart-promo" class="block font-bold">Promo code (optional)</label>
+    <input id="cart-promo" type="text" name="promo_code" value="{{ cart.promo_code }}" maxlength="40" autocomplete="off" class="min-h-11 w-full rounded-lg border-2 border-primary/40 bg-white px-3"{% if cart.errors.promo %} aria-invalid="true" aria-describedby="cart-promo-error"{% endif %}>
+    {% include "bookings/_field_errors.html" with errors=cart.errors.promo id="cart-promo" %}
+  </div>
+  <button type="submit" class="min-h-11 rounded-lg border-2 border-primary px-4 font-bold text-primary sm:col-span-3 sm:justify-self-start">Update quote</button>
+</form>
+
+<ul class="mt-4 divide-y divide-primary/10" aria-label="Cart lines">
+  {% for line in cart.lines %}
+  <li class="py-3">
+    <div class="flex justify-between gap-4">
+      <p class="font-bold">{{ line.name }}{% if line.kind == "package" %} <span class="text-sm font-medium">(package)</span>{% endif %}</p>
+      {% if line.priced %}<p class="font-bold">${{ line.priced.line_total|floatformat:"2g" }}</p>{% endif %}
+    </div>
+    {% if line.priced %}<p class="text-sm">{{ line.quantity }} x ${{ line.priced.unit_price|floatformat:"2g" }}</p>{% endif %}
+    {% if line.error %}<p role="alert" class="mt-1 text-sm font-bold text-[#7f1d1d]">{{ line.error }}</p>{% endif %}
+    <div class="mt-2 flex flex-wrap items-end gap-2">
+      <form method="post" action="{% url 'bookings:cart_update' %}" hx-post="{% url 'bookings:cart_update' %}" hx-target="#cart-body" class="flex items-end gap-2">
+        {% csrf_token %}<input type="hidden" name="kind" value="{{ line.kind }}"><input type="hidden" name="id" value="{{ line.id }}">
+        <div><label for="qty-{{ line.kind }}-{{ line.id }}" class="block text-sm font-bold">Quantity<span class="sr-only"> of {{ line.name }}</span></label>
+        <input id="qty-{{ line.kind }}-{{ line.id }}" type="number" name="quantity" value="{{ line.quantity }}" min="1" max="999" inputmode="numeric" class="min-h-11 w-20 rounded-lg border-2 border-primary/40 px-2"></div>
+        <button type="submit" class="min-h-11 rounded-lg border-2 border-primary px-3 font-bold text-primary">Update</button>
+      </form>
+      <form method="post" action="{% url 'bookings:cart_remove' %}" hx-post="{% url 'bookings:cart_remove' %}" hx-target="#cart-body">
+        {% csrf_token %}<input type="hidden" name="kind" value="{{ line.kind }}"><input type="hidden" name="id" value="{{ line.id }}">
+        <button type="submit" class="min-h-11 px-3 font-bold text-accent underline">Remove<span class="sr-only"> {{ line.name }}</span></button>
+      </form>
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+
+<section class="mt-6" aria-labelledby="quote-heading">
+  <h2 id="quote-heading" class="text-xl font-bold text-primary">Your quote</h2>
+  {% if cart.quote %}{% include "bookings/_quote.html" %}{% else %}<p class="mt-2">Choose your event date and delivery ZIP above to see prices, fees and availability.</p>{% endif %}
+</section>
+<div class="mt-6">
+  {% if cart.is_bookable %}<a href="{% url 'bookings:step' 'event' %}" class="inline-flex min-h-12 w-full items-center justify-center rounded-lg bg-accent px-6 font-bold text-white hover:bg-accent-dark sm:w-auto">Continue to booking</a>
+  {% else %}<p class="font-bold">Fix the items marked above to continue.</p>{% endif %}
+</div>
+{% else %}
+<p class="mt-2"><a href="{% url 'catalogue:list' %}" class="font-bold text-primary underline">Browse rentals</a></p>
+{% endif %}
+{% if htmx %}{% include "bookings/_cart_count.html" with oob=True %}{% endif %}

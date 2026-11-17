@@ -4,6 +4,7 @@ import time
 from datetime import date
 
 from django.conf import settings
+from django.core.cache import cache
 from django.core.mail import EmailMessage
 
 from apps.bookings.models import normalise_zip
@@ -107,3 +108,30 @@ def send_contact_message(*, name, email, phone, event_date, message):
         to=[settings.BUSINESS_EMAIL],
         reply_to=[email],
     ).send()
+
+
+SECTION_FLAGS_KEY = "site_section_flags"
+SECTION_FLAGS_SECONDS = 300
+
+
+def section_flags():
+    """{"show_packages", "show_gallery"}: whether those sections have anything to show.
+
+    Cached so the header and footer cost no queries on most requests; the
+    catalogue signals clear the cache when packages or photos change.
+    """
+    flags = cache.get(SECTION_FLAGS_KEY)
+    if flags is None:
+        from apps.catalogue.models import ItemImage, Package
+
+        flags = {
+            "show_packages": Package.objects.filter(is_active=True, items__isnull=False).exists(),
+            "show_gallery": ItemImage.objects.filter(renditions_ready=True).exists(),
+        }
+        cache.set(SECTION_FLAGS_KEY, flags, SECTION_FLAGS_SECONDS)
+    return flags
+
+
+def clear_section_flags():
+    """Forget the cached section flags, so the next page recomputes them."""
+    cache.delete(SECTION_FLAGS_KEY)

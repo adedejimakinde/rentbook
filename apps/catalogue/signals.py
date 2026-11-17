@@ -1,12 +1,31 @@
 """Queue image processing when an upload is added or replaced, and clean up on delete."""
 
 from django.db import transaction
-from django.db.models.signals import post_delete, post_save
+from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
-from apps.catalogue.models import Category, ItemImage
+from apps.catalogue.models import Category, ItemImage, Package, PackageItem
 from apps.catalogue.services import images
 from apps.catalogue.tasks import process_image
+from apps.core.services import clear_section_flags
+
+
+@receiver(pre_save, sender=ItemImage)
+@receiver(pre_save, sender=Category)
+def strip_metadata_on_upload(sender, instance, **kwargs):
+    """Strip EXIF and GPS from a new upload before the original is written to storage."""
+    images.strip_upload_metadata(instance)
+
+
+@receiver(post_save, sender=Package)
+@receiver(post_delete, sender=Package)
+@receiver(post_save, sender=PackageItem)
+@receiver(post_delete, sender=PackageItem)
+@receiver(post_save, sender=ItemImage)
+@receiver(post_delete, sender=ItemImage)
+def refresh_section_flags(sender, **kwargs):
+    """Packages or photos changed, so the nav may need to show or hide a section."""
+    transaction.on_commit(clear_section_flags)
 
 
 @receiver(post_save, sender=ItemImage)

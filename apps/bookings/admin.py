@@ -201,6 +201,13 @@ class BookingAdmin(BookingPaymentActionsMixin, ModelAdmin):
         "tax_exempt_certificate",
         "tax_exempt_by",
         "tax_exempt_at",
+        "tax_exempt_requested",
+        "tax_exempt_org_name",
+        "tax_exempt_cert_number",
+        "terms_version",
+        "terms_accepted_at",
+        "payment_choice",
+        "payment_plan",
     ]
     inlines = [BookingItemInline, BookingPackageInline]
 

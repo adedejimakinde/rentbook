@@ -166,6 +166,28 @@ def contact(request):
     )
 
 
+TERMS_SECTIONS = [
+    ("cancellation", "Cancellation and changes"),
+    ("weather", "Weather"),
+    ("damage", "Damage, loss and the caution deposit"),
+    ("setup", "Setup requirements"),
+]
+
+
+@require_GET
+def terms(request):
+    """Rental terms customers accept at checkout. TERMS_VERSION names this version."""
+    return _page(
+        request,
+        "core/terms.html",
+        "Rental terms",
+        "The rental terms for bookings with Atglace Events & Rentals: cancellation, weather, "
+        "damage and setup requirements.",
+        sections=TERMS_SECTIONS,
+        terms_version=settings.TERMS_VERSION,
+    )
+
+
 @require_GET
 def links(request):
     """Link-in-bio page with big buttons for social profiles."""
@@ -202,6 +224,9 @@ def robots(request):
     lines = [
         "User-agent: *",
         "Disallow: /payments/",
+        "Disallow: /cart/",
+        "Disallow: /book/",
+        "Disallow: /booking/",
         "Disallow: /health/",
         "Disallow: /check/",
         f"Sitemap: {settings.SITE_URL}/sitemap.xml",

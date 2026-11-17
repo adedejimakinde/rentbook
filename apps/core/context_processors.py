@@ -18,3 +18,10 @@ def business(request):
         "whatsapp_number": settings.WHATSAPP_NUMBER,
         "site_url": settings.SITE_URL,
     }
+
+
+def site_sections(request):
+    """Which optional sections (packages, gallery) have content to link to."""
+    from apps.core.services import section_flags
+
+    return section_flags()

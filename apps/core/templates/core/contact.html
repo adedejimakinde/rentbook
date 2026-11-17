@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% block messages %}{% endblock %}
 {% block jsonld %}{% load core_tags %}{% local_business_jsonld %}{% endblock %}
 {% block content %}
 <div class="mx-auto grid max-w-5xl grid-cols-1 gap-8 px-4 py-10 md:grid-cols-2">
