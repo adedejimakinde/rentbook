@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="mx-auto max-w-4xl px-4 py-10">
+  <h1 class="flex items-center gap-2 text-3xl font-bold text-primary">{% include "core/_sparkle.html" %}Packages</h1>
+  <p class="mt-2 max-w-2xl">Ready-made bundles so you can book one thing instead of piecing a party together item by item.</p>
+  {% if packages %}
+  <ul class="mt-6 divide-y divide-primary/20 border-y border-primary/20">
+    {% for package in packages %}
+    <li class="relative flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 py-4">
+      <div>
+        <h2 class="text-xl font-bold text-primary"><a href="{{ package.get_absolute_url }}" class="after:absolute after:inset-0">{{ package.name }}</a></h2>
+        <p class="text-sm">{% for line in package.items.all %}{{ line.quantity }} x {{ line.variant.item.name }}{% if line.variant.name != "Default" %} ({{ line.variant.name }}){% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+      </div>
+      <p class="text-lg font-bold">{% include "catalogue/_price.html" with price=package.package_price %}</p>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="mt-6 rounded-lg bg-surface p-6">We are putting our packages together. Tell us your event and headcount and we will build a custom bundle. <a href="{% url 'core:contact' %}" class="font-bold text-primary underline">Contact us</a>.</p>
+  {% endif %}
+</div>
+{% endblock %}

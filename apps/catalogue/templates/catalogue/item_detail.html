@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% load catalogue_media %}
+{% block content %}
+<div class="mx-auto max-w-5xl px-4 py-6">
+  <nav aria-label="Breadcrumb" class="mb-4 text-sm">
+    <a href="{% url 'catalogue:list' %}" class="underline">Rentals</a> /
+    <a href="{{ item.category.get_absolute_url }}" class="underline">{{ item.category.name }}</a>
+  </nav>
+  <div class="grid grid-cols-1 gap-8 md:grid-cols-2">
+    <div>
+      <div class="flex snap-x snap-mandatory gap-3 overflow-x-auto" role="region" aria-label="{{ item.name }} photos" tabindex="0">
+        {% for image in item.images.all %}
+        <div class="w-full shrink-0 snap-center">{% picture image name=item.name sizes="(min-width: 768px) 50vw, 100vw" eager=forloop.first %}</div>
+        {% empty %}
+        <div class="w-full shrink-0">{% picture None name=item.name sizes="100vw" eager=True %}</div>
+        {% endfor %}
+      </div>
+      {% if item.images.all|length > 1 %}<p class="mt-2 text-sm">Swipe for more photos.</p>{% endif %}
+    </div>
+    <div>
+      {% if item.is_featured %}<span class="mb-2 inline-block rounded bg-gold px-2 py-1 text-xs font-bold text-ink">Popular</span>{% endif %}
+      <h1 class="text-2xl font-bold text-primary md:text-3xl">{{ item.name }}</h1>
+      <p class="mt-2 text-xl font-bold">{% include "catalogue/_price.html" with price=item.display_price ranged=item.has_price_range %}</p>
+      {% if item.short_description %}<p class="mt-3">{{ item.short_description }}</p>{% endif %}
+
+      <form id="booking-form" method="get" action="{% url 'catalogue:item' item.slug %}" hx-get="{% url 'catalogue:availability' item.slug %}" hx-trigger="change" hx-target="#availability" hx-push-url="false" class="mt-6 space-y-4">
+        {% if variants|length > 1 %}
+        <fieldset>
+          <legend class="mb-1 font-bold">Option</legend>
+          <div class="flex flex-wrap gap-2">
+            {% for variant in variants %}
+            <label class="cursor-pointer">
+              <input type="radio" name="variant" value="{{ variant.pk }}" class="peer sr-only" {% if variant.pk == selected.pk %}checked{% endif %}>
+              <span class="inline-flex min-h-11 items-center rounded-full border-2 border-primary/40 px-4 font-bold text-primary peer-checked:border-primary peer-checked:bg-primary peer-checked:text-white peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary">{{ variant.name }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </fieldset>
+        {% elif selected %}<input type="hidden" name="variant" value="{{ selected.pk }}">{% endif %}
+        <div class="flex flex-wrap gap-4">
+          <div>
+            <label for="item-date" class="block font-bold">Event date</label>
+            <input id="item-date" type="date" name="date" value="{{ event_date|date:'Y-m-d' }}" class="min-h-11 rounded-lg border-2 border-primary/40 px-3">
+          </div>
+          <div>
+            <label for="item-qty" class="block font-bold">Quantity</label>
+            <input id="item-qty" type="number" name="quantity" value="{{ quantity }}" min="1" max="999" inputmode="numeric" class="min-h-11 w-24 rounded-lg border-2 border-primary/40 px-3">
+          </div>
+        </div>
+        <button type="submit" class="min-h-11 rounded-lg border-2 border-primary px-4 font-bold text-primary">Check availability</button>
+      </form>
+      <div id="availability" aria-live="polite" class="mt-4 rounded-lg bg-surface p-4">{% include "catalogue/_availability.html" %}</div>
+
+      <div class="mt-4 space-y-2">
+        <button type="button" disabled aria-disabled="true" class="min-h-12 w-full cursor-not-allowed rounded-lg bg-accent px-6 font-bold text-white opacity-60">Add to booking</button>
+        <p class="text-sm">Online booking opens soon. To reserve now, <a href="https://wa.me/{{ whatsapp_number }}?text=Hi%2C%20I%27d%20like%20to%20book%20the%20{{ item.name|urlencode }}" class="font-bold text-primary underline" rel="noopener">message us on WhatsApp</a> or <a href="tel:{{ business_phone_href }}" class="font-bold text-primary underline">call {{ business_phone }}</a>.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-10 grid grid-cols-1 gap-8 md:grid-cols-2">
+    {% if item.description %}<section class="md:col-span-2"><h2 class="flex items-center gap-2 text-xl font-bold text-primary">{% include "core/_sparkle.html" %}About this rental</h2><p class="mt-2 max-w-2xl whitespace-pre-line">{{ item.description }}</p></section>{% endif %}
+    {% if item.whats_included %}
+    <section>
+      <h2 class="flex items-center gap-2 text-xl font-bold text-primary">{% include "core/_sparkle.html" %}What's included</h2>
+      <ul class="mt-2 list-disc space-y-1 pl-5">{% for line in item.whats_included %}<li>{{ line }}</li>{% endfor %}</ul>
+    </section>
+    {% endif %}
+    {% if item.specs %}
+    <section>
+      <h2 class="flex items-center gap-2 text-xl font-bold text-primary">{% include "core/_sparkle.html" %}Specs</h2>
+      <dl class="mt-2 divide-y divide-primary/10">{% for spec in item.specs %}<div class="flex justify-between gap-4 py-2"><dt class="font-bold">{{ spec.name }}</dt><dd>{{ spec.value }}</dd></div>{% endfor %}</dl>
+    </section>
+    {% endif %}
+  </div>
+
+  {% if related %}
+  <section class="mt-10" aria-labelledby="related-heading">
+    <h2 id="related-heading" class="flex items-center gap-2 text-xl font-bold text-primary">{% include "core/_sparkle.html" %}More {{ item.category.name|lower }}</h2>
+    <ul class="-mx-4 mt-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2">
+      {% for other in related %}<li class="w-44 shrink-0 snap-start">{% include "catalogue/_item_card.html" with item=other statuses=None eager=False %}</li>{% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

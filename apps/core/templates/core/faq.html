@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="mx-auto max-w-3xl px-4 py-10">
+  <h1 class="flex items-center gap-2 text-3xl font-bold text-primary">{% include "core/_sparkle.html" %}Frequently asked questions</h1>
+  <div class="mt-6 divide-y divide-primary/20 border-y border-primary/20">
+    {% for question, answer in faqs %}
+    <div x-data="{ open: false }">
+      <h2><button type="button" class="flex min-h-12 w-full items-center justify-between gap-4 py-3 text-left text-lg font-bold text-primary" @click="open = !open" :aria-expanded="open.toString()" aria-controls="faq-{{ forloop.counter }}">{{ question }}<span aria-hidden="true" x-text="open ? '−' : '+'">+</span></button></h2>
+      <div id="faq-{{ forloop.counter }}" x-show="open" class="pb-4">{{ answer }}</div>
+      <noscript><p class="pb-4">{{ answer }}</p></noscript>
+    </div>
+    {% endfor %}
+  </div>
+  <p class="mt-6">Still have a question? <a href="{% url 'core:contact' %}" class="font-bold text-primary underline">Contact us</a>.</p>
+</div>
+{% endblock %}

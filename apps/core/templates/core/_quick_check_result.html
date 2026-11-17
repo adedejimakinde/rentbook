@@ -1,0 +1,13 @@
+<div class="mt-4 space-y-3">
+  {% if result.date_error %}<p role="alert" class="rounded-lg bg-[#fee2e2] p-3 font-bold text-[#7f1d1d]">{{ result.date_error }}</p>{% endif %}
+  {% if result.zip_error %}<p role="alert" class="rounded-lg bg-[#fee2e2] p-3 font-bold text-[#7f1d1d]">{{ result.zip_error }}</p>{% endif %}
+  {% if result.zip_code and result.zone %}
+  <p class="rounded-lg bg-[#dcfce7] p-3 font-bold text-[#14532d]">We deliver to {{ result.zip_code }} ({{ result.zone.name }}).{% if result.zone.delivery_fee or result.zone.setup_fee %} Delivery from ${{ result.zone.delivery_fee|floatformat:"2g" }}{% if result.zone.setup_fee %}, setup ${{ result.zone.setup_fee|floatformat:"2g" }}{% endif %}.{% endif %}</p>
+  {% elif result.zip_code %}
+  <p class="rounded-lg bg-surface p-3">We do not have {{ result.zip_code }} on our delivery list yet. <a href="tel:{{ business_phone_href }}" class="font-bold text-primary underline">Call {{ business_phone }}</a> or <a href="https://wa.me/{{ whatsapp_number }}" class="font-bold text-primary underline" rel="noopener">message us on WhatsApp</a> and we will see what we can do.</p>
+  {% endif %}
+  {% if result.event_date %}
+  <p class="font-bold">{{ result.event_date|date:"l, F j, Y" }} is saved for your visit.</p>
+  <a href="{% url 'catalogue:list' %}" class="inline-flex min-h-12 items-center rounded-lg bg-accent px-6 font-bold text-white hover:bg-accent-dark">See what is available</a>
+  {% endif %}
+</div>

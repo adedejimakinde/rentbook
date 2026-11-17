@@ -16,4 +16,5 @@ def business(request):
         "business_phone_href": f"+1{phone_digits[-10:]}",
         "business_email": settings.BUSINESS_EMAIL,
         "whatsapp_number": settings.WHATSAPP_NUMBER,
+        "site_url": settings.SITE_URL,
     }

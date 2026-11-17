@@ -1,33 +1,74 @@
 {% extends "base.html" %}
-
+{% block jsonld %}{% load core_tags %}{% local_business_jsonld %}{% endblock %}
 {% block content %}
-<section class="bg-surface">
-  <div class="mx-auto max-w-5xl px-4 py-12 md:py-20">
-    <p class="mb-3 inline-block border-b-4 border-accent-bright pb-1 text-sm font-bold uppercase tracking-wide text-primary">{{ business_area }}</p>
-    <h1 class="text-3xl font-bold leading-tight text-ink md:text-5xl">{{ business_tagline }}</h1>
-    <p class="mt-4 max-w-2xl text-lg">Chairs, tables, linen, bounce houses, backdrops, a golf simulator, and popcorn and cotton candy machines for parties, weddings, corporate, school and church events.</p>
+<section class="bg-linear-to-br from-ink to-primary text-white">
+  <div class="mx-auto max-w-5xl px-4 pb-16 pt-12 md:pb-24 md:pt-20">
+    <p class="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-wide">{% include "core/_sparkle.html" %}{{ business_tagline }}</p>
+    <h1 class="max-w-3xl text-3xl font-bold leading-tight md:text-5xl">Party rentals across DFW, delivered and set up</h1>
+    <p class="mt-4 max-w-xl text-lg">Bounce houses, chairs, tables, linen, backdrops, a golf simulator and popcorn and cotton candy machines for birthdays, weddings, church and school events.</p>
     <div class="mt-8 flex flex-wrap gap-3">
-      <a href="#contact" class="inline-flex min-h-12 items-center rounded-lg bg-accent px-6 font-bold text-white hover:bg-accent-dark">Book now</a>
-      <a href="tel:{{ business_phone_href }}" class="inline-flex min-h-12 items-center rounded-lg border-2 border-primary px-6 font-bold text-primary">Call {{ business_phone }}</a>
+      <a href="#check" class="inline-flex min-h-12 items-center rounded-lg bg-accent px-6 font-bold text-white hover:bg-accent-dark">Check availability</a>
+      <a href="{% url 'catalogue:list' %}" class="inline-flex min-h-12 items-center rounded-lg border-2 border-white px-6 font-bold text-white">Browse rentals</a>
     </div>
   </div>
 </section>
 
-<section id="rentals" class="mx-auto max-w-5xl px-4 pt-12">
-  <h2 class="text-2xl font-bold">What we rent</h2>
-  <ul class="mt-6 grid gap-3 sm:grid-cols-2 md:grid-cols-4">
-    {% for item in rentals %}
-    <li class="rounded-lg border border-primary/20 border-l-4 border-l-gold bg-white p-4 font-bold">{{ item }}</li>
+<section id="check" class="relative z-10 mx-auto -mt-10 max-w-5xl px-4" aria-labelledby="check-heading">
+  <div class="rounded-xl border border-primary/20 bg-white p-5 shadow-lg">
+    <h2 id="check-heading" class="flex items-center gap-2 text-xl font-bold text-primary">{% include "core/_sparkle.html" %}Is your date open?</h2>
+    <p class="mt-1 text-sm">Enter your event date and delivery ZIP. We will tell you what we can do.</p>
+    {% include "core/_quick_check_form.html" %}
+    <div id="quick-check-result" aria-live="polite"></div>
+  </div>
+</section>
+
+{% if categories %}
+<section class="mx-auto max-w-5xl px-4 pt-14" aria-labelledby="categories-heading">
+  <h2 id="categories-heading" class="flex items-center gap-2 text-2xl font-bold text-primary">{% include "core/_sparkle.html" %}What we rent</h2>
+  <ul class="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4 md:grid-rows-2">
+    {% for category in categories %}
+    <li class="relative flex min-h-28 flex-col justify-end overflow-hidden rounded-xl p-4 {% if forloop.first %}col-span-2 row-span-2 min-h-48 bg-primary text-white{% elif forloop.counter|divisibleby:2 %}bg-surface text-primary{% else %}bg-[#ecdcfa] text-primary{% endif %}">
+      <h3 class="font-bold {% if forloop.first %}text-2xl{% else %}text-lg leading-snug{% endif %}"><a href="{{ category.get_absolute_url }}" class="after:absolute after:inset-0">{{ category.name }}</a></h3>
+      <p class="text-sm">{{ category.item_count }} item{{ category.item_count|pluralize }}</p>
+    </li>
     {% endfor %}
   </ul>
 </section>
+{% endif %}
 
-<section id="contact" class="mx-auto max-w-5xl px-4 pt-12">
-  <h2 class="text-2xl font-bold">Get in touch</h2>
-  <p class="mt-2">Tell us your date, location and what you need. Online booking is coming soon.</p>
-  <ul class="mt-4">
-    <li><a href="tel:{{ business_phone_href }}" class="inline-flex min-h-11 items-center font-bold text-primary underline">{{ business_phone }}</a></li>
-    <li><a href="mailto:{{ business_email }}" class="inline-flex min-h-11 items-center break-all font-bold text-primary underline">{{ business_email }}</a></li>
+{% if featured %}
+<section class="mt-14" aria-labelledby="featured-heading">
+  <div class="mx-auto max-w-5xl px-4">
+    <h2 id="featured-heading" class="flex items-center gap-2 text-2xl font-bold text-primary">{% include "core/_sparkle.html" %}Guest favourites</h2>
+    <p class="mt-1">The rentals DFW parties ask for most.</p>
+  </div>
+  <ul class="mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-3 md:mx-auto md:max-w-5xl" role="region" aria-label="Featured rentals" tabindex="0">
+    {% for item in featured %}
+    <li class="w-56 shrink-0 snap-start">{% include "catalogue/_item_card.html" with eager=False %}</li>
+    {% endfor %}
   </ul>
+</section>
+{% endif %}
+
+<section class="mx-auto mt-14 grid max-w-5xl grid-cols-1 gap-8 px-4 md:grid-cols-2" aria-labelledby="how-heading">
+  <div>
+    <h2 id="how-heading" class="flex items-center gap-2 text-2xl font-bold text-primary">{% include "core/_sparkle.html" %}How it works</h2>
+    <p class="mt-2 max-w-md">No driving to a warehouse and no hauling tables in your own car. We bring it, build it and take it away again.</p>
+  </div>
+  <ol class="space-y-5">
+    <li class="flex gap-4"><span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent font-bold text-white" aria-hidden="true">1</span><div><h3 class="font-bold">Pick your date and ZIP</h3><p>See at once whether the date is free and whether we deliver to your neighbourhood.</p></div></li>
+    <li class="flex gap-4"><span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent font-bold text-white" aria-hidden="true">2</span><div><h3 class="font-bold">Choose your rentals</h3><p>Tables, chairs, linen, a bounce house, a popcorn machine. Availability is shown for your date.</p></div></li>
+    <li class="flex gap-4"><span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent font-bold text-white" aria-hidden="true">3</span><div><h3 class="font-bold">We deliver, set up and pick up</h3><p>Our crew arrives before your guests do and collects everything after the party.</p></div></li>
+  </ol>
+</section>
+
+<section class="mx-auto mt-14 max-w-5xl px-4" aria-labelledby="wa-heading">
+  <div class="rounded-xl bg-whatsapp p-6 text-white md:flex md:items-center md:justify-between md:gap-8">
+    <div>
+      <h2 id="wa-heading" class="text-2xl font-bold">Planning a big one?</h2>
+      <p class="mt-1 max-w-xl">Send us the date, the headcount and the venue on WhatsApp. We will help you work out how many chairs, tables and linens you need.</p>
+    </div>
+    <a href="https://wa.me/{{ whatsapp_number }}?text=Hi%2C%20I%27m%20planning%20an%20event%20in%20DFW" rel="noopener" class="mt-4 inline-flex min-h-12 items-center rounded-lg bg-white px-6 font-bold text-whatsapp md:mt-0">Chat on WhatsApp</a>
+  </div>
 </section>
 {% endblock %}
