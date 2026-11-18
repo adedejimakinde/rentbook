@@ -1,0 +1,10 @@
+{% extends "notifications/email/base.html" %}
+{% block title %}See you tomorrow{% endblock %}
+{% block preheader %}Your rentals arrive tomorrow. Here is what to prepare.{% endblock %}
+{% block heading %}See you tomorrow{% endblock %}
+{% block body %}
+<p style="margin:0 0 16px;">Hi {{ booking.customer_name }}, we are getting ready for your event.</p>
+<p style="margin:0 0 16px;">Date: <strong>{{ booking.event_date|date:"l, F j, Y" }}</strong>{% if booking.setup_by_time %}<br>Set up by: <strong>{{ booking.setup_by_time|time:"g:i A" }}</strong>{% endif %}<br>Address: <strong>{{ booking.delivery_address|linebreaksbr }}</strong></p>
+<p style="margin:0 0 16px;">Before we arrive, {{ prepare }}.</p>
+<p style="margin:0 0 16px;">Need to reach us? Call or text {{ business_phone }} or email {{ business_email }}.</p>
+{% endblock %}

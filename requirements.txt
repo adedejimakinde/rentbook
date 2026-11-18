@@ -12,3 +12,4 @@ Pillow==12.3.0
 sentry-sdk==2.75.0
 weasyprint==70.0
 django-anymail[resend]==15.2
+twilio==9.13.0

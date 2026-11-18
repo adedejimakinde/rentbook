@@ -94,6 +94,20 @@ CATALOGUE = [
 ]
 
 
+# Items that need a power outlet. Set only when the item is first created.
+NEEDS_POWER = {
+    "Bounce house",
+    "Combo bounce house",
+    "Water slide",
+    "Obstacle course",
+    "Popcorn machine",
+    "Cotton candy machine",
+    "Margarita machine",
+    "Slushy machine",
+    "Golf simulator",
+}
+
+
 @transaction.atomic
 def seed_catalogue():
     """Create any missing categories, items and variants. Returns counts of rows created.
@@ -117,6 +131,7 @@ def seed_catalogue():
                     "short_description": short,
                     "base_price": 0,
                     "is_featured": featured,
+                    "needs_power": item_name in NEEDS_POWER,
                 },
             )
             created["items"] += was_created

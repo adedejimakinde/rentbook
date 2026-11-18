@@ -1,0 +1,6 @@
+{% extends "notifications/email/base.txt" %}{% load money %}
+{% block heading %}Unpaid balance: booking #{{ booking.pk }}{% endblock %}
+{% block body %}{{ booking.customer_name }} ({{ booking.phone }}, {{ booking.email }}) still owes {{ balance_due|usd }}. The event is tomorrow, {{ booking.event_date|date:"l, M j, Y" }}.
+
+Open in the admin: {{ admin_url }}
+{% endblock %}

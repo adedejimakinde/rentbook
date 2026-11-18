@@ -1,0 +1,10 @@
+{% extends "notifications/email/base.html" %}{% load money %}
+{% block title %}Your hold ends soon{% endblock %}
+{% block preheader %}Send your payment before {{ deadline|date:"g:i A" }} to keep your items.{% endblock %}
+{% block heading %}Your hold ends soon{% endblock %}
+{% block body %}
+<p style="margin:0 0 16px;">Hi {{ booking.customer_name }}, we are still holding your items for {{ booking.event_date|date:"l, F j, Y" }}, but we have not received your {{ choice_label }} payment yet.</p>
+<p style="margin:0 0 16px;">Your hold ends at <strong>{{ deadline|date:"g:i A T" }} on {{ deadline|date:"l, F j" }}</strong>. Please send your payment before then to keep your items.</p>
+<p style="margin:0 0 16px;">{% for label, value in details %}{{ label }}: <strong>{{ value|default:"Ask us" }}</strong><br>{% endfor %}Memo or note: <strong>{{ memo }}</strong></p>
+<p style="margin:0 0 16px;"><a href="{{ manual_url }}" style="color:#6a0dad;font-weight:bold;">How to pay</a></p>
+{% endblock %}

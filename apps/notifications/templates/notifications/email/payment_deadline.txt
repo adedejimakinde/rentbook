@@ -1,0 +1,10 @@
+{% extends "notifications/email/base.txt" %}{% load money %}
+{% block heading %}Your hold ends soon{% endblock %}
+{% block body %}Hi {{ booking.customer_name }}, we are still holding your items for {{ booking.event_date|date:"l, F j, Y" }}, but we have not received your {{ choice_label }} payment yet.
+
+Your hold ends at {{ deadline|date:"g:i A T" }} on {{ deadline|date:"l, F j" }}. Please send your payment before then to keep your items.
+{% for label, value in details %}{{ label }}: {{ value|default:"Ask us" }}
+{% endfor %}Memo or note: {{ memo }}
+
+How to pay: {{ manual_url }}
+{% endblock %}

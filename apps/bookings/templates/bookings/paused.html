@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block head_extra %}<meta name="robots" content="noindex">{% endblock %}
+{% block whatsapp_fab %}{% endblock %}
+{% block content %}
+<div class="wrap-narrow page">
+  <h1 class="t-h1">Book your rentals</h1>
+  <div class="mt-4">{% include "bookings/_booking_paused.html" %}</div>
+</div>
+{% endblock %}

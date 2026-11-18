@@ -1,0 +1,6 @@
+{% extends "notifications/email/base.txt" %}
+{% block heading %}Thank you for renting with us{% endblock %}
+{% block body %}Hi {{ booking.customer_name }}, thank you for choosing {{ business_name }} for your event. We hope it was a great day.
+
+If you have a minute, we would love a review: {{ review_url }}
+{% endblock %}

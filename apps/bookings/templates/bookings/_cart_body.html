@@ -59,7 +59,7 @@
     {% endfor %}
   </ul>
 
-  <details class="card px-4"{% if cart.promo_code or cart.errors.promo %} open{% endif %}>
+  {% if cart.promo_enabled %}<details class="card px-4"{% if cart.promo_code or cart.errors.promo %} open{% endif %}>
     <summary class="flex min-h-[52px] cursor-pointer items-center justify-between text-[14px] font-bold">Have a promo code?<span class="text-brand">{% icon "plus" 18 stroke=2.5 %}</span></summary>
     <div class="flex flex-wrap items-start gap-2 pb-4">
       <div class="min-w-[160px] flex-1">
@@ -70,6 +70,7 @@
       <button type="submit" form="cart-details" class="btn btn-secondary min-h-[46px]">Apply code</button>
     </div>
   </details>
+  {% endif %}
 </div>
 
 <section class="card p-4 md:p-5 lg:sticky lg:top-4" aria-labelledby="quote-heading">

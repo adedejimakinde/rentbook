@@ -14,30 +14,30 @@
   @media (max-width: 620px) { .container { width: 100% !important; } .pad { padding-left: 16px !important; padding-right: 16px !important; } }
 </style>
 </head>
-<body style="margin:0;padding:0;background-color:#f8f2fd;">
+<body style="margin:0;padding:0;background-color:#f7f4fa;">
 <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">{% block preheader %}{% endblock %}</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f8f2fd;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f7f4fa;">
 <tr><td align="center" style="padding:24px 8px;">
 <!--[if mso]><table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
-<table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background-color:#ffffff;border-radius:8px;">
+<table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background-color:#ffffff;border-radius:16px;">
   <tr><td class="pad" align="center" style="padding:24px 32px 16px;border-bottom:4px solid #6a0dad;">
     <a href="{{ site_url }}"><img src="{{ logo_url }}" width="200" alt="{{ business_name }}" style="display:block;width:200px;max-width:100%;height:auto;border:0;"></a>
   </td></tr>
-  <tr><td class="pad" style="padding:24px 32px;font-family:Montserrat,Arial,Helvetica,sans-serif;font-size:16px;line-height:24px;color:#2a1b3d;">
+  <tr><td class="pad" style="padding:24px 32px;font-family:Montserrat,Arial,Helvetica,sans-serif;font-size:16px;line-height:24px;color:#241634;">
     <h1 style="margin:0 0 16px;font-family:Montserrat,Arial,Helvetica,sans-serif;font-size:24px;line-height:30px;color:#6a0dad;">{% block heading %}{% endblock %}</h1>
     <p style="margin:0 0 16px;">Booking reference: <strong>{{ reference }}</strong></p>
     {% block body %}{% endblock %}
     {% if balance_url %}
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 8px;"><tr>
-      <td align="center" bgcolor="#c2185b" style="border-radius:6px;">
+      <td align="center" bgcolor="#c2185b" style="border-radius:999px;">
         <!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="{{ balance_url }}" style="height:48px;v-text-anchor:middle;width:260px;" arcsize="12%" stroke="f" fillcolor="#c2185b"><center style="color:#ffffff;font-family:Arial,sans-serif;font-size:16px;font-weight:bold;">Pay {{ balance_due|usd }} online</center></v:roundrect><![endif]-->
-        <!--[if !mso]><!--><a href="{{ balance_url }}" style="display:inline-block;padding:12px 24px;font-family:Montserrat,Arial,Helvetica,sans-serif;font-size:16px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:6px;background-color:#c2185b;">Pay {{ balance_due|usd }} online</a><!--<![endif]-->
+        <!--[if !mso]><!--><a href="{{ balance_url }}" style="display:inline-block;padding:12px 24px;font-family:Montserrat,Arial,Helvetica,sans-serif;font-size:16px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:999px;background-color:#c2185b;">Pay {{ balance_due|usd }} online</a><!--<![endif]-->
       </td></tr></table>
     <p style="margin:0 0 16px;font-size:14px;">Balance due: <strong>{{ balance_due|usd }}</strong>. Pay by card or bank account: <a href="{{ balance_url }}" style="color:#6a0dad;word-break:break-all;">{{ balance_url }}</a></p>
     {% endif %}
     <p style="margin:16px 0 0;"><a href="{{ status_url }}" style="color:#6a0dad;font-weight:bold;">View your booking</a> to see its status and download your documents.</p>
   </td></tr>
-  <tr><td class="pad" style="padding:16px 32px 24px;background-color:#2a1b3d;border-radius:0 0 8px 8px;font-family:Montserrat,Arial,Helvetica,sans-serif;font-size:14px;line-height:20px;color:#ffffff;">
+  <tr><td class="pad" style="padding:16px 32px 24px;background-color:#241634;border-radius:0 0 8px 8px;font-family:Montserrat,Arial,Helvetica,sans-serif;font-size:14px;line-height:20px;color:#ffffff;">
     <strong>{{ business_name }}</strong><br>
     Questions? Call <a href="tel:{{ business_phone }}" style="color:#ffffff;">{{ business_phone }}</a> or reply to this email and quote {{ reference }}.
   </td></tr>

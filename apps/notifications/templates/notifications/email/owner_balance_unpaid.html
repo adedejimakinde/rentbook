@@ -1,0 +1,8 @@
+{% extends "notifications/email/base.html" %}{% load money %}
+{% block title %}Unpaid balance: booking #{{ booking.pk }}{% endblock %}
+{% block preheader %}{{ balance_due|usd }} unpaid, event tomorrow.{% endblock %}
+{% block heading %}Unpaid balance: booking #{{ booking.pk }}{% endblock %}
+{% block body %}
+<p style="margin:0 0 16px;">{{ booking.customer_name }} ({{ booking.phone }}, {{ booking.email }}) still owes <strong>{{ balance_due|usd }}</strong>. The event is tomorrow, {{ booking.event_date|date:"l, M j, Y" }}.</p>
+<p style="margin:0 0 16px;"><a href="{{ admin_url }}" style="color:#6a0dad;font-weight:bold;">Open in the admin</a></p>
+{% endblock %}

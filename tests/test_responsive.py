@@ -62,12 +62,15 @@ def browser():
 
 
 @pytest.fixture
-def site(live_server):
+def site(live_server, settings):
     """A small catalogue, a zone, a review, a cart and a booking with very long details.
 
     Returns the live server URL, the session cookie of a visitor half-way through
     booking, and every public path to check.
     """
+    settings.STRIPE_SECRET_KEY = "sk_test_responsive"  # noqa: S105
+    settings.ZELLE_RECIPIENT = "pay@example.com"
+    settings.ZELLE_NAME = "Atglace Events"
     category = CategoryFactory(name="Bounce houses and inflatables", slug="inflatables")
     items = []
     for number in range(6):

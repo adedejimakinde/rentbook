@@ -1,0 +1,4 @@
+{% extends "notifications/email/base.txt" %}{% load money %}
+{% block heading %}Your balance is due{% endblock %}
+{% block body %}Hi {{ booking.customer_name }}, your event on {{ booking.event_date|date:"l, F j, Y" }} is coming up. The balance of {{ balance_due|usd }} is due before the event. You can pay it online with the link below.
+{% endblock %}
