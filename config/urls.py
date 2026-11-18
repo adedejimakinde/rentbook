@@ -17,6 +17,7 @@ SITEMAPS = {
 }
 
 urlpatterns = [
+    path(settings.ADMIN_URL, include("apps.dashboard.urls")),
     path(settings.ADMIN_URL, admin.site.urls),
     path("sitemap.xml", sitemap, {"sitemaps": SITEMAPS}, name="sitemap"),
     path("payments/", include("apps.payments.urls")),

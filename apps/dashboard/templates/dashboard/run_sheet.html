@@ -1,0 +1,39 @@
+{% load dash %}<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>Run sheet {{ day|date:"Y-m-d" }}</title>
+<style>
+  @page { size: Letter; margin: 14mm 12mm; @bottom-right { content: "Page " counter(page) " of " counter(pages); font-size: 9px; color: #6b5f7b; } }
+  body { font-family: Montserrat, "Helvetica Neue", Arial, sans-serif; font-size: 11px; line-height: 1.4; color: #241634; }
+  h1 { font-size: 20px; margin: 0; color: #4e0a84; }
+  h2 { font-size: 14px; margin: 0; }
+  .sub { color: #6b5f7b; margin: 2px 0 12px; }
+  .stop { border: 1px solid #8a7a9e; border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; page-break-inside: avoid; }
+  .head { display: flex; justify-content: space-between; }
+  .kind { font-weight: 700; text-transform: uppercase; font-size: 9px; letter-spacing: .6px; color: #6a0dad; }
+  .kind.pickup { color: #1b6e3c; }
+  table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+  td { vertical-align: top; padding: 2px 0; }
+  td.l { width: 90px; color: #6b5f7b; font-weight: 700; font-size: 9px; text-transform: uppercase; }
+  ul.check { list-style: none; padding: 0; margin: 6px 0 0; }
+  ul.check li { padding: 2px 0 2px 18px; position: relative; }
+  ul.check li::before { content: ""; position: absolute; left: 0; top: 3px; width: 9px; height: 9px; border: 1.2px solid #241634; }
+  .collect { font-weight: 700; color: #b0154f; }
+</style></head>
+<body>
+<h1>{{ business_name }} run sheet</h1>
+<p class="sub">{{ day|date:"l, F j, Y" }} · {{ cards|length }} stop{{ cards|length|pluralize }} · Office {{ business_phone }}</p>
+{% for card in cards %}{% with stop=card.stop booking=card.booking %}
+<div class="stop">
+  <div class="head"><div><span class="kind {% if not stop.is_delivery %}pickup{% endif %}">{{ stop.kind_label }}</span> <strong>{{ stop.time_label }}</strong><h2>{{ booking.customer_name }}</h2></div><div>Booking #{{ booking.pk }}{% if card.city %}<br>{{ card.city }}{% endif %}</div></div>
+  <table>
+    <tr><td class="l">Address</td><td>{{ booking.delivery_address|linebreaksbr }}</td></tr>
+    {% if card.show_phone and booking.phone %}<tr><td class="l">Phone</td><td>{{ booking.phone }}</td></tr>{% endif %}
+    <tr><td class="l">Items</td><td>{% for quantity, name in card.items %}{{ quantity }} × {{ name }}{% if not forloop.last %}, {% endif %}{% endfor %}</td></tr>
+    <tr><td class="l">Surface</td><td>{{ booking.get_surface_display|default:"Not given" }}{% if booking.setup_by_time %} · Setup by {{ booking.setup_by_time|time:"g:i A" }}{% endif %}</td></tr>
+    <tr><td class="l">Power</td><td>{% if card.power_items %}Needs an outlet: {{ card.power_items|join:", " }}{% else %}None needed{% endif %}</td></tr>
+    {% if booking.crew_notes %}<tr><td class="l">Crew notes</td><td>{{ booking.crew_notes }}</td></tr>{% endif %}
+    {% if card.show_money %}<tr><td class="l">Money</td><td>{% if card.balance > 0 %}<span class="collect">Collect {{ card.balance|dollars }}</span>{% else %}Paid in full{% endif %} · Caution held {{ card.caution_held|dollars }}</td></tr>{% endif %}
+  </table>
+  <ul class="check">{% for step in card.checklist %}<li>{{ step }}</li>{% endfor %}</ul>
+</div>
+{% endwith %}{% empty %}<p>No deliveries or pickups on this day.</p>{% endfor %}
+</body></html>

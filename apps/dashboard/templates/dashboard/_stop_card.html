@@ -1,0 +1,57 @@
+{% load core_tags dash %}{% with stop=card.stop booking=card.booking %}
+<article id="stop-{{ booking.pk }}-{{ stop.kind }}" class="stop-card" data-done="{% if stop.done %}true{% else %}false{% endif %}" aria-labelledby="stop-title-{{ booking.pk }}-{{ stop.kind }}">
+  <div class="flex items-start justify-between gap-3">
+    <div class="min-w-0">
+      <p class="flex items-center gap-2"><span class="kind-label {% if stop.is_delivery %}text-brand{% else %}text-success{% endif %}">{{ stop.kind_label }}</span><span class="text-[15px] font-bold">{{ stop.time_label }}</span></p>
+      <h3 id="stop-title-{{ booking.pk }}-{{ stop.kind }}" class="mt-0.5 text-[17px] font-bold [overflow-wrap:anywhere]">{{ booking.customer_name }}</h3>
+      <p class="text-caption font-medium text-ink-muted">Booking #{{ booking.pk }}{% if card.city %} · {{ card.city }}{% endif %}</p>
+    </div>
+    <span class="flex flex-none flex-col items-end gap-1">
+      {% if stop.done %}<span class="badge badge-muted">{% if stop.is_delivery %}Delivered{% else %}Returned{% endif %}</span>{% endif %}
+      {% if card.show_money and not stop.done and card.balance > 0 %}<span class="badge badge-danger">Collect {{ card.balance|dollars }}</span>{% endif %}
+      {% if not stop.is_delivery and card.show_money and card.caution_held > 0 %}<span class="badge badge-warning">Inspect</span>{% endif %}
+    </span>
+  </div>
+
+  <div class="stop-facts">
+    <div class="fact"><span class="tile" aria-hidden="true">{% icon "map-pin" 18 %}</span><span class="min-w-0"><span class="fact-label">Address</span><a href="{{ stop.maps_url }}" rel="noopener" target="_blank" class="fact-value text-brand underline underline-offset-2">{{ booking.delivery_address|linebreaksbr }}</a></span></div>
+    {% if card.show_phone and booking.phone %}<div class="fact"><span class="tile" aria-hidden="true">{% icon "phone" 18 %}</span><span class="min-w-0"><span class="fact-label">Customer phone</span><a href="tel:{{ booking.phone|tel }}" class="fact-value text-brand underline underline-offset-2">{{ booking.phone }}</a></span></div>{% endif %}
+    <div class="fact"><span class="tile" aria-hidden="true">{% icon "list" 18 %}</span><span class="min-w-0"><span class="fact-label">Items</span><ul class="fact-value">{% for quantity, name in card.items %}<li>{{ quantity }} × {{ name }}</li>{% empty %}<li>No items</li>{% endfor %}</ul></span></div>
+    <div class="grid grid-cols-2 gap-3">
+      <div class="fact"><span class="min-w-0"><span class="fact-label">Surface</span><span class="fact-value">{{ booking.get_surface_display|default:"Not given" }}</span></span></div>
+      <div class="fact"><span class="min-w-0"><span class="fact-label">Setup by</span><span class="fact-value">{% if booking.setup_by_time %}{{ booking.setup_by_time|time:"g:i A" }}{% else %}Not given{% endif %}</span></span></div>
+    </div>
+    <div class="fact"><span class="min-w-0"><span class="fact-label">Power</span><span class="fact-value">{% if card.power_items %}Needs an outlet: {{ card.power_items|join:", " }}{% else %}No power needed{% endif %}</span></span></div>
+    {% if booking.crew_notes %}<div class="fact"><span class="min-w-0"><span class="fact-label">Crew notes</span><span class="fact-value whitespace-pre-line">{{ booking.crew_notes }}</span></span></div>{% endif %}
+    {% if card.show_money %}<div class="grid grid-cols-2 gap-3">
+      <div class="fact"><span class="min-w-0"><span class="fact-label">Balance to collect</span><span class="fact-value {% if card.balance > 0 %}text-danger{% else %}text-success{% endif %}">{{ card.balance|dollars }}</span></span></div>
+      <div class="fact"><span class="min-w-0"><span class="fact-label">Caution held</span><span class="fact-value">{{ card.caution_held|dollars }}</span></span></div>
+    </div>{% endif %}
+  </div>
+
+  {% if card.message %}<p role="alert" class="alert alert-danger mt-3">{{ card.message }}</p>{% endif %}
+
+  <div class="no-print mt-3 flex flex-wrap gap-2">
+    {% if stop.is_delivery and not stop.done %}
+    <form method="post" action="{% url 'dashboard:crew_mark' booking.pk %}" hx-post="{% url 'dashboard:crew_mark' booking.pk %}" hx-target="#stop-{{ booking.pk }}-{{ stop.kind }}" hx-swap="outerHTML" class="w-full">
+      {% csrf_token %}<input type="hidden" name="action" value="delivered"><input type="hidden" name="kind" value="{{ stop.kind }}"><input type="hidden" name="day" value="{{ day|date:'Y-m-d' }}">
+      {% if card.needs_override %}
+      <label for="note-{{ booking.pk }}" class="label">Why deliver anyway?</label>
+      <textarea id="note-{{ booking.pk }}" name="override_note" rows="2" required class="input mb-2 !h-auto py-2" placeholder="For example: balance collected on site"></textarea>
+      <button type="submit" class="btn btn-primary btn-lg btn-block">Deliver anyway</button>
+      {% else %}
+      <button type="submit" class="btn btn-primary btn-lg btn-block">{% icon "check-circle" 20 %}Mark delivered</button>
+      {% endif %}
+    </form>
+    {% elif not stop.is_delivery and not stop.done %}
+    {% if booking.status == "delivered" %}
+    <form method="post" action="{% url 'dashboard:crew_mark' booking.pk %}" hx-post="{% url 'dashboard:crew_mark' booking.pk %}" hx-target="#stop-{{ booking.pk }}-{{ stop.kind }}" hx-swap="outerHTML" class="w-full">
+      {% csrf_token %}<input type="hidden" name="action" value="returned"><input type="hidden" name="kind" value="{{ stop.kind }}"><input type="hidden" name="day" value="{{ day|date:'Y-m-d' }}">
+      <button type="submit" class="btn btn-primary btn-lg btn-block">{% icon "check-circle" 20 %}Mark returned</button>
+    </form>
+    {% else %}<p class="text-small font-bold text-ink-muted">Mark it delivered before it can be returned.</p>{% endif %}
+    {% endif %}
+    <a href="{% url 'admin:bookings_booking_change' booking.pk %}" class="btn btn-secondary">Booking details</a>
+  </div>
+</article>
+{% endwith %}

@@ -26,6 +26,7 @@ FORM_PERMISSIONS = {
     "rental-refund": REFUND_PERMISSION,
     "resolve-mismatch": REFUND_PERMISSION,
     "tax-exemption": TAX_EXEMPTION_PERMISSION,
+    "resolve-attention": "bookings.resolve_attention",
 }
 
 LEDGER_FORMS = {
@@ -54,7 +55,7 @@ class PaymentAdmin(ModelAdmin):
         "reference",
         "received_at",
     ]
-    list_filter = ["status", "kind", "method"]
+    list_filter = ["status", "kind", "method", "received_at"]
     list_select_related = ["booking"]
     search_fields = [
         "reference",

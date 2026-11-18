@@ -127,6 +127,21 @@ class TaxExemptionForm(LedgerForm):
         )
 
 
+class ResolveAttentionForm(LedgerForm):
+    """Clear a booking's needs-attention flag, with a note saying how it was resolved."""
+
+    title = "Resolve attention"
+
+    note = forms.CharField(
+        label="How was it resolved?",
+        widget=forms.Textarea(attrs={"rows": 3}),
+        help_text="Saved in the booking's log with your name and the time.",
+    )
+
+    def record(self, user):
+        lifecycle.resolve_attention(self.booking, self.cleaned_data["note"], user)
+
+
 LIFECYCLE_FORMS = {
     "cancel": CancelBookingForm,
     "reopen": ReopenBookingForm,
@@ -134,4 +149,5 @@ LIFECYCLE_FORMS = {
     "mark-returned": MarkReturnedForm,
     "change-item": ChangeItemForm,
     "tax-exemption": TaxExemptionForm,
+    "resolve-attention": ResolveAttentionForm,
 }

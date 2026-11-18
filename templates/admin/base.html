@@ -1,0 +1,7 @@
+{% extends "admin/base.html" %}
+{% load core_tags %}
+{% block footer %}{{ block.super }}
+{% if staff_tabs %}<nav class="tabbar" aria-label="Main">
+  {% for item in staff_tabs %}<a href="{{ item.url }}" class="tab"{% if item.active %} aria-current="page"{% endif %}><span class="tab-icon">{% icon item.icon 22 %}</span>{{ item.label }}</a>{% endfor %}
+</nav>{% endif %}
+{% endblock %}

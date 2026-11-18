@@ -1,0 +1,16 @@
+{% load core_tags %}<section id="quick-switches" class="staff-card" aria-labelledby="switches-heading">
+  <h2 id="switches-heading" class="t-h3 pb-2">Quick switches</h2>
+  {% for row in switch_rows %}
+  <form method="post" action="{% url 'dashboard:switch' %}" hx-post="{% url 'dashboard:switch' %}" hx-trigger="change" hx-target="#quick-switches" hx-swap="outerHTML" class="switch-row">
+    {% csrf_token %}<input type="hidden" name="switch" value="{{ row.name }}">
+    <label for="switch-{{ row.name }}" class="min-w-0 flex-1 cursor-pointer">
+      <span class="block text-[14px] font-bold">{{ row.label }}</span>
+      <span class="block text-caption font-medium text-ink-muted">{{ row.hint }}</span>
+      {% if row.note %}<span class="block text-caption font-bold text-warning">{{ row.note }}</span>{% endif %}
+    </label>
+    <input type="checkbox" role="switch" class="switch" id="switch-{{ row.name }}" name="on" value="1"{% if row.on %} checked{% endif %}{% if not can_change_switches %} disabled{% endif %}>
+    <noscript><button type="submit" class="btn btn-secondary">Save</button></noscript>
+  </form>
+  {% endfor %}
+  {% if can_change_switches %}<a href="{% url 'admin:core_sitesettings_changelist' %}" class="staff-link border-t border-border w-full justify-between">All site settings{% icon "chevron-right" 18 stroke=2.5 %}</a>{% endif %}
+</section>

@@ -1,0 +1,46 @@
+{% load static tailwind_cli core_tags %}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{% block title %}Dashboard{% endblock %} | {{ business_name }}</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#4E0A84">
+  <link rel="icon" href="{% static 'brand/favicon.ico' %}" sizes="48x48">
+  <link rel="apple-touch-icon" href="{% static 'brand/apple-touch-icon.png' %}">
+  {% tailwind_css %}
+  <script src="{% static 'js/htmx.min.js' %}" defer></script>
+  <script src="{% static 'js/alpine.min.js' %}" defer></script>
+</head>
+<body class="bg-surface-soft" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+<a href="#main" class="btn btn-brand sr-only-focusable absolute left-2 top-2 z-50">Skip to content</a>
+<div class="staff-shell">
+  <aside class="side no-print" aria-label="Staff navigation"><div class="side-inner">
+    <a href="{% url 'admin:index' %}" class="mb-4 flex items-center gap-3 px-2">
+      <span class="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-surface-tint"><img src="{% static 'brand/atglace-logo-header-320.webp' %}" alt="" width="36" height="30" class="h-[30px] w-[36px] object-contain"></span>
+      <span class="font-bold">{{ brand_short }}</span>
+    </a>
+    <nav class="flex flex-col gap-1" aria-label="Main">
+      {% for item in nav %}<a href="{{ item.url }}" class="side-link"{% if item.active %} aria-current="page"{% endif %}>{% icon item.icon 20 %}{{ item.label }}</a>{% endfor %}
+    </nav>
+    {% if back_office %}<p class="eyebrow mt-6 px-3">Back office</p>
+    <nav class="flex flex-col gap-1" aria-label="Back office">
+      {% for link in back_office %}<a href="{{ link.url }}" class="side-link">{% icon link.icon 20 %}{{ link.label }}</a>{% endfor %}
+    </nav>{% endif %}
+    <form method="post" action="{% url 'admin:logout' %}" class="mt-auto">{% csrf_token %}<button type="submit" class="side-link w-full">{% icon "arrow-right" 20 %}Log out</button></form>
+  </div></aside>
+
+  <div class="staff-main">
+    {% block hero %}{% endblock %}
+    <main id="main" class="staff-body">
+      {% if messages %}<div class="pt-4">{% for message in messages %}<p role="status" class="alert {% if message.level_tag == 'error' %}alert-danger{% else %}alert-success{% endif %} mb-2">{{ message }}</p>{% endfor %}</div>{% endif %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+
+<nav class="tabbar no-print" aria-label="Main">
+  {% for item in nav %}<a href="{{ item.url }}" class="tab"{% if item.active %} aria-current="page"{% endif %}><span class="tab-icon">{% icon item.icon 22 %}</span>{{ item.label }}</a>{% endfor %}
+</nav>
+</body>
+</html>

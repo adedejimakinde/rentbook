@@ -147,6 +147,7 @@ def submit_booking(lines, *, event_date, zip_code, promo_code, flow, plan, choic
         booking.event_start_time = time.fromisoformat(event["start_time"])
         booking.setup_by_time = time.fromisoformat(event["setup_by_time"])
         booking.event_type = event["event_type"]
+        booking.city = delivery["city"]
         booking.surface = delivery["surface"]
         booking.crew_notes = delivery["crew_notes"]
         booking.tax_exempt_requested = exempt
@@ -163,6 +164,7 @@ def submit_booking(lines, *, event_date, zip_code, promo_code, flow, plan, choic
             "event_start_time",
             "setup_by_time",
             "event_type",
+            "city",
             "surface",
             "crew_notes",
             "tax_exempt_requested",

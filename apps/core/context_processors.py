@@ -33,7 +33,13 @@ def business(request):
 
 
 def site_sections(request):
-    """Which optional sections (packages, gallery) have content to link to."""
+    """Which optional sections (packages, gallery) have content to link to.
+
+    Staff screens do not show the public navigation, so they skip the queries.
+    """
+    match = getattr(request, "resolver_match", None)
+    if match and match.namespace in ("admin", "dashboard"):
+        return {}
     from apps.core.services import section_flags
 
     return section_flags()

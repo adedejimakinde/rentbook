@@ -226,6 +226,7 @@ class Booking(TimeStampedModel):
     phone = models.CharField(max_length=30)
     event_date = models.DateField(db_index=True)
     delivery_address = models.TextField()
+    city = models.CharField(max_length=100, blank=True, help_text="Delivery city.")
     zip_code = models.CharField(
         max_length=5, blank=True, help_text="Delivery ZIP the fees were quoted for."
     )
@@ -334,6 +335,17 @@ class Booking(TimeStampedModel):
         max_length=20, choices=Surface.choices, blank=True, help_text="Setup surface."
     )
     crew_notes = models.TextField(blank=True, help_text="Customer's notes for the delivery crew.")
+    delivery_time = models.TimeField(
+        null=True, blank=True, help_text="When the crew should arrive to deliver and set up."
+    )
+    pickup_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Leave empty to pick up on the event date. Set it when pickup is another day.",
+    )
+    pickup_time = models.TimeField(
+        null=True, blank=True, help_text="When the crew should arrive to pick up."
+    )
 
     tax_exempt_requested = models.BooleanField(
         default=False,
@@ -377,7 +389,12 @@ class Booking(TimeStampedModel):
                 name="tax_exempt_booking_has_certificate",
             ),
         ]
-        permissions = [("can_set_tax_exemption", "Can set tax exemption")]
+        permissions = [
+            ("can_set_tax_exemption", "Can set tax exemption"),
+            ("view_dashboard", "Can view the owner dashboard and calendar"),
+            ("view_crew_schedule", "Can view the crew schedule and mark delivered or returned"),
+            ("resolve_attention", "Can resolve a booking that needs attention"),
+        ]
 
     def __str__(self):
         return f"Booking #{self.pk} for {self.customer_name} on {self.event_date}"
@@ -386,6 +403,11 @@ class Booking(TimeStampedModel):
         """Refuse to delete a booking that holds stock or has payments."""
         check_deletable(self)
         return super().delete(*args, **kwargs)
+
+    @property
+    def effective_pickup_date(self):
+        """The day the crew collects: pickup_date, or the event date when none is set."""
+        return self.pickup_date or self.event_date
 
     @property
     def total(self):
@@ -438,6 +460,33 @@ class Booking(TimeStampedModel):
     def caution_excess(self):
         """Caution held beyond what the current lines need: to refund to the customer."""
         return max(self.caution_held - self.caution_fee, Decimal("0.00"))
+
+
+class BookingLogEntry(TimeStampedModel):
+    """One thing staff did to a booking that is worth remembering: what, why, who and when."""
+
+    RESOLVED_ATTENTION = "resolved_attention"
+
+    booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name="log")
+    action = models.CharField(max_length=40)
+    note = models.TextField()
+    by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+
+    class Meta:
+        ordering = ["-created_at", "-pk"]
+        verbose_name_plural = "booking log entries"
+
+    def __str__(self):
+        return f"{self.get_action_label()} on booking #{self.booking_id}"
+
+    def get_action_label(self):
+        return {self.RESOLVED_ATTENTION: "Resolved attention"}.get(self.action, self.action)
 
 
 class BookingItem(TimeStampedModel):
