@@ -1,0 +1,8 @@
+{% load core_tags %}<div class="flex items-end justify-between gap-4">
+  <div class="min-w-0 space-y-1">
+    {% if eyebrow %}<p class="eyebrow">{{ eyebrow }}</p>{% endif %}
+    <h2{% if id %} id="{{ id }}"{% endif %} class="t-h2">{{ title }}</h2>
+    {% if text %}<p class="muted">{{ text }}</p>{% endif %}
+  </div>
+  {% if link_url %}<a href="{{ link_url }}" class="link shrink-0">{{ link_label }}{% icon "chevron-right" 16 stroke=2.5 %}</a>{% endif %}
+</div>

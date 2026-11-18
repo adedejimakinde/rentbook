@@ -1,8 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="mx-auto max-w-2xl px-4 py-10">
-  <h1 class="flex items-center gap-2 text-2xl font-bold text-primary">{% include "core/_sparkle.html" %}Check availability</h1>
-  {% include "core/_quick_check_form.html" with event_date=result.event_date event_zip=result.zip_code %}
-  {% include "core/_quick_check_result.html" %}
+<div class="wrap-narrow page">
+  <p class="eyebrow">Your date</p>
+  <h1 class="t-h1 mt-1">Check availability</h1>
+  <div class="card mt-5 p-4">
+    {% include "core/_quick_check_form.html" with event_date=result.event_date event_zip=result.zip_code %}
+    {% include "core/_quick_check_result.html" %}
+  </div>
 </div>
 {% endblock %}

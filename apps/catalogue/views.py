@@ -6,9 +6,10 @@ from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_GET
 from django.views.decorators.vary import vary_on_headers
 
+from apps.bookings.services.cart import subtotal as cart_subtotal
 from apps.catalogue.models import Category, ItemImage, Package
 from apps.catalogue.services import listing
-from apps.core.services import get_event_date, set_event_date
+from apps.core.services import get_event_date, get_event_zip, set_event_date
 
 GALLERY_PAGE_SIZE = 24
 
@@ -39,20 +40,28 @@ def catalogue(request, category_slug=None):
     category = get_object_or_404(Category, slug=category_slug) if category_slug else None
     date_error = set_event_date(request, request.GET["date"]) if "date" in request.GET else ""
     event_date = get_event_date(request)
-    page = listing.catalogue_page(category, request.GET.get("page"))
+    sort = listing.clean_sort(request.GET.get("sort"))
+    page = listing.catalogue_page(category, request.GET.get("page"), sort)
     title, description = _rental_seo(category)
     context = {
         "category": category,
+        "sort": sort,
+        "sorts": listing.SORTS,
+        "sort_query": "" if sort == listing.POPULAR else f"&sort={sort}",
+        "sort_suffix": "" if sort == listing.POPULAR else f"?sort={sort}",
         "categories": listing.categories_with_items(),
         "page": page,
         "event_date": event_date,
+        "event_zip": get_event_zip(request),
         "date_error": date_error,
         "statuses": listing.item_statuses(page.object_list, event_date) if event_date else {},
         "meta_title": title,
         "meta_description": description,
     }
-    template = "catalogue/_results.html" if is_htmx(request) else "catalogue/list.html"
-    return render(request, template, context)
+    if is_htmx(request):
+        return render(request, "catalogue/_results.html", context)
+    context["cart_subtotal"] = cart_subtotal(request)
+    return render(request, "catalogue/list.html", context)
 
 
 def _availability_context(request, item):
@@ -82,6 +91,7 @@ def _availability_context(request, item):
         "event_date": event_date,
         "date_error": date_error,
         "status": status,
+        "line_total": listing.line_total(selected, quantity),
         "ask_price_url": (
             listing.price_enquiry_url(item.name, selected.name, event_date)
             if selected is not None and not selected.unit_price

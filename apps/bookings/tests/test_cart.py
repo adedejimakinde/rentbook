@@ -176,7 +176,7 @@ def test_quote_errors_appear_next_to_what_they_refer_to(client, items, event_dat
 
     zip_block = html[html.index('id="cart-zip"') : html.index('id="cart-promo"')]
     assert "We do not deliver to ZIP code 90210 yet." in zip_block
-    promo_block = html[html.index('id="cart-promo"') : html.index("Update quote")]
+    promo_block = html[html.index('id="cart-promo"') : html.index("Apply code")]
     assert "This promo code is not recognised." in promo_block
     package_line = html[html.index("Party set") :]
     assert f"Party set is not available on {event_date:%b %d, %Y}." in package_line[:1500]
@@ -297,3 +297,21 @@ def unescape_url(html):
     from urllib.parse import unquote
 
     return unquote(unescape(html))
+
+
+def test_cart_lines_show_the_item_photo_or_a_tinted_block(client, items, event_date):
+    from apps.catalogue.models import ItemImage
+
+    photo = ItemImage.objects.create(item=items["chair"].item, image="items/chair.jpg")
+    ItemImage.objects.filter(pk=photo.pk).update(
+        renditions_ready=True,
+        renditions=[{"format": "jpeg", "width": 400, "height": 400, "name": "items/c-400.jpg"}],
+    )
+    add(client, "variant", items["chair"].pk, 2)
+    add(client, "package", items["package"].pk, 1)
+    set_details(client, event_date)
+
+    html = client.get(reverse("bookings:cart")).content.decode()
+
+    assert "items/c-400.jpg" in html
+    assert 'data-placeholder="Party set"' in html

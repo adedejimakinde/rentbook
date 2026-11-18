@@ -5,7 +5,8 @@ from urllib.parse import quote
 
 from django.conf import settings
 from django.core.paginator import Paginator
-from django.db.models import Count, Prefetch, Q
+from django.db.models import Case, Count, DecimalField, F, Min, Prefetch, Q, When
+from django.db.models.functions import Coalesce
 
 from apps.bookings.services import availability
 from apps.catalogue.models import Category, Item, ItemImage
@@ -26,6 +27,13 @@ class Status:
     code: str
     label: str
     quantity: int = 0
+
+    @property
+    def short_label(self):
+        """The label without its tail, for cards on small screens: "Available"."""
+        if self.code == CONFIRM:
+            return "Call to confirm"
+        return self.label.removesuffix(" for this date")
 
 
 CALL_TO_CONFIRM = Status(CONFIRM, "Call to confirm availability")
@@ -54,11 +62,59 @@ def categories_with_items():
     )
 
 
-def catalogue_page(category, page_number):
-    """One page of the catalogue, optionally limited to a category."""
-    items = active_items().order_by("category__sort_order", "category__name", "name")
+POPULAR = "popular"
+PRICE_LOW = "price-low"
+PRICE_HIGH = "price-high"
+NAME = "name"
+SORTS = {
+    POPULAR: "Popular",
+    PRICE_LOW: "Price: low to high",
+    PRICE_HIGH: "Price: high to low",
+    NAME: "Name: A to Z",
+}
+
+
+def clean_sort(value):
+    """A known sort key, or the default (popular first)."""
+    return value if value in SORTS else POPULAR
+
+
+def _with_sort_price(items):
+    """Annotate each item with the price the card shows (see Item.display_price).
+
+    That is the lowest positive variant price, else the item's base price when positive,
+    else NULL ("Call for price"), so priceless items can be sorted last.
+    """
+    money = DecimalField(max_digits=10, decimal_places=2)
+    unit = Coalesce("variants__price_override", "base_price", output_field=money)
+    lowest = Min(
+        Case(
+            When(
+                Q(variants__price_override__gt=0)
+                | Q(variants__price_override__isnull=True, base_price__gt=0),
+                then=unit,
+            ),
+            output_field=money,
+        )
+    )
+    fallback = Case(When(base_price__gt=0, then=F("base_price")), output_field=money)
+    return items.annotate(sort_price=Coalesce(lowest, fallback, output_field=money))
+
+
+def catalogue_page(category, page_number, sort=POPULAR):
+    """One page of the catalogue, optionally limited to a category, in the chosen order."""
+    items = active_items()
     if category is not None:
         items = items.filter(category=category)
+    group = ("category__sort_order", "category__name", "name")
+    if sort == NAME:
+        items = items.order_by("name", "pk")
+    elif sort in (PRICE_LOW, PRICE_HIGH):
+        price = F("sort_price")
+        price = price.asc(nulls_last=True) if sort == PRICE_LOW else price.desc(nulls_last=True)
+        items = _with_sort_price(items).order_by(price, "name", "pk")
+    else:
+        items = items.order_by("-is_featured", *group, "pk")
     return Paginator(items, PAGE_SIZE).get_page(page_number)
 
 
@@ -96,6 +152,15 @@ def item_statuses(items, event_date):
         else:
             statuses[item.pk] = Status(UNAVAILABLE, "Unavailable for this date")
     return statuses
+
+
+def line_total(variant, quantity):
+    """What `quantity` of a variant costs for the event, as the quote prices it, or None."""
+    from apps.bookings.services.quote import to_cents
+
+    if variant is None or not variant.unit_price:
+        return None
+    return to_cents(variant.unit_price * quantity)
 
 
 def featured_items(limit=8):

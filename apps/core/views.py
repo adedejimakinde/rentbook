@@ -1,5 +1,7 @@
 """Site-level views."""
 
+from datetime import date
+
 from django.conf import settings
 from django.contrib import messages
 from django.db import connection
@@ -73,6 +75,7 @@ def _page(request, template, title, description, **extra):
 def home(request):
     """Render the home page."""
     featured = listing.featured_items()
+    categories = list(listing.categories_with_items())
     event_date = services.get_event_date(request)
     return _page(
         request,
@@ -80,7 +83,10 @@ def home(request):
         "Party rentals across DFW",
         "Bounce houses, chairs, tables, linen, backdrops, concession machines and a golf "
         "simulator, delivered and set up across the Dallas-Fort Worth area.",
-        categories=listing.categories_with_items(),
+        categories=categories,
+        event_tabs=services.event_tabs(categories),
+        event_types=services.EVENT_TYPES,
+        reviews=services.published_reviews(),
         featured=featured,
         statuses=listing.item_statuses(featured, event_date) if event_date and featured else {},
         event_date=event_date,
@@ -185,6 +191,22 @@ def terms(request):
         "damage and setup requirements.",
         sections=TERMS_SECTIONS,
         terms_version=settings.TERMS_VERSION,
+    )
+
+
+PRIVACY_UPDATED = date(2026, 11, 18)
+
+
+@require_GET
+def privacy(request):
+    """How we collect and use customer information."""
+    return _page(
+        request,
+        "core/privacy.html",
+        "Privacy policy",
+        "How Atglace Events & Rentals collects, uses and protects your information when you "
+        "browse, book and pay.",
+        updated=PRIVACY_UPDATED,
     )
 
 

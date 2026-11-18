@@ -1,22 +1,27 @@
 {% extends "base.html" %}
+{% load core_tags %}
 {% block content %}
-<div class="mx-auto max-w-4xl px-4 py-10">
-  <h1 class="flex items-center gap-2 text-2xl leading-tight font-bold text-balance text-primary [overflow-wrap:anywhere] sm:text-3xl">{% include "core/_sparkle.html" %}Packages</h1>
-  <p class="mt-2 max-w-2xl">Ready-made bundles so you can book one thing instead of piecing a party together item by item.</p>
+<div class="wrap page">
+  <div class="max-w-[720px]">
+    <p class="eyebrow">Party packages</p>
+    <h1 class="t-h1 mt-1 text-balance [overflow-wrap:anywhere]">Packages</h1>
+    <p class="mt-2 text-ink-muted">Ready-made bundles so you can book one thing instead of piecing a party together item by item.</p>
+  </div>
   {% if packages %}
-  <ul class="mt-6 divide-y divide-primary/20 border-y border-primary/20">
+  <ul class="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
     {% for package in packages %}
-    <li class="relative flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 py-4">
-      <div>
-        <h2 class="text-xl font-bold text-primary"><a href="{{ package.get_absolute_url }}" class="after:absolute after:inset-0">{{ package.name }}</a></h2>
-        <p class="text-sm">{% for line in package.items.all %}{{ line.quantity }} x {{ line.variant.item.name }}{% if line.variant.name != "Default" %} ({{ line.variant.name }}){% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+    <li class="product lift p-4">
+      <div class="flex items-start justify-between gap-3">
+        <h2 class="t-h3 min-w-0"><a href="{{ package.get_absolute_url }}" class="after:absolute after:inset-0">{{ package.name }}</a></h2>
+        <span class="tile h-9 w-9 rounded-pill">{% icon "arrow-right" 16 stroke=2.5 %}</span>
       </div>
-      <p class="text-lg font-bold">{% include "catalogue/_price.html" with price=package.package_price %}</p>
+      <p class="mt-1 text-small text-ink-muted">{% for line in package.items.all %}{{ line.quantity }} x {{ line.variant.item.name }}{% if line.variant.name != "Default" %} ({{ line.variant.name }}){% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+      <p class="price mt-auto pt-3">{% include "catalogue/_price.html" with price=package.package_price %}</p>
     </li>
     {% endfor %}
   </ul>
   {% else %}
-  <p class="mt-6 rounded-lg bg-surface p-6">We are putting our packages together. Tell us your event and headcount and we will build a custom bundle. <a href="{% url 'core:contact' %}" class="font-bold text-primary underline">Contact us</a>.</p>
+  <p class="card mt-5 p-5 text-ink-muted">We are putting our packages together. Tell us your event and headcount and we will build a custom bundle. <a href="{% url 'core:contact' %}">Contact us</a>.</p>
   {% endif %}
 </div>
 {% endblock %}

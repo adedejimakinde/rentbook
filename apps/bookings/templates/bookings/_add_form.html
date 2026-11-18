@@ -1,9 +1,9 @@
-<form method="post" action="{% url 'bookings:cart_add' %}" hx-post="{% url 'bookings:cart_add' %}" hx-target="#add-result-{{ kind }}-{{ id }}" class="mt-4 space-y-2">
+{% with id_text=id|stringformat:"s" %}<form method="post" action="{% url 'bookings:cart_add' %}" hx-post="{% url 'bookings:cart_add' %}" hx-target="#add-result-{{ kind }}-{{ id }}" class="{% if result_outside %}shrink-0{% else %}space-y-3{% endif %}">
   {% csrf_token %}
   <input type="hidden" name="kind" value="{{ kind }}"><input type="hidden" name="id" value="{{ id }}">
   {% if quantity %}<input type="hidden" name="quantity" value="{{ quantity }}">
-  {% else %}<div><label for="add-qty-{{ kind }}-{{ id }}" class="block font-bold">Quantity</label>
-  <input id="add-qty-{{ kind }}-{{ id }}" type="number" name="quantity" value="1" min="1" max="999" inputmode="numeric" class="min-h-11 w-24 rounded-lg border-2 border-primary/40 px-3"></div>{% endif %}
-  <button type="submit" class="min-h-12 w-full rounded-lg bg-accent px-6 font-bold text-white hover:bg-accent-dark sm:w-auto">Add {% if quantity and quantity > 1 %}{{ quantity }} {% endif %}to booking</button>
-  <div id="add-result-{{ kind }}-{{ id }}" aria-live="polite"></div>
-</form>
+  {% else %}{% with qty_id="add-qty-"|add:kind|add:"-"|add:id_text %}<div class="max-w-[180px]"><label for="{{ qty_id }}" class="label label-caps">Quantity</label>
+  {% include "components/_stepper.html" with id=qty_id value=1 %}</div>{% endwith %}{% endif %}
+  <button type="submit" class="btn btn-primary btn-lg {% if result_outside %}min-h-[52px] px-6{% else %}btn-block sm:w-auto{% endif %}">Add {% if quantity and quantity > 1 %}{{ quantity }} {% endif %}to booking</button>
+  {% if not result_outside %}<div id="add-result-{{ kind }}-{{ id }}" aria-live="polite"></div>{% endif %}
+</form>{% endwith %}

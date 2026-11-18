@@ -135,3 +135,98 @@ def section_flags():
 def clear_section_flags():
     """Forget the cached section flags, so the next page recomputes them."""
     cache.delete(SECTION_FLAGS_KEY)
+
+
+# Cities in the DFW delivery area, shown in the home strip and the footer.
+SERVICE_CITIES = [
+    "Dallas",
+    "Fort Worth",
+    "Plano",
+    "Frisco",
+    "Arlington",
+    "Garland",
+    "Irving",
+    "Mesquite",
+    "Forney",
+    "Rockwall",
+    "McKinney",
+    "Grand Prairie",
+]
+
+# Events we set up, for the home page chips.
+EVENT_TYPES = [
+    "Birthdays",
+    "Weddings",
+    "Baby showers",
+    "Graduations",
+    "Church events",
+    "School field days",
+    "Corporate picnics",
+    "Holiday parties",
+]
+
+# Home hero tabs. Each points at a category slug; the tab uses that category's photo and
+# link when the category exists, and the full catalogue otherwise.
+EVENT_TABS = [
+    {
+        "key": "birthdays",
+        "label": "Birthdays",
+        "eyebrow": "Backyard birthdays",
+        "title": "Big party. Zero hauling.",
+        "text": "Bounce houses, combos and treats delivered, set up and picked up across DFW.",
+        "cta": "Shop inflatables",
+        "category": "bounce-houses-and-inflatables",
+    },
+    {
+        "key": "weddings",
+        "label": "Weddings",
+        "eyebrow": "Weddings and receptions",
+        "title": "Seat every guest beautifully.",
+        "text": "Chiavari chairs, round tables, linen and backdrops, set up before you arrive.",
+        "cta": "Shop chairs",
+        "category": "chairs",
+    },
+    {
+        "key": "church-school",
+        "label": "Church & school",
+        "eyebrow": "Church and school events",
+        "title": "Fun days made easy.",
+        "text": "Inflatables, canopies, tables and chairs for fairs, field days and picnics.",
+        "cta": "Shop tables",
+        "category": "tables",
+    },
+    {
+        "key": "concessions",
+        "label": "Concessions",
+        "eyebrow": "Treats and concessions",
+        "title": "Popcorn and cotton candy, on us to set up.",
+        "text": "Concession machines delivered ready to run, with supplies on request.",
+        "cta": "Shop concessions",
+        "category": "concessions",
+    },
+]
+
+
+def event_tabs(categories):
+    """The hero tabs with each tab's link and photo taken from the given categories."""
+    by_slug = {category.slug: category for category in categories}
+    tabs = []
+    for tab in EVENT_TABS:
+        category = by_slug.get(tab["category"])
+        image = category if category is not None and category.renditions_ready else None
+        tabs.append(
+            {
+                **tab,
+                "url": category.get_absolute_url() if category else "",
+                "image": image,
+                "image_name": category.name if category else tab["label"],
+            }
+        )
+    return tabs
+
+
+def published_reviews(limit=12):
+    """Published customer reviews, newest first. Empty when staff have published none."""
+    from apps.core.models import Review
+
+    return list(Review.objects.filter(is_published=True)[:limit])

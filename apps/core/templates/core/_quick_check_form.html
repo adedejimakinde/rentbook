@@ -1,12 +1,14 @@
-<form method="post" action="{% url 'core:quick_check' %}" hx-post="{% url 'core:quick_check' %}" hx-target="#quick-check-result" class="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+{% load core_tags %}<form method="post" action="{% url 'core:quick_check' %}" hx-post="{% url 'core:quick_check' %}" hx-target="#quick-check-result" class="grid grid-cols-1 gap-2.5">
   {% csrf_token %}
-  <div>
-    <label for="qc-date" class="block font-bold">Event date</label>
-    <input id="qc-date" type="date" name="date" value="{{ event_date|date:'Y-m-d' }}" required class="min-h-12 w-full rounded-lg border-2 border-primary/40 px-3">
+  <div class="grid grid-cols-1 gap-2 min-[400px]:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+    <div>
+      <label for="qc-date" class="label label-caps">Event date</label>
+      <input id="qc-date" type="date" name="date" value="{{ event_date|date:'Y-m-d' }}" required class="input">
+    </div>
+    <div>
+      <label for="qc-zip" class="label label-caps">Delivery ZIP</label>
+      <input id="qc-zip" type="text" name="zip" value="{{ event_zip }}" placeholder="75204" inputmode="numeric" pattern="[0-9]{5}" maxlength="5" autocomplete="postal-code" required class="input">
+    </div>
   </div>
-  <div>
-    <label for="qc-zip" class="block font-bold">Delivery ZIP</label>
-    <input id="qc-zip" type="text" name="zip" value="{{ event_zip }}" inputmode="numeric" pattern="[0-9]{5}" maxlength="5" autocomplete="postal-code" required class="min-h-12 w-full rounded-lg border-2 border-primary/40 px-3">
-  </div>
-  <button type="submit" class="min-h-12 rounded-lg bg-accent px-6 font-bold text-white hover:bg-accent-dark">Check</button>
+  <button type="submit" class="btn btn-brand btn-lg btn-block"><span class="min-[400px]:hidden">Check my date</span><span class="hidden min-[400px]:inline">See what's free on your date</span></button>
 </form>

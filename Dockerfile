@@ -21,6 +21,14 @@ ARG REQUIREMENTS=requirements-dev.txt
 COPY requirements.txt requirements-dev.txt ./
 RUN pip install --no-cache-dir -r "$REQUIREMENTS"
 
+# Development images also get Chromium (and the system libraries it needs) for the
+# Playwright browser tests in tests/test_responsive.py. Production images skip it.
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN if [ "$REQUIREMENTS" = "requirements-dev.txt" ]; then \
+        python -m playwright install --with-deps chromium \
+        && rm -rf /var/lib/apt/lists/*; \
+    fi
+
 COPY . .
 
 # Build the Tailwind CSS into the image, so containers start without a build

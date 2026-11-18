@@ -11,7 +11,7 @@ from apps.bookings.services.availability import notice_problem
 from apps.bookings.services.quote import zone_for_zip
 from apps.core.forms import INPUT
 
-CHOICE_INPUT = "h-5 w-5 accent-primary"
+CHOICE_INPUT = "check"
 
 
 class EventForm(forms.Form):
@@ -194,5 +194,5 @@ class ReviewForm(forms.Form):
         terms_url = reverse("core:terms")
         self.fields["accept_terms"].label = mark_safe(  # noqa: S308
             f'I have read and accept the <a href="{terms_url}" target="_blank" '
-            'class="font-bold text-primary underline">rental terms</a>'
+            'class="font-bold text-brand underline underline-offset-2">rental terms</a>'
         )

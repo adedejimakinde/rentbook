@@ -199,6 +199,10 @@ BUSINESS_AREA = env("BUSINESS_AREA", default="DFW area")
 BUSINESS_PHONE = env("BUSINESS_PHONE", default="469-347-4687")
 BUSINESS_EMAIL = env("BUSINESS_EMAIL", default="atglaceevents.rental@gmail.com")
 WHATSAPP_NUMBER = env("WHATSAPP_NUMBER", default="14693474687")
+# Social profile links for the footer; a link is shown only when its URL is set.
+SOCIAL_INSTAGRAM_URL = env("SOCIAL_INSTAGRAM_URL", default="")
+SOCIAL_TIKTOK_URL = env("SOCIAL_TIKTOK_URL", default="")
+SOCIAL_FACEBOOK_URL = env("SOCIAL_FACEBOOK_URL", default="")
 # Public URL of the site, used for absolute links in the sitemap, Open Graph and JSON-LD.
 SITE_URL = env("SITE_URL", default="http://localhost:8000").rstrip("/")
 

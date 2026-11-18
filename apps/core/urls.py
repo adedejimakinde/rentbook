@@ -15,6 +15,7 @@ urlpatterns = [
     path("links/", views.links, name="links"),
     path("site.webmanifest", views.manifest, name="manifest"),
     path("rental-terms/", views.terms, name="terms"),
+    path("privacy/", views.privacy, name="privacy"),
     path("robots.txt", views.robots, name="robots"),
     path("health/", views.health, name="health"),
 ]

@@ -1,0 +1,5 @@
+{% comment %}Quantity stepper: a real number input with minus/plus buttons that fire "change".{% endcomment %}{% load core_tags %}<div class="stepper{% if small %} stepper-sm{% endif %}" x-data>
+  <button type="button" aria-label="Fewer{% if what %} {{ what }}{% endif %}" @click="$refs.q.stepDown(); $refs.q.dispatchEvent(new Event('change', { bubbles: true }))">{% icon "minus" 18 stroke=2.5 %}</button>
+  <input x-ref="q" id="{{ id }}" type="number" name="{{ name|default:'quantity' }}" value="{{ value|default:1 }}" min="1" max="999" inputmode="numeric"{% if form %} form="{{ form }}"{% endif %}{% if described %} aria-describedby="{{ described }}"{% endif %}>
+  <button type="button" aria-label="More{% if what %} {{ what }}{% endif %}" @click="$refs.q.stepUp(); $refs.q.dispatchEvent(new Event('change', { bubbles: true }))">{% icon "plus" 18 stroke=2.5 %}</button>
+</div>

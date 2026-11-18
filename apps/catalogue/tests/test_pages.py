@@ -101,7 +101,8 @@ def test_every_page_has_a_unique_title_and_description(client):
 def test_home_has_headline_tagline_and_local_business_data(client):
     html = client.get("/").content.decode()
 
-    assert "Party rentals across DFW, delivered and set up" in html
+    assert "Big party. Zero hauling." in html
+    assert "<title>Party rentals across DFW" in html
     assert "Your one-stop shop for event rentals" in html
     assert "Check availability" in html
     assert '"@type": "LocalBusiness"' in html
@@ -119,7 +120,7 @@ def test_catalogue_paginates_twelve_per_page(client):
     assert cards("/rentals/") == 12
     assert cards("/rentals/?page=2") == 12
     assert cards("/rentals/?page=3") == 6
-    assert "Page 1 of 3" in client.get("/rentals/").content.decode()
+    assert "Showing 12 of 30" in client.get("/rentals/").content.decode()
     assert client.get("/rentals/?page=99").status_code == 200
 
 

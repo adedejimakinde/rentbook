@@ -1,0 +1,4 @@
+{% comment %}On/off switch backed by a real checkbox with role="switch".{% endcomment %}<label for="{{ id }}" class="flex min-h-11 cursor-pointer items-center justify-between gap-4">
+  <span class="font-bold">{{ label }}</span>
+  <input type="checkbox" role="switch" id="{{ id }}" name="{{ name }}" class="switch"{% if checked %} checked{% endif %}{% if xref %} x-ref="{{ xref }}"{% endif %}>
+</label>

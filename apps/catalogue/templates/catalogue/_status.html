@@ -1,1 +1,1 @@
-<span class="inline-block rounded px-2 py-1 text-xs font-bold {% if status.code == 'available' %}bg-[#dcfce7] text-[#14532d]{% elif status.code == 'limited' %}bg-[#ffedd5] text-[#7c2d12]{% elif status.code == 'unavailable' %}bg-[#fee2e2] text-[#7f1d1d]{% else %}bg-surface text-primary{% endif %}">{{ status.label }}</span>
+<span class="avail avail-{{ status.code }}"><span class="md:hidden" aria-hidden="true">{{ status.short_label }}</span><span class="max-md:sr-only">{{ status.label }}</span></span>

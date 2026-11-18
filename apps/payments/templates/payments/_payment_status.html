@@ -1,16 +1,20 @@
-<div id="payment-status"{% if keep_polling %} hx-get="{% url 'payments:success_status' token %}?session_id={{ session_id|urlencode }}&amp;n={{ next_poll }}" hx-trigger="load delay:3s" hx-swap="outerHTML"{% endif %} role="status" aria-live="polite" class="[overflow-wrap:anywhere]">
+{% load core_tags %}<div id="payment-status"{% if keep_polling %} hx-get="{% url 'payments:success_status' token %}?session_id={{ session_id|urlencode }}&amp;n={{ next_poll }}" hx-trigger="load delay:3s" hx-swap="outerHTML"{% endif %} role="status" aria-live="polite" class="card flex flex-col items-start gap-3 p-5 [overflow-wrap:anywhere]">
   {% if state == "confirmed" %}
-  <h1 class="text-2xl font-bold text-primary">Booking confirmed</h1>
-  <p class="mt-2">Thank you. Booking #{{ booking.pk }} for {{ booking.event_date|date:"l, M j, Y" }} is confirmed. A receipt is on its way to {{ booking.email }}.</p>
+  <span class="tile bg-success-tint text-success">{% icon "check-circle" 22 %}</span>
+  <h1 class="t-h1">Booking confirmed</h1>
+  <p class="text-ink-muted">Thank you. Booking #{{ booking.pk }} for {{ booking.event_date|date:"l, M j, Y" }} is confirmed. A receipt is on its way to {{ booking.email }}.</p>
   {% elif state == "processing" %}
-  <h1 class="text-2xl font-bold text-primary">Payment processing</h1>
-  <p class="mt-2">Bank payments usually take 3 to 5 business days to clear. We are holding booking #{{ booking.pk }} for you meanwhile and will email you when it is confirmed.</p>
+  <span class="tile bg-warning-tint text-warning">{% icon "info" 22 %}</span>
+  <h1 class="t-h1">Payment processing</h1>
+  <p class="text-ink-muted">Bank payments usually take 3 to 5 business days to clear. We are holding booking #{{ booking.pk }} for you meanwhile and will email you when it is confirmed.</p>
   {% elif state == "failed" %}
-  <h1 class="text-2xl font-bold text-accent">Payment did not go through</h1>
-  <p class="mt-2">Nothing was taken for booking #{{ booking.pk }}. Call us on {{ business_phone }} and we will help you finish booking.</p>
+  <span class="tile bg-danger-tint text-danger">{% icon "alert" 22 %}</span>
+  <h1 class="t-h1">Payment did not go through</h1>
+  <p class="text-ink-muted">Nothing was taken for booking #{{ booking.pk }}. Call us on {{ business_phone }} and we will help you finish booking.</p>
   {% else %}
-  <h1 class="text-2xl font-bold text-primary">Confirming your payment</h1>
-  {% if gave_up %}<p class="mt-2">This is taking longer than usual. You do not need to pay again: we will email you as soon as it is confirmed.</p>
-  {% else %}<p class="mt-2">This usually takes a few seconds. Please keep this page open.</p>{% endif %}
+  <span class="tile">{% icon "lock" 22 %}</span>
+  <h1 class="t-h1">Confirming your payment</h1>
+  {% if gave_up %}<p class="text-ink-muted">This is taking longer than usual. You do not need to pay again: we will email you as soon as it is confirmed.</p>
+  {% else %}<p class="text-ink-muted">This usually takes a few seconds. Please keep this page open.</p>{% endif %}
   {% endif %}
 </div>

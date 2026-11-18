@@ -145,12 +145,12 @@ def test_eager_images_are_not_lazy(upload):
     assert 'loading="eager"' in template.render(Context({"photo": photo}))
 
 
-def test_missing_image_renders_placeholder_with_item_name():
+def test_missing_image_renders_a_tinted_placeholder_block():
     html = Template("{% load catalogue_media %}{% picture None name='Water slide' %}").render(
         Context()
     )
 
-    assert "Water slide" in html
+    assert "bg-surface-tint" in html and 'data-placeholder="Water slide"' in html
     assert "aspect-ratio:4/3" in html
     assert "<img" not in html
 

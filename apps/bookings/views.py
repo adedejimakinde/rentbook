@@ -40,7 +40,7 @@ def is_htmx(request):
 
 def _cart_context(request, **extra):
     return {
-        "cart": cart_service.cart_view(request),
+        "cart": cart_service.attach_line_images(cart_service.cart_view(request)),
         "htmx": is_htmx(request),
         "meta_title": "Your booking cart",
         **extra,

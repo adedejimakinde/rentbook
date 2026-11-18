@@ -1,0 +1,9 @@
+{% if page.paginator.num_pages > 1 %}<nav id="more-bar" aria-label="Pagination" class="mt-6 flex flex-col items-center gap-2.5">
+  <p class="text-caption text-ink-muted" role="status">Showing {{ page.end_index }} of {{ page.paginator.count }}</p>
+  <span class="block h-[3px] w-40 overflow-hidden rounded-pill bg-border" aria-hidden="true"><span class="block h-full bg-brand" style="width: {% widthratio page.end_index page.paginator.count 100 %}%"></span></span>
+  <div class="flex flex-wrap justify-center gap-2">
+    {% if page.has_previous %}<a href="?page={{ page.previous_page_number }}{{ sort_query }}" rel="prev" class="btn btn-ghost btn-lg">Previous page</a>{% endif %}
+    {% if page.has_next %}<a href="?page={{ page.next_page_number }}{{ sort_query }}" rel="next" class="btn btn-dark btn-lg px-7"
+       hx-get="?page={{ page.next_page_number }}{{ sort_query }}" hx-target="#results-grid" hx-swap="beforeend" hx-select="#results-grid > li" hx-select-oob="#more-bar">Show more</a>{% endif %}
+  </div>
+</nav>{% endif %}

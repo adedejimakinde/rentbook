@@ -4,6 +4,8 @@ import re
 
 from django.conf import settings
 
+from apps.core.services import SERVICE_CITIES
+
 
 def business(request):
     """Expose business name, contact details and WhatsApp number from settings."""
@@ -17,6 +19,16 @@ def business(request):
         "business_email": settings.BUSINESS_EMAIL,
         "whatsapp_number": settings.WHATSAPP_NUMBER,
         "site_url": settings.SITE_URL,
+        "service_cities": SERVICE_CITIES,
+        "social_links": [
+            (name, url)
+            for name, url in (
+                ("Instagram", settings.SOCIAL_INSTAGRAM_URL),
+                ("TikTok", settings.SOCIAL_TIKTOK_URL),
+                ("Facebook", settings.SOCIAL_FACEBOOK_URL),
+            )
+            if url
+        ],
     }
 
 

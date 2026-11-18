@@ -1,11 +1,13 @@
-{% load catalogue_media %}
-<article class="relative flex h-full flex-col overflow-hidden rounded-lg border border-primary/20 bg-white">
-  {% picture item.cover_image name=item.name sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw" eager=eager %}
-  {% if item.is_featured %}<span class="absolute left-2 top-2 rounded bg-gold px-2 py-1 text-xs font-bold text-ink">Popular</span>{% endif %}
-  <div class="flex flex-1 flex-col gap-1 p-3">
-    <h3 class="font-bold leading-snug text-primary"><a href="{{ item.get_absolute_url }}" class="after:absolute after:inset-0">{{ item.name }}</a></h3>
-    {% if item.short_description %}<p class="text-sm">{{ item.short_description }}</p>{% endif %}
-    <p class="mt-auto pt-1 font-bold">{% include "catalogue/_price.html" with price=item.display_price ranged=item.has_price_range %}</p>
-    {% with status=statuses|get_item:item.pk %}{% if status %}<p>{% include "catalogue/_status.html" %}</p>{% endif %}{% endwith %}
+{% load catalogue_media core_tags %}{% with status=statuses|get_item:item.pk %}<article class="product lift">
+  <div class="product-media{% if wide %} is-wide{% endif %}">{% picture item.cover_image name=item.name sizes=sizes|default:"(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw" eager=eager ratio=ratio|default:"1/1" css="product-img" %}
+    {% if item.is_featured %}<span class="badge badge-popular absolute left-2.5 top-2.5 z-[1]">Popular</span>{% endif %}
   </div>
-</article>
+  <div class="product-body">
+    <h3 class="product-name"><a href="{{ item.get_absolute_url }}">{{ item.name }}</a></h3>
+    {% if status %}{% include "catalogue/_status.html" %}{% elif item.short_description and not compact %}<p class="line-clamp-2 text-small muted">{{ item.short_description }}</p>{% endif %}
+    <div class="mt-auto flex items-end justify-between gap-2 pt-1">
+      {% with price=item.display_price %}<p class="product-price">{% if price %}{% if item.has_price_range %}<span class="block text-caption leading-4 text-ink-muted">From </span>{% endif %}${{ price|floatformat:"2g" }}<span class="product-per"> / day</span>{% else %}<span class="text-[15px]">Call for price</span>{% endif %}</p>
+      {% if not compact %}{% if not price or price < 1000 %}<span class="product-add{% if status.code == 'unavailable' %} is-off{% endif %}" aria-hidden="true"></span>{% endif %}{% endif %}{% endwith %}
+    </div>
+  </div>
+</article>{% endwith %}

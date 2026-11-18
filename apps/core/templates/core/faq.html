@@ -1,16 +1,22 @@
 {% extends "base.html" %}
+{% load core_tags %}
 {% block content %}
-<div class="mx-auto max-w-3xl px-4 py-10">
-  <h1 class="flex items-center gap-2 text-2xl leading-tight font-bold text-balance text-primary [overflow-wrap:anywhere] sm:text-3xl">{% include "core/_sparkle.html" %}Frequently asked questions</h1>
-  <div class="mt-6 divide-y divide-primary/20 border-y border-primary/20">
-    {% for question, answer in faqs %}
-    <div x-data="{ open: false }">
-      <h2><button type="button" class="flex min-h-12 w-full items-center justify-between gap-4 py-3 text-left text-lg font-bold text-primary" @click="open = !open" :aria-expanded="open.toString()" aria-controls="faq-{{ forloop.counter }}">{{ question }}<span aria-hidden="true" x-text="open ? '−' : '+'">+</span></button></h2>
-      <div id="faq-{{ forloop.counter }}" x-show="open" class="pb-4">{{ answer }}</div>
-      <noscript><p class="pb-4">{{ answer }}</p></noscript>
+<div class="wrap page">
+  <div class="max-w-[760px]">
+    <p class="eyebrow">Help</p>
+    <h1 class="t-h1 mt-1 text-balance [overflow-wrap:anywhere]">Frequently asked questions</h1>
+    <div class="mt-5">
+      {% for question, answer in faqs %}
+      <details class="acc"{% if forloop.first %} open{% endif %}>
+        <summary><h2 class="text-[16px] leading-snug font-bold">{{ question }}</h2><span class="acc-icon">{% icon "plus" 20 stroke=2.5 %}</span></summary>
+        <p class="acc-body text-[15px]">{{ answer }}</p>
+      </details>
+      {% endfor %}
     </div>
-    {% endfor %}
+    <div class="panel mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <p class="font-bold">Still have a question?</p>
+      <a href="{% url 'core:contact' %}" class="btn btn-secondary">Contact us</a>
+    </div>
   </div>
-  <p class="mt-6">Still have a question? <a href="{% url 'core:contact' %}" class="font-bold text-primary underline">Contact us</a>.</p>
 </div>
 {% endblock %}

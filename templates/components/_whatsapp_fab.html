@@ -1,0 +1,23 @@
+{% load core_tags %}<a href="https://wa.me/{{ whatsapp_number }}" id="fab-wa" class="fab-wa" aria-label="Chat with us on WhatsApp" rel="noopener">{% icon "whatsapp" 28 %}</a>
+<script>
+/* Fade the floating WhatsApp button out while a field, button, price or form is underneath it. */
+(() => {
+  const fab = document.getElementById("fab-wa");
+  const busy = "input,select,textarea,button,summary,form,.btn,.chip,.price,.product-add,.stepper,[role=tab]";
+  let queued = false;
+  const check = () => {
+    queued = false;
+    const r = fab.getBoundingClientRect();
+    const pts = [[0.5, 0.5], [0.1, 0.1], [0.9, 0.1], [0.1, 0.9], [0.9, 0.9]];
+    const covered = pts.some(([x, y]) => document.elementsFromPoint(r.left + r.width * x, r.top + r.height * y)
+      .some((el) => !fab.contains(el) && el.closest(busy) && !el.closest(".sticky-bar,.sticky-pill")));
+    fab.classList.toggle("is-covering", covered);
+  };
+  const queue = () => { if (!queued) { queued = true; requestAnimationFrame(check); } };
+  addEventListener("scroll", queue, { passive: true });
+  addEventListener("resize", queue);
+  document.addEventListener("htmx:afterSettle", queue);
+  addEventListener("load", queue);
+  queue();
+})();
+</script>
