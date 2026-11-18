@@ -138,6 +138,7 @@ on their user so they can sign in.
 | Recording payments (Zelle, Cash App, bank) | yes | yes | no |
 | Refunds, resolving mismatched payments | yes | **no** | no |
 | Tax exemption, site settings | yes | **no** | no |
+| Resolve a booking that needs attention | yes | yes | no |
 | Crew schedule, run sheet, mark delivered or returned | yes | yes | **yes** |
 | Catalogue, inventory, invoices, notifications | everything | view (office can also issue invoices) | no |
 
@@ -151,6 +152,10 @@ schedule, the run sheet and the booking detail page. Owner and Office always see
 dashboard's Quick switches card also holds Online booking, Text reminders and Wind alerts (wind
 alerts are a setting only for now). Every change is written to the site settings history with
 who made it and when.
+
+A flagged booking is cleared with **Resolve** (dashboard row or booking page). The note, who and
+when go in the booking's log. It is refused while a payment mismatch or a refund is still pending,
+or stock is still short.
 
 Delivery and pickup times live on the booking: **Delivery time**, **Pickup date** (empty means
 the event date) and **Pickup time**. A stop with no time shows the setup-by time, or "Time TBC",

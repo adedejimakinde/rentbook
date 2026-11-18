@@ -15,8 +15,11 @@ from django.db.models.functions import Replace
 from django.forms import BaseInlineFormSet, ModelForm
 from django.shortcuts import redirect
 from django.urls import reverse
+from django.utils import timezone
+from django.utils.html import format_html, format_html_join
 from unfold.admin import ModelAdmin, TabularInline
 from unfold.contrib.filters.admin import BooleanRadioFilter, RangeDateFilter
+from unfold.decorators import action
 
 from apps.bookings.admin_filters import (
     CautionFilter,
@@ -224,12 +227,100 @@ class BookingPackageInline(PriceHiddenInline):
     extra = 0
 
 
+# The booking page, in sections. Every field of the booking is in exactly one section.
+BOOKING_FIELDSETS = [
+    ("Customer", {"fields": ["customer_name", "email", "phone"]}),
+    (
+        "Event",
+        {
+            "fields": [
+                "status",
+                "needs_attention",
+                "event_date",
+                "event_type",
+                "event_start_time",
+                "setup_by_time",
+                "hold_expires_at",
+                "booking_log",
+            ]
+        },
+    ),
+    (
+        "Delivery and crew",
+        {
+            "fields": [
+                "delivery_address",
+                "city",
+                "zip_code",
+                "surface",
+                "delivery_time",
+                "pickup_date",
+                "pickup_time",
+                "crew_notes",
+                "delivery_override_note",
+                "delivery_override_by",
+                "delivery_override_at",
+            ]
+        },
+    ),
+    (
+        "Money and payments",
+        {
+            "fields": [
+                "total",
+                "deposit_amount",
+                "amount_paid",
+                "balance_due",
+                "overpaid_refundable",
+                "caution_held",
+                "caution_to_collect",
+                "caution_to_refund",
+                "delivery_fee",
+                "setup_fee",
+                "discount",
+                "tax",
+                "caution_fee",
+                "promo_code",
+                "promo_redeemed_at",
+                "payment_choice",
+                "payment_plan",
+                "tax_exempt",
+                "tax_exempt_certificate",
+                "tax_exempt_by",
+                "tax_exempt_at",
+                "tax_exempt_requested",
+                "tax_exempt_org_name",
+                "tax_exempt_cert_number",
+                "clearing_override_note",
+                "clearing_override_by",
+                "clearing_override_at",
+                "invoices_and_receipts",
+            ]
+        },
+    ),
+    (
+        "Notifications",
+        {
+            "fields": [
+                "sms_consent",
+                "sms_consent_version",
+                "sms_consent_at",
+                "terms_version",
+                "terms_accepted_at",
+                "notification_log",
+            ]
+        },
+    ),
+]
+
+
 @admin.register(Booking)
 class BookingAdmin(BookingPaymentActionsMixin, ModelAdmin):
     form = BookingForm
     list_display = [
         "id",
         "customer_name",
+        "city",
         "event_date",
         "status",
         "total_amount",
@@ -265,7 +356,9 @@ class BookingAdmin(BookingPaymentActionsMixin, ModelAdmin):
         **LIFECYCLE_FORMS,
         "manual-invoice": ManualInvoiceForm,
     }
-    search_fields = ["customer_name", "email", "phone"]
+    search_fields = ["customer_name", "email", "phone", "city"]
+    fieldsets = BOOKING_FIELDSETS
+    actions_detail = ["resolve_attention_detail"]
     readonly_fields = [
         "tax",
         "caution_fee",
@@ -294,6 +387,7 @@ class BookingAdmin(BookingPaymentActionsMixin, ModelAdmin):
         "sms_consent_at",
         "invoices_and_receipts",
         "notification_log",
+        "booking_log",
     ]
     inlines = [BookingItemInline, BookingPackageInline]
 
@@ -337,6 +431,8 @@ class BookingAdmin(BookingPaymentActionsMixin, ModelAdmin):
         hidden = set()
         if not request.user.has_perm(SEE_PAYMENTS):
             hidden |= MONEY_FIELDS
+        if not request.user.has_perm("bookings.view_bookinglogentry"):
+            hidden.add("booking_log")
         if not visibility_for(request.user).show_phone:
             hidden.add("phone")
         return hidden
@@ -347,9 +443,17 @@ class BookingAdmin(BookingPaymentActionsMixin, ModelAdmin):
             return columns
         return [column for column in columns if column not in MONEY_COLUMNS]
 
-    def get_fields(self, request, obj=None):
+    def get_fieldsets(self, request, obj=None):
+        """The sections, without fields this user may not see or that do not exist yet."""
         hidden = self._hidden_fields(request)
-        return [field for field in super().get_fields(request, obj) if field not in hidden]
+        editable = {field.name for field in self.model._meta.fields if field.editable}
+        shown = editable | set(self.get_readonly_fields(request, obj))
+        sections = []
+        for title, options in self.fieldsets:
+            names = [name for name in options["fields"] if name in shown and name not in hidden]
+            if names:
+                sections.append((title, {**options, "fields": names}))
+        return sections
 
     def get_exclude(self, request, obj=None):
         model_names = {field.name for field in self.model._meta.fields}
@@ -357,6 +461,26 @@ class BookingAdmin(BookingPaymentActionsMixin, ModelAdmin):
             *(super().get_exclude(request, obj) or []),
             *(self._hidden_fields(request) & model_names),
         ]
+
+    @admin.display(description="Log")
+    def booking_log(self, booking):
+        """What staff did to this booking and why, newest first."""
+        entries = list(booking.log.select_related("by")) if booking.pk else []
+        if not entries:
+            return "Nothing logged yet."
+        rows = [
+            (
+                timezone.localtime(entry.created_at).strftime("%b %d, %Y %H:%M"),
+                entry.get_action_label(),
+                entry.by or "unknown",
+                entry.note,
+            )
+            for entry in entries
+        ]
+        return format_html(
+            '<ul style="list-style:none;margin:0;padding:0;display:grid;gap:8px">{}</ul>',
+            format_html_join("", "<li><strong>{}</strong>: {} by {}. {}</li>", rows),
+        )
 
     @admin.display(description="Invoices and receipts")
     def invoices_and_receipts(self, booking):
@@ -421,6 +545,24 @@ class BookingAdmin(BookingPaymentActionsMixin, ModelAdmin):
         if obj is not None and (lifecycle.holds_stock(obj) or obj.payments.exists()):
             return False
         return super().has_delete_permission(request, obj)
+
+    def has_resolve_attention_permission(self, request, object_id=None):
+        """Owner and Office may resolve; on a booking page only while it is flagged."""
+        if not request.user.has_perm("bookings.resolve_attention"):
+            return False
+        if object_id is None:
+            return True
+        return Booking.objects.filter(pk=object_id, needs_attention=True).exists()
+
+    @action(
+        description="Resolve attention",
+        permissions=["resolve_attention"],
+        url_path="resolve-attention",
+    )
+    def resolve_attention_detail(self, request, object_id):
+        return redirect(
+            reverse("admin:bookings_booking_ledger", args=[object_id, "resolve-attention"])
+        )
 
     @admin.action(description="Change an item line (bookings with payments)")
     def change_item_line(self, request, queryset):

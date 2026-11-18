@@ -15,7 +15,7 @@
 <body class="bg-surface-soft" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
 <a href="#main" class="btn btn-brand sr-only-focusable absolute left-2 top-2 z-50">Skip to content</a>
 <div class="staff-shell">
-  <aside class="side no-print" aria-label="Staff navigation">
+  <aside class="side no-print" aria-label="Staff navigation"><div class="side-inner">
     <a href="{% url 'admin:index' %}" class="mb-4 flex items-center gap-3 px-2">
       <span class="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-surface-tint"><img src="{% static 'brand/atglace-logo-header-320.webp' %}" alt="" width="36" height="30" class="h-[30px] w-[36px] object-contain"></span>
       <span class="font-bold">{{ brand_short }}</span>
@@ -28,7 +28,7 @@
       {% for link in back_office %}<a href="{{ link.url }}" class="side-link">{% icon link.icon 20 %}{{ link.label }}</a>{% endfor %}
     </nav>{% endif %}
     <form method="post" action="{% url 'admin:logout' %}" class="mt-auto">{% csrf_token %}<button type="submit" class="side-link w-full">{% icon "arrow-right" 20 %}Log out</button></form>
-  </aside>
+  </div></aside>
 
   <div class="staff-main">
     {% block hero %}{% endblock %}

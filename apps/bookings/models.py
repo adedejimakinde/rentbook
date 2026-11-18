@@ -226,6 +226,7 @@ class Booking(TimeStampedModel):
     phone = models.CharField(max_length=30)
     event_date = models.DateField(db_index=True)
     delivery_address = models.TextField()
+    city = models.CharField(max_length=100, blank=True, help_text="Delivery city.")
     zip_code = models.CharField(
         max_length=5, blank=True, help_text="Delivery ZIP the fees were quoted for."
     )
@@ -392,6 +393,7 @@ class Booking(TimeStampedModel):
             ("can_set_tax_exemption", "Can set tax exemption"),
             ("view_dashboard", "Can view the owner dashboard and calendar"),
             ("view_crew_schedule", "Can view the crew schedule and mark delivered or returned"),
+            ("resolve_attention", "Can resolve a booking that needs attention"),
         ]
 
     def __str__(self):
@@ -458,6 +460,33 @@ class Booking(TimeStampedModel):
     def caution_excess(self):
         """Caution held beyond what the current lines need: to refund to the customer."""
         return max(self.caution_held - self.caution_fee, Decimal("0.00"))
+
+
+class BookingLogEntry(TimeStampedModel):
+    """One thing staff did to a booking that is worth remembering: what, why, who and when."""
+
+    RESOLVED_ATTENTION = "resolved_attention"
+
+    booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name="log")
+    action = models.CharField(max_length=40)
+    note = models.TextField()
+    by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+
+    class Meta:
+        ordering = ["-created_at", "-pk"]
+        verbose_name_plural = "booking log entries"
+
+    def __str__(self):
+        return f"{self.get_action_label()} on booking #{self.booking_id}"
+
+    def get_action_label(self):
+        return {self.RESOLVED_ATTENTION: "Resolved attention"}.get(self.action, self.action)
 
 
 class BookingItem(TimeStampedModel):

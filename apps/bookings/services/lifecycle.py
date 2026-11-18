@@ -10,7 +10,7 @@ from decimal import Decimal
 from django.db import transaction
 from django.utils import timezone
 
-from apps.bookings.models import Booking, BookingItem
+from apps.bookings.models import Booking, BookingItem, BookingLogEntry
 from apps.bookings.services import availability, quote
 from apps.invoices import hooks as documents
 from apps.payments.models import Payment
@@ -351,4 +351,48 @@ def set_tax_exemption(booking, *, exempt, certificate, by):
         )
         ledger.reassess_after_change(booking)
         documents.booking_changed(booking)
+    return booking
+
+
+REFUND_KINDS = (Payment.Kind.RENTAL_REFUND, Payment.Kind.CAUTION_REFUND)
+
+
+def attention_blockers(booking):
+    """Problems behind a flagged booking that are still open, where the data can tell."""
+    blockers = []
+    payments = booking.payments.all()
+    if payments.filter(status=Payment.Status.PENDING, mismatch_flagged_at__isnull=False).exists():
+        blockers.append("a payment Stripe charged a different amount for is still unresolved")
+    if payments.filter(status=Payment.Status.PENDING, kind__in=REFUND_KINDS).exists():
+        blockers.append("a refund is still pending")
+    if booking.status in availability.STOCK_HOLDING_STATUSES:
+        variant_ids = list(booking.items.values_list("variant_id", flat=True))
+        short = availability.bookings_left_short(variant_ids)
+        if any(other.pk == booking.pk for other in short):
+            blockers.append("stock is still short for this date")
+    return blockers
+
+
+def resolve_attention(booking, note, by):
+    """Clear a booking's needs-attention flag, recording the note, who and when in its log.
+
+    Refused without a note, when the booking is not flagged, or while a payment
+    mismatch, a refund in progress or a stock shortage behind the flag is still
+    open.
+    """
+    note = (note or "").strip()
+    if not note:
+        raise BookingStateError("Add a note saying how this was resolved.")
+    with transaction.atomic():
+        booking = ledger.lock_booking(booking.pk)
+        if not booking.needs_attention:
+            raise BookingStateError("This booking is not flagged as needing attention.")
+        blockers = attention_blockers(booking)
+        if blockers:
+            raise BookingStateError("Cannot resolve yet: " + "; ".join(blockers) + ".")
+        booking.needs_attention = False
+        booking.save(update_fields=["needs_attention", "updated_at"])
+        BookingLogEntry.objects.create(
+            booking=booking, action=BookingLogEntry.RESOLVED_ATTENTION, note=note, by=by
+        )
     return booking

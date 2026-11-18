@@ -90,6 +90,7 @@ def test_todays_jobs_have_time_kind_customer_city_and_tags(today):
         paid="0.00",
         customer_name="Grace Fellowship",
         delivery_address="1 Elm St\nGarland, TX 75040",
+        city="Garland",
         pickup_date=today + timedelta(days=1),
         delivery_time=datetime(2000, 1, 1, 10, 0).time(),
     )

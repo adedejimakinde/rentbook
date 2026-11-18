@@ -155,6 +155,53 @@ def job_tags(stop, *, show_money=True):
     return tags
 
 
+def short_bookings(today):
+    """Upcoming bookings left short on stock by damage or stock changes."""
+    return availability.bookings_left_short(
+        ItemVariant.objects.filter(booking_items__booking__event_date__gte=today).values("pk"),
+        today=today,
+    )
+
+
+def attention_rows(now=None):
+    """The Needs attention rows alone (used to refresh the card after a booking is resolved)."""
+    now = now or timezone.now()
+    needing = [b for b in flagged_bookings(now) if b.needs_attention]
+    short_ids = {b.pk for b in short_bookings(timezone.localdate(now))} if needing else set()
+    return [AttentionRow(b, _attention_reason(b, short_ids)) for b in needing]
+
+
+def flagged_bookings(now):
+    """Bookings that need attention, or whose hold lapses within 24 hours, oldest first."""
+    return list(
+        Booking.objects.annotate(
+            has_mismatch=Exists(
+                Payment.objects.filter(
+                    booking=OuterRef("pk"),
+                    status=Payment.Status.PENDING,
+                    mismatch_flagged_at__isnull=False,
+                )
+            ),
+            has_failed_refund=Exists(
+                Payment.objects.filter(
+                    booking=OuterRef("pk"),
+                    status=Payment.Status.FAILED,
+                    kind__in=REFUND_KINDS,
+                )
+            ),
+        )
+        .filter(
+            Q(needs_attention=True)
+            | Q(
+                status=Booking.Status.HELD,
+                hold_expires_at__gt=now,
+                hold_expires_at__lte=now + HOLD_WARNING,
+            )
+        )
+        .order_by("updated_at", "pk")
+    )
+
+
 def build(now=None):
     """Gather the dashboard for the moment now."""
     now = now or timezone.now()
@@ -188,42 +235,13 @@ def build(now=None):
     on_site = {job.stop.booking.pk: job.stop.booking.m_balance for job in jobs if not job.stop.done}
     to_collect = sum((balance for balance in on_site.values() if balance > 0), ZERO_DOLLARS)
 
-    flagged = list(
-        Booking.objects.annotate(
-            has_mismatch=Exists(
-                Payment.objects.filter(
-                    booking=OuterRef("pk"),
-                    status=Payment.Status.PENDING,
-                    mismatch_flagged_at__isnull=False,
-                )
-            ),
-            has_failed_refund=Exists(
-                Payment.objects.filter(
-                    booking=OuterRef("pk"),
-                    status=Payment.Status.FAILED,
-                    kind__in=REFUND_KINDS,
-                )
-            ),
-        )
-        .filter(
-            Q(needs_attention=True)
-            | Q(
-                status=Booking.Status.HELD,
-                hold_expires_at__gt=now,
-                hold_expires_at__lte=now + HOLD_WARNING,
-            )
-        )
-        .order_by("updated_at", "pk")
-    )
+    flagged = flagged_bookings(now)
     needing = [b for b in flagged if b.needs_attention]
     expiring = sorted(
         (b for b in flagged if b.status == Booking.Status.HELD and b.hold_expires_at),
         key=lambda b: b.hold_expires_at,
     )
-    short = availability.bookings_left_short(
-        ItemVariant.objects.filter(booking_items__booking__event_date__gte=today).values("pk"),
-        today=today,
-    )
+    short = short_bookings(today)
     short_ids = {b.pk for b in short}
 
     upcoming = [

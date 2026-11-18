@@ -30,6 +30,8 @@ OFFICE_PERMISSIONS = [
     ("bookings", "delete_bookingpackage"),
     ("bookings", "view_dashboard"),
     ("bookings", "view_crew_schedule"),
+    ("bookings", "resolve_attention"),
+    ("bookings", "view_bookinglogentry"),
     ("invoices", "add_invoice"),
     *((app, f"view_{model}") for app, models in VIEW_ONLY.items() for model in models),
 ]

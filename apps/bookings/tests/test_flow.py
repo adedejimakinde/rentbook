@@ -462,3 +462,14 @@ def test_tax_exempt_fields_are_dropped_when_box_is_unticked(client, items, event
     booking = Booking.objects.get()
     assert not booking.tax_exempt_requested
     assert booking.tax_exempt_org_name == "" and booking.tax_exempt_cert_number == ""
+
+
+def test_the_delivery_step_city_is_saved_on_the_booking_by_itself(reviewing):
+    with mock.patch.object(
+        stripe_service, "create_checkout_session", return_value={"url": "https://stripe.test/c"}
+    ):
+        reviewing.post(REVIEW, review_data())
+
+    booking = Booking.objects.get()
+    assert booking.city == "Dallas"
+    assert "Dallas" in booking.delivery_address

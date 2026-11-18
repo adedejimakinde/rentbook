@@ -26,6 +26,7 @@ FORM_PERMISSIONS = {
     "rental-refund": REFUND_PERMISSION,
     "resolve-mismatch": REFUND_PERMISSION,
     "tax-exemption": TAX_EXEMPTION_PERMISSION,
+    "resolve-attention": "bookings.resolve_attention",
 }
 
 LEDGER_FORMS = {

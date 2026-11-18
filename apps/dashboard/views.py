@@ -7,11 +7,12 @@ from django.conf import settings
 from django.contrib import admin, messages
 from django.core.exceptions import PermissionDenied
 from django.http import Http404, HttpResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from apps.bookings.models import Booking
+from apps.bookings.services import lifecycle
 from apps.core import site_settings
 from apps.dashboard import navigation
 from apps.dashboard.services import calendar as calendar_service
@@ -19,6 +20,7 @@ from apps.dashboard.services import crew, overview, runsheet, switches
 from apps.dashboard.services.visibility import visibility_for
 
 DASHBOARD = "bookings.view_dashboard"
+RESOLVE = "bookings.resolve_attention"
 CREW = "bookings.view_crew_schedule"
 ACTIONS = ("delivered", "returned")
 
@@ -68,6 +70,7 @@ def dashboard(request):
         "home",
         data=data,
         first_name=_first_name(request.user),
+        can_resolve=request.user.has_perm(RESOLVE),
         **_switch_context(request),
     )
     return render(request, "dashboard/home.html", context)
@@ -179,3 +182,28 @@ def crew_mark(request, booking_id):
         return render(request, "dashboard/_stop_card.html", {"card": card, "day": day})
     messages.add_message(request, messages.SUCCESS if result.ok else messages.ERROR, result.message)
     return redirect("dashboard:crew_day", day=day.isoformat())
+
+
+@require_POST
+@staff_view(RESOLVE)
+def resolve_attention(request, booking_id):
+    """Clear a booking's needs-attention flag through the lifecycle service, with a note."""
+    booking = get_object_or_404(Booking, pk=booking_id)
+    error = ""
+    try:
+        lifecycle.resolve_attention(booking, request.POST.get("note", ""), request.user)
+    except lifecycle.BookingStateError as problem:
+        error = str(problem)
+    if is_htmx(request):
+        context = {
+            "attention": overview.attention_rows(),
+            "can_resolve": True,
+            "error_booking": booking.pk if error else None,
+            "error": error,
+        }
+        return render(request, "dashboard/_needs_attention.html", context)
+    if error:
+        messages.error(request, error)
+    else:
+        messages.success(request, f"Booking #{booking.pk} resolved.")
+    return redirect("admin:index")

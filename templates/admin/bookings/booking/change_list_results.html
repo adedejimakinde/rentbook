@@ -14,7 +14,7 @@
             <span class="bk-date" aria-hidden="true"><span class="bk-date-month">{{ booking.event_date|date:"M" }}</span><span class="bk-date-day">{{ booking.event_date|date:"j" }}</span></span>
             <span class="bk-main">
                 <span class="bk-title">#{{ booking.pk }} {{ booking.customer_name }}</span>
-                <span class="bk-meta">{{ booking.event_date|date:"D, M j, Y" }}{% if booking.needs_attention %} <span class="bk-flag">Needs attention</span>{% endif %}</span>
+                <span class="bk-meta">{{ booking.event_date|date:"D, M j, Y" }}{% if booking.city %} · {{ booking.city }}{% endif %}{% if booking.needs_attention %} <span class="bk-flag">Needs attention</span>{% endif %}</span>
                 <span class="bk-status bk-status-{{ booking.status }}"><span class="bk-dot" aria-hidden="true"></span>{{ booking.get_status_display }}</span>
             </span>
             {% if "total_amount" in cl.list_display %}<span class="bk-money"><span class="bk-balance{% if booking.m_balance > 0 %} bk-owed{% endif %}">${{ booking.m_balance|floatformat:2 }}</span><span class="bk-money-label">balance</span><span class="bk-money-small">Total ${{ booking.m_total|floatformat:2 }}</span><span class="bk-money-small">Paid ${{ booking.m_paid|floatformat:2 }}</span></span>{% endif %}

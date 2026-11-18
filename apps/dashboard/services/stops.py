@@ -5,7 +5,6 @@ unless staff set another). Both are listed in time order, and stops without a
 time come last.
 """
 
-import re
 from dataclasses import dataclass
 from datetime import time
 from urllib.parse import quote_plus
@@ -21,7 +20,6 @@ STOP_STATUSES = (
     Booking.Status.RETURNED,
 )
 DONE_STATUSES = {DELIVERY: (Booking.Status.DELIVERED, Booking.Status.RETURNED)}
-CITY_LINE = re.compile(r"^(?P<city>[^,]+),\s*[A-Za-z]{2}\b")
 
 
 @dataclass
@@ -86,7 +84,7 @@ def stops_on(day, bookings):
 
 
 class CityLookup:
-    """The city for a booking: the one entered at checkout, else its delivery zone's name."""
+    """The city for a booking: the one saved on it, else its delivery zone's name."""
 
     def __init__(self):
         self._zones = None
@@ -100,10 +98,4 @@ class CityLookup:
         return self._zones
 
     def city(self, booking):
-        """Booking addresses are saved as "street, newline, City, ST ZIP" by the booking flow."""
-        lines = [line.strip() for line in booking.delivery_address.splitlines() if line.strip()]
-        if len(lines) > 1:
-            found = CITY_LINE.match(lines[-1])
-            if found:
-                return found.group("city").strip()
-        return self._zone_names().get(booking.zip_code, "")
+        return booking.city or self._zone_names().get(booking.zip_code, "")

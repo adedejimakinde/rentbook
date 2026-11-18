@@ -15,4 +15,5 @@ urlpatterns = [
     path("crew/<str:day>/run-sheet.pdf", views.run_sheet, name="run_sheet"),
     path("crew/mark/<int:booking_id>/", views.crew_mark, name="crew_mark"),
     path("switch/", views.switch, name="switch"),
+    path("resolve/<int:booking_id>/", views.resolve_attention, name="resolve_attention"),
 ]
