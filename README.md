@@ -31,6 +31,59 @@ While editing templates, rebuild CSS automatically:
 docker compose exec web python manage.py tailwind watch
 ```
 
+## Demo in GitHub Codespaces
+
+Everything runs in the Codespace, so nothing needs installing on your machine.
+
+1. On GitHub, open the repository, choose **Code > Codespaces > Create codespace** on the
+   branch you want to show. The dev container uses the default Codespaces image with Docker.
+2. When the terminal is ready, run:
+
+   ```bash
+   ./scripts/demo.sh
+   ```
+
+   It creates `.env` from `.env.example` if there is none (development settings,
+   `DEBUG=True`, a generated `SECRET_KEY`, `ADMIN_URL=staff-portal/`), starts the containers,
+   waits for the database, migrates, builds the CSS, then loads the catalogue and the demo
+   data. It prints the URLs and logins at the end. Run it again any time: an existing `.env`
+   is kept, and nothing is duplicated.
+3. Open the **Ports** tab and click the globe beside port 8000 (**Atglace demo**). Ports are
+   private by default, so only you can open it; right-click the port and set visibility to
+   Public to show someone else.
+
+Logins (staff area at `/staff-portal/`):
+
+| Role | Username | Password | Can do |
+|---|---|---|---|
+| Owner | `owner` | `demo1234` | Everything |
+| Crew | `crew` | `demo1234` | Crew schedule, mark delivered and returned |
+
+### What the demo data holds
+
+`python manage.py seed_demo` (the script runs it for you) sets realistic prices and confirmed
+stock on every catalogue item, three delivery zones with real DFW ZIP codes, four packages, and
+15 bookings in the next three weeks covering held, deposit paid, paid, delivered, returned and
+needs attention, with cities, delivery and pickup times, crew notes and payments. Customers are
+fictional and use `@demo.example` emails. It creates no reviews, and it writes rows directly, so
+no invoice, email or text is sent for them.
+
+- It refuses to run unless `DEBUG` is on.
+- Prices, stock, zones and packages are reset to the demo values on each run. Demo bookings are
+  created once and left alone afterwards, so event dates do not move on later runs.
+- Delivered and returned bookings fall on today, because a booking is only delivered on its
+  event day.
+
+### Other hosts and tunnels
+
+Only `config/settings/dev.py` knows about these; production settings are untouched.
+
+| Variable | Effect |
+|---|---|
+| `CODESPACES` | When set (Codespaces sets it, and `demo.sh` copies it into `.env`), allows `.app.github.dev` and trusts `https://*.app.github.dev` |
+| `DEV_EXTRA_HOSTS` | Comma-separated hosts added to `ALLOWED_HOSTS` |
+| `DEV_CSRF_ORIGINS` | Comma-separated origins added to `CSRF_TRUSTED_ORIGINS` (for example `https://demo.example.com`) |
+
 ## Tests and linting
 
 ```bash
