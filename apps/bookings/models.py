@@ -334,6 +334,17 @@ class Booking(TimeStampedModel):
         max_length=20, choices=Surface.choices, blank=True, help_text="Setup surface."
     )
     crew_notes = models.TextField(blank=True, help_text="Customer's notes for the delivery crew.")
+    delivery_time = models.TimeField(
+        null=True, blank=True, help_text="When the crew should arrive to deliver and set up."
+    )
+    pickup_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Leave empty to pick up on the event date. Set it when pickup is another day.",
+    )
+    pickup_time = models.TimeField(
+        null=True, blank=True, help_text="When the crew should arrive to pick up."
+    )
 
     tax_exempt_requested = models.BooleanField(
         default=False,
@@ -377,7 +388,11 @@ class Booking(TimeStampedModel):
                 name="tax_exempt_booking_has_certificate",
             ),
         ]
-        permissions = [("can_set_tax_exemption", "Can set tax exemption")]
+        permissions = [
+            ("can_set_tax_exemption", "Can set tax exemption"),
+            ("view_dashboard", "Can view the owner dashboard and calendar"),
+            ("view_crew_schedule", "Can view the crew schedule and mark delivered or returned"),
+        ]
 
     def __str__(self):
         return f"Booking #{self.pk} for {self.customer_name} on {self.event_date}"
@@ -386,6 +401,11 @@ class Booking(TimeStampedModel):
         """Refuse to delete a booking that holds stock or has payments."""
         check_deletable(self)
         return super().delete(*args, **kwargs)
+
+    @property
+    def effective_pickup_date(self):
+        """The day the crew collects: pickup_date, or the event date when none is set."""
+        return self.pickup_date or self.event_date
 
     @property
     def total(self):

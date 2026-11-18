@@ -143,3 +143,45 @@ def tax_exempt_requests_enabled():
 
 def reminder_enabled(switch):
     return getattr(get(), switch)
+
+
+QUICK_SWITCHES = (
+    "online_booking_enabled",
+    "sms_enabled",
+    "wind_alerts_enabled",
+    "crew_sees_customer_phone",
+    "crew_sees_money",
+)
+
+
+def crew_sees_customer_phone():
+    return get().crew_sees_customer_phone
+
+
+def crew_sees_money():
+    return get().crew_sees_money
+
+
+def set_switch(name, value, *, by):
+    """Turn one owner switch on or off and log who changed it and when.
+
+    Returns True when the value changed. Only the switches in QUICK_SWITCHES
+    can be set here; the log has the same shape the admin writes.
+    """
+    from django.db import transaction
+
+    from apps.core.models import SiteSettings, SiteSettingsChange
+
+    if name not in QUICK_SWITCHES:
+        raise ValueError(f"{name} is not a quick switch.")
+    value = bool(value)
+    with transaction.atomic():
+        get()
+        row = SiteSettings.objects.select_for_update().get(pk=1)
+        old = getattr(row, name)
+        if old == value:
+            return False
+        setattr(row, name, value)
+        row.save(update_fields=[name, "updated_at"])
+        SiteSettingsChange.objects.create(settings=row, changed_by=by, changes={name: [old, value]})
+    return True

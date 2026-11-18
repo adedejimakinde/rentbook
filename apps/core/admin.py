@@ -47,7 +47,18 @@ class SiteSettingsAdmin(ModelAdmin):
             },
         ),
         ("Quotes", {"fields": ["promo_codes_enabled", "tax_exempt_requests_enabled"]}),
-        ("Messages", {"fields": ["sms_enabled", "whatsapp_enabled", "owner_alerts_enabled"]}),
+        (
+            "Messages",
+            {
+                "fields": [
+                    "sms_enabled",
+                    "whatsapp_enabled",
+                    "owner_alerts_enabled",
+                    "wind_alerts_enabled",
+                ]
+            },
+        ),
+        ("Crew", {"fields": ["crew_sees_customer_phone", "crew_sees_money"]}),
         (
             "Reminders",
             {

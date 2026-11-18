@@ -67,6 +67,21 @@ class SiteSettings(TimeStampedModel):
     owner_alerts_enabled = models.BooleanField(
         "Owner text alerts", default=True, help_text="SMS and WhatsApp alerts to OWNER_PHONE."
     )
+    wind_alerts_enabled = models.BooleanField(
+        "Wind alerts",
+        default=True,
+        help_text="Warn the owner when inflatables face high wind. A setting only for now.",
+    )
+    crew_sees_customer_phone = models.BooleanField(
+        "Crew sees customer phone",
+        default=True,
+        help_text="Tap-to-call on the crew schedule and run sheet.",
+    )
+    crew_sees_money = models.BooleanField(
+        "Crew sees money",
+        default=False,
+        help_text="Caution amounts and balances to collect on the crew schedule and run sheet.",
+    )
     reminder_payment_deadline = models.BooleanField("Manual payment deadline", default=True)
     reminder_balance_due = models.BooleanField("Balance due (first)", default=True)
     reminder_balance_final = models.BooleanField("Balance due (2 days before)", default=True)
