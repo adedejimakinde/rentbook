@@ -40,7 +40,7 @@
       </fieldset>
       {% elif selected %}<input type="hidden" name="variant" value="{{ selected.pk }}">{% endif %}
       <div class="rounded-t-md bg-surface-soft px-4 pt-4">
-        <div class="grid grid-cols-1 gap-2.5 xs:grid-cols-2">
+        <div class="grid grid-cols-1 gap-2.5 min-[400px]:grid-cols-2">
           <div>
             <label for="item-date" class="label label-caps">Event date</label>
             <input id="item-date" type="date" name="date" value="{{ event_date|date:'Y-m-d' }}" class="input">

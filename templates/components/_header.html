@@ -1,7 +1,7 @@
 {% load static core_tags %}<header class="site-header" x-data="{ open: false }" @keydown.escape.window="open = false">
   <div class="wrap">
     <a href="{% url 'core:home' %}" class="flex min-h-11 shrink-0 items-center" aria-label="{{ business_name }} home">
-      <img src="{% static 'brand/atglace-logo-header-320.webp' %}" width="320" height="170" alt="Atglace Events &amp; Rentals LLC" class="h-12 w-auto">
+      <img src="{% static 'brand/atglace-logo-header-90.webp' %}" srcset="{% static 'brand/atglace-logo-header-90.webp' %} 1x, {% static 'brand/atglace-logo-header-180.webp' %} 2x" width="90" height="48" alt="Atglace Events &amp; Rentals LLC" class="h-12 w-auto">
     </a>
     <nav class="hidden items-center gap-1 lg:flex" aria-label="Main">
       {% include "core/_nav_links.html" with link_class="nav-link" %}
@@ -18,6 +18,7 @@
     <ul class="wrap rows pb-4 pt-2">
       {% include "core/_nav_links.html" with link_class="menu-link" wrap="li" %}
       <li><a href="{% url 'core:terms' %}" class="menu-link">Rental terms</a></li>
+      <li><a href="{% url 'core:privacy' %}" class="menu-link">Privacy</a></li>
     </ul>
   </nav>
 </header>

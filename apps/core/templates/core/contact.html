@@ -12,7 +12,7 @@
     <ul class="card rows mt-4 px-4">
       {% include "components/_row.html" with icon_name="whatsapp" title="Chat on WhatsApp" text="Fastest reply" href="https://wa.me/"|add:whatsapp_number %}
       {% include "components/_row.html" with icon_name="phone" title=business_phone text="Call or text" href="tel:"|add:business_phone_href %}
-      {% include "components/_row.html" with icon_name="mail" title=business_email text="Email us" href="mailto:"|add:business_email %}
+      {% include "components/_row.html" with icon_name="mail" title=business_email email=True text="Email us" href="mailto:"|add:business_email %}
     </ul>
   </div>
   <div>

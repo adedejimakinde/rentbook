@@ -1,7 +1,7 @@
 {% load static core_tags %}<footer class="site-footer">
   <div class="wrap grid grid-cols-1 gap-8 py-10 md:grid-cols-[1.2fr_1fr_1fr] lg:py-12">
     <div class="space-y-2">
-      <img src="{% static 'brand/atglace-logo-header-white-320.webp' %}" width="320" height="170" alt="Atglace Events &amp; Rentals LLC" loading="lazy" decoding="async" class="h-16 w-auto">
+      <img src="{% static 'brand/atglace-logo-header-white-120.webp' %}" srcset="{% static 'brand/atglace-logo-header-white-120.webp' %} 1x, {% static 'brand/atglace-logo-header-white-240.webp' %} 2x" width="120" height="64" alt="Atglace Events &amp; Rentals LLC" loading="lazy" decoding="async" class="h-16 w-auto">
       <p class="font-bold">Rent. Celebrate. Make memories.</p>
       <p class="foot-muted text-sm">{{ business_tagline }}.</p>
       <p class="foot-muted pt-2 text-sm">Serving the Dallas-Fort Worth area: {{ service_cities|join:", " }}.</p>
@@ -14,13 +14,14 @@
         <li><a href="{% url 'core:faq' %}" class="foot-link">FAQs</a></li>
         <li><a href="{% url 'core:contact' %}" class="foot-link">Contact</a></li>
         <li><a href="{% url 'core:terms' %}" class="foot-link">Rental terms</a></li>
+        <li><a href="{% url 'core:privacy' %}" class="foot-link">Privacy</a></li>
         {% if show_gallery %}<li><a href="{% url 'catalogue:gallery' %}" class="foot-link">Gallery</a></li>{% endif %}
       </ul>
     </nav>
     <div class="space-y-1">
       <p class="eyebrow text-surface-tint">Contact</p>
       <a href="tel:{{ business_phone_href }}" class="foot-link">{{ business_phone }}</a>
-      <a href="mailto:{{ business_email }}" class="foot-link break-all">{{ business_email }}</a>
+      <a href="mailto:{{ business_email }}" class="foot-link [overflow-wrap:anywhere]">{{ business_email|email_breaks }}</a>
       <a href="https://wa.me/{{ whatsapp_number }}" rel="noopener" class="foot-link gap-2">{% icon "whatsapp" 18 %}WhatsApp us</a>
       {% if social_links %}
       <ul class="flex gap-2 pt-2" aria-label="Social media">

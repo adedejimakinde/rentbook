@@ -5,9 +5,9 @@
   <div class="product-body">
     <h3 class="product-name"><a href="{{ item.get_absolute_url }}">{{ item.name }}</a></h3>
     {% if status %}{% include "catalogue/_status.html" %}{% elif item.short_description and not compact %}<p class="line-clamp-2 text-small muted">{{ item.short_description }}</p>{% endif %}
-    <div class="mt-auto flex items-center justify-between gap-2 pt-1">
-      <p class="price min-w-0">{% include "catalogue/_price.html" with price=item.display_price ranged=item.has_price_range %}{% if item.display_price %}<span class="whitespace-nowrap text-caption muted"> / day</span>{% endif %}</p>
-      {% if not compact %}<span class="product-add{% if status.code == 'unavailable' %} is-off{% endif %}" aria-hidden="true"></span>{% endif %}
+    <div class="mt-auto flex items-end justify-between gap-2 pt-1">
+      {% with price=item.display_price %}<p class="product-price">{% if price %}{% if item.has_price_range %}<span class="block text-caption leading-4 text-ink-muted">From </span>{% endif %}${{ price|floatformat:"2g" }}<span class="product-per"> / day</span>{% else %}<span class="text-[15px]">Call for price</span>{% endif %}</p>
+      {% if not compact %}{% if not price or price < 1000 %}<span class="product-add{% if status.code == 'unavailable' %} is-off{% endif %}" aria-hidden="true"></span>{% endif %}{% endif %}{% endwith %}
     </div>
   </div>
 </article>{% endwith %}

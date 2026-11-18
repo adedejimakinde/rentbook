@@ -15,7 +15,7 @@
         </span>
         <span class="flex min-h-11 items-center text-small font-bold text-brand group-open:hidden">Edit</span><span class="hidden min-h-11 items-center text-small font-bold text-brand group-open:flex">Close</span>
       </summary>
-      <div class="grid grid-cols-1 gap-3 border-t border-border px-3.5 pb-4 pt-3 xs:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+      <div class="grid grid-cols-1 gap-3 border-t border-border px-3.5 pb-4 pt-3 min-[400px]:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <div>
           <label for="cart-date" class="label label-caps">Event date</label>
           <input id="cart-date" type="date" name="date" value="{{ cart.event_date|date:'Y-m-d' }}" class="input"{% if cart.errors.date or date_error %} aria-invalid="true" aria-describedby="cart-date-error"{% endif %}>
@@ -26,7 +26,7 @@
           <input id="cart-zip" type="text" name="zip_code" value="{{ cart.zip_code }}" inputmode="numeric" autocomplete="postal-code" maxlength="10" class="input"{% if cart.errors.zip or zip_error %} aria-invalid="true" aria-describedby="cart-zip-error"{% endif %}>
           {% if zip_error %}<p id="cart-zip-error" role="alert" class="field-error">{{ zip_error }}</p>{% else %}{% include "bookings/_field_errors.html" with errors=cart.errors.zip id="cart-zip" %}{% endif %}
         </div>
-        <button type="submit" class="btn btn-brand btn-lg xs:col-span-2">Save date and ZIP</button>
+        <button type="submit" class="btn btn-brand btn-lg min-[400px]:col-span-2">Save date and ZIP</button>
       </div>
     </details>
   </form>

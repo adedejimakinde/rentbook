@@ -1,6 +1,6 @@
 {% load core_tags %}<form method="post" action="{% url 'core:quick_check' %}" hx-post="{% url 'core:quick_check' %}" hx-target="#quick-check-result" class="grid grid-cols-1 gap-2.5">
   {% csrf_token %}
-  <div class="grid grid-cols-1 gap-2 xs:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+  <div class="grid grid-cols-1 gap-2 min-[400px]:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
     <div>
       <label for="qc-date" class="label label-caps">Event date</label>
       <input id="qc-date" type="date" name="date" value="{{ event_date|date:'Y-m-d' }}" required class="input">
@@ -10,5 +10,5 @@
       <input id="qc-zip" type="text" name="zip" value="{{ event_zip }}" placeholder="75204" inputmode="numeric" pattern="[0-9]{5}" maxlength="5" autocomplete="postal-code" required class="input">
     </div>
   </div>
-  <button type="submit" class="btn btn-brand btn-lg btn-block">See what's free on your date</button>
+  <button type="submit" class="btn btn-brand btn-lg btn-block"><span class="min-[400px]:hidden">Check my date</span><span class="hidden min-[400px]:inline">See what's free on your date</span></button>
 </form>

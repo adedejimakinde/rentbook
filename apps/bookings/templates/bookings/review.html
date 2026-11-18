@@ -20,7 +20,7 @@
       <div class="grid grid-cols-1 gap-0.5 py-2.5 sm:grid-cols-[130px_minmax(0,1fr)] sm:gap-3"><dt class="font-bold">Delivery to</dt><dd class="whitespace-pre-line text-ink-muted [overflow-wrap:anywhere]">{{ address }}</dd></div>
       <div class="grid grid-cols-1 gap-0.5 py-2.5 sm:grid-cols-[130px_minmax(0,1fr)] sm:gap-3"><dt class="font-bold">Surface</dt><dd class="text-ink-muted">{{ surface_label }}</dd></div>
       {% if flow.delivery.crew_notes %}<div class="grid grid-cols-1 gap-0.5 py-2.5 sm:grid-cols-[130px_minmax(0,1fr)] sm:gap-3"><dt class="font-bold">Crew notes</dt><dd class="text-ink-muted [overflow-wrap:anywhere]">{{ flow.delivery.crew_notes }}</dd></div>{% endif %}
-      <div class="grid grid-cols-1 gap-0.5 py-2.5 sm:grid-cols-[130px_minmax(0,1fr)] sm:gap-3"><dt class="font-bold">Contact</dt><dd class="text-ink-muted [overflow-wrap:anywhere]">{{ flow.contact.name }}, {{ flow.contact.email }}, {{ flow.contact.phone }}</dd></div>
+      <div class="grid grid-cols-1 gap-0.5 py-2.5 sm:grid-cols-[130px_minmax(0,1fr)] sm:gap-3"><dt class="font-bold">Contact</dt><dd class="text-ink-muted [overflow-wrap:anywhere]">{{ flow.contact.name }}, {{ flow.contact.email|email_breaks }}, {{ flow.contact.phone }}</dd></div>
     </dl>
   </section>
 

@@ -55,3 +55,36 @@ def test_links_are_underlined_only_in_body_paragraphs(client):
     html = client.get(reverse("core:home")).content.decode()
 
     assert "underline" not in html.split("<main", 1)[1].split("</main>", 1)[0]
+
+
+def test_privacy_page_is_linked_from_the_footer_and_menu_and_in_the_sitemap(client):
+    page = client.get(reverse("core:privacy"))
+    html = client.get(reverse("core:about")).content.decode()
+
+    assert page.status_code == 200
+    assert "Privacy policy" in page.content.decode()
+    assert "Stripe" in page.content.decode()
+    assert html.count('href="/privacy/"') == 2  # footer and mobile menu
+    assert "/privacy/" in client.get("/sitemap.xml").content.decode()
+
+
+@pytest.mark.parametrize(
+    ("email", "expected"),
+    [
+        ("atglaceevents.rental@gmail.com", "atglaceevents.<wbr>rental@<wbr>gmail.com"),
+        ("<b>x</b>@a.com", "&lt;b&gt;x&lt;/b&gt;@<wbr>a.com"),
+        ("not-an-email", "not-an-email"),
+    ],
+)
+def test_email_breaks_only_after_the_at_sign_or_a_dot_before_it(email, expected):
+    html = Template("{% load core_tags %}{{ email|email_breaks }}").render(
+        Context({"email": email})
+    )
+
+    assert html == expected
+
+
+def test_quick_check_button_is_shorter_on_narrow_phones(client):
+    html = client.get(reverse("core:home")).content.decode()
+
+    assert '<span class="min-[400px]:hidden">Check my date</span>' in html

@@ -283,3 +283,28 @@ def attach_line_images(view):
         source = item_for if line["kind"] == VARIANT else package_item
         line["image"] = covers.get(source.get(line["id"]))
     return view
+
+
+def subtotal(request):
+    """The cart's running total at list prices, before delivery, setup, tax and discounts.
+
+    None when the cart is empty. Lines without an online price ("Call for price") add
+    nothing. Two queries at most; no availability check, so it is cheap enough for the
+    catalogue's floating cart bar.
+    """
+    lines = get_lines(request)
+    if not lines:
+        return None
+    wanted = {(line["kind"], line["id"]): line["quantity"] for line in lines}
+    total = quote_service.ZERO
+    variant_ids = [pk for kind, pk in wanted if kind == VARIANT]
+    package_ids = [pk for kind, pk in wanted if kind == PACKAGE]
+    if variant_ids:
+        for variant in ItemVariant.objects.filter(pk__in=variant_ids).select_related("item"):
+            total += quote_service.to_cents(variant.unit_price * wanted[(VARIANT, variant.pk)])
+    if package_ids:
+        for package in Package.objects.filter(pk__in=package_ids):
+            total += quote_service.to_cents(
+                (package.package_price or 0) * wanted[(PACKAGE, package.pk)]
+            )
+    return total

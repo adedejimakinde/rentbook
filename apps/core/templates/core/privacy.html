@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="wrap page">
+  <article class="prose max-w-[760px] text-ink-muted">
+    <p class="eyebrow">Last updated {{ updated|date:"F j, Y" }}</p>
+    <h1 class="t-h1 mt-1 text-balance text-ink [overflow-wrap:anywhere]">Privacy policy</h1>
+    <p class="mt-3">This page explains what information {{ business_name }} collects when you use this website, book a rental or contact us, and what we do with it. We only collect what we need to quote, deliver and look after your booking.</p>
+
+    <h2 class="t-h2 mt-8 text-ink">What we collect</h2>
+    <ul>
+      <li><strong class="text-ink">Contact details:</strong> your name, email address and phone number, and your organization name and tax-exemption certificate number if you give them.</li>
+      <li><strong class="text-ink">Event details:</strong> your event date and times, delivery address, setup surface and any notes for our crew.</li>
+      <li><strong class="text-ink">Booking and payment records:</strong> what you rented, your quote, invoices, receipts and the payments made. We never see or store your full card or bank account number.</li>
+      <li><strong class="text-ink">Messages:</strong> what you send us through the contact form, by email, SMS or WhatsApp.</li>
+    </ul>
+
+    <h2 class="t-h2 mt-8 text-ink">How we use it</h2>
+    <p class="mt-2">To check availability and give you a quote, to take your booking and payments, to send your invoice, receipts and reminders, to deliver, set up and pick up your rentals, to answer your questions, and to keep the records the law requires for tax and accounting.</p>
+
+    <h2 class="t-h2 mt-8 text-ink">Who we share it with</h2>
+    <p class="mt-2">We do not sell your information. We share only what each service needs to do its job for us:</p>
+    <ul>
+      <li><strong class="text-ink">Stripe</strong> processes card and bank (ACH) payments on its secure checkout page.</li>
+      <li><strong class="text-ink">Resend</strong> sends our emails, and <strong class="text-ink">Twilio</strong> sends our text and WhatsApp messages.</li>
+      <li><strong class="text-ink">Sentry</strong> helps us find and fix errors on this website.</li>
+      <li>Our delivery crew sees your event address, times and notes.</li>
+    </ul>
+    <p class="mt-2">We may also share information when the law requires it.</p>
+
+    <h2 class="t-h2 mt-8 text-ink">Cookies</h2>
+    <p class="mt-2">This website uses a small number of cookies that it needs to work: one remembers your cart, event date and ZIP code while you browse, and one protects our forms from misuse. If we add analytics or advertising cookies, we will update this page first.</p>
+
+    <h2 class="t-h2 mt-8 text-ink">How long we keep it</h2>
+    <p class="mt-2">We keep booking, invoice and payment records for as long as we need them for your booking and for our tax and accounting obligations. Contact form messages are kept only as long as we need them to help you.</p>
+
+    <h2 class="t-h2 mt-8 text-ink">Your choices</h2>
+    <p class="mt-2">You can ask to see the information we hold about you, ask us to correct it, or ask us to delete what we are not required to keep. Email <a href="mailto:{{ business_email }}">{{ business_email }}</a> or call <a href="tel:{{ business_phone_href }}">{{ business_phone }}</a>.</p>
+
+    <h2 class="t-h2 mt-8 text-ink">Changes to this policy</h2>
+    <p class="mt-2">When we change this policy we update the date at the top of this page.</p>
+  </article>
+</div>
+{% endblock %}

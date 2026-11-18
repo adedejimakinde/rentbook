@@ -7,7 +7,7 @@
 </div>
 {% if cart_count %}
 <a href="{% url 'bookings:cart' %}" class="sticky-pill">
-  <span class="flex min-w-0 flex-col"><span class="text-caption text-surface-tint">{{ cart_count }} item{{ cart_count|pluralize }} in your booking</span><span class="truncate font-bold">Ready for a quote</span></span>
+  <span class="flex min-w-0 flex-col"><span class="text-caption text-surface-tint">{{ cart_count }} item{{ cart_count|pluralize }} in your booking</span><span class="truncate font-bold">{% if cart_subtotal %}${{ cart_subtotal|floatformat:"2g" }} <span class="text-caption font-medium text-surface-tint">so far</span>{% else %}Ready for a quote{% endif %}</span></span>
   <span class="btn btn-primary min-h-11 shrink-0 px-4 text-sm">View booking{% icon "chevron-right" 16 stroke=2.5 %}</span>
 </a>
 {% endif %}

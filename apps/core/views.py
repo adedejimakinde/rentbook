@@ -1,5 +1,7 @@
 """Site-level views."""
 
+from datetime import date
+
 from django.conf import settings
 from django.contrib import messages
 from django.db import connection
@@ -189,6 +191,22 @@ def terms(request):
         "damage and setup requirements.",
         sections=TERMS_SECTIONS,
         terms_version=settings.TERMS_VERSION,
+    )
+
+
+PRIVACY_UPDATED = date(2026, 11, 18)
+
+
+@require_GET
+def privacy(request):
+    """How we collect and use customer information."""
+    return _page(
+        request,
+        "core/privacy.html",
+        "Privacy policy",
+        "How Atglace Events & Rentals collects, uses and protects your information when you "
+        "browse, book and pay.",
+        updated=PRIVACY_UPDATED,
     )
 
 

@@ -20,8 +20,9 @@
           <label for="event-date" class="label label-caps">Event date</label>
           <input id="event-date" type="date" name="date" value="{{ event_date|date:'Y-m-d' }}" class="input"{% if date_error %} aria-invalid="true" aria-describedby="event-date-error"{% endif %}>
         </div>
+        {% if sort_query %}<input type="hidden" name="sort" value="{{ sort }}">{% endif %}
         <button type="submit" class="btn btn-brand min-h-[46px]">Show</button>
-        {% if event_date %}<a href="{{ request.path }}?date=" hx-get="{{ request.path }}?date=" hx-target="#catalogue-results" hx-push-url="true" class="btn btn-ghost min-h-[46px]">Clear</a>{% endif %}
+        {% if event_date %}<a href="{{ request.path }}?date={{ sort_query }}" hx-get="{{ request.path }}?date={{ sort_query }}" hx-target="#catalogue-results" hx-push-url="true" class="btn btn-ghost min-h-[46px]">Clear</a>{% endif %}
         {% if date_error %}<p id="event-date-error" role="alert" class="field-error w-full">{{ date_error }}</p>{% endif %}
       </form>
     </details>
@@ -29,14 +30,21 @@
 </section>
 <nav aria-label="Categories" class="border-b border-border bg-surface pb-3">
   <ul class="shelf gap-2 py-1">
-    <li>{% if category %}{% include "components/_chip.html" with href="/rentals/" label="All" hx="#catalogue-results" %}{% else %}{% include "components/_chip.html" with href="/rentals/" label="All" active=True hx="#catalogue-results" %}{% endif %}</li>
+    <li>{% with all_url="/rentals/"|add:sort_suffix %}{% if category %}{% include "components/_chip.html" with href=all_url label="All" hx="#catalogue-results" %}{% else %}{% include "components/_chip.html" with href=all_url label="All" active=True hx="#catalogue-results" %}{% endif %}{% endwith %}</li>
     {% for chip in categories %}
-    <li>{% if category.pk == chip.pk %}{% include "components/_chip.html" with href=chip.get_absolute_url label=chip.name active=True hx="#catalogue-results" %}{% else %}{% include "components/_chip.html" with href=chip.get_absolute_url label=chip.name hx="#catalogue-results" %}{% endif %}</li>
+    <li>{% with chip_url=chip.get_absolute_url|add:sort_suffix %}{% if category.pk == chip.pk %}{% include "components/_chip.html" with href=chip_url label=chip.name active=True hx="#catalogue-results" %}{% else %}{% include "components/_chip.html" with href=chip_url label=chip.name hx="#catalogue-results" %}{% endif %}{% endwith %}</li>
     {% endfor %}
   </ul>
 </nav>
 <div class="wrap pt-4">
-  <p class="mb-3 text-small font-bold text-ink-muted">{{ page.paginator.count }} rental{{ page.paginator.count|pluralize }}</p>
+  <div class="mb-3 flex items-center justify-between gap-3">
+    <p class="text-small font-bold text-ink-muted">{{ page.paginator.count }} rental{{ page.paginator.count|pluralize }}</p>
+    <form method="get" action="{{ request.path }}" hx-get="{{ request.path }}" hx-trigger="change" hx-target="#catalogue-results" hx-push-url="true" class="sort-pill">
+      {% icon "sort" 16 %}<label for="catalogue-sort" class="sr-only">Sort rentals</label>
+      <select id="catalogue-sort" name="sort">{% for key, label in sorts.items %}<option value="{{ key }}"{% if key == sort %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+      <noscript><button type="submit" class="btn btn-secondary min-h-11 px-3 text-sm">Sort</button></noscript>
+    </form>
+  </div>
   {% if page.object_list %}
   <ul id="results-grid" class="grid-products">
     {% for item in page.object_list %}

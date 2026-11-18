@@ -52,7 +52,8 @@ def browser():
     os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
     with sync_api.sync_playwright() as playwright:
         try:
-            chromium = playwright.chromium.launch()
+            # A container's /dev/shm is small; let Chromium use /tmp instead.
+            chromium = playwright.chromium.launch(args=["--disable-dev-shm-usage"])
         except sync_api.Error as error:  # pragma: no cover - depends on the machine
             pytest.skip(f"Chromium is not available: {error}")
         yield chromium
@@ -149,6 +150,7 @@ def site(live_server):
         "/contact/",
         "/links/",
         "/rental-terms/",
+        "/privacy/",
         "/cart/",
         "/book/event/",
         "/book/delivery/",

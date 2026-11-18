@@ -4,6 +4,7 @@ import json
 
 from django import template
 from django.conf import settings
+from django.utils.html import conditional_escape
 from django.utils.safestring import mark_safe
 
 register = template.Library()
@@ -52,6 +53,7 @@ ICONS = {
     "cart": '<path d="M4 5h2l2 10h10l2-7H7"/><circle cx="10" cy="19" r="1.5"/>'
     '<circle cx="17" cy="19" r="1.5"/>',
     "menu": '<path d="M4 8h16M4 16h16"/>',
+    "sort": '<path d="M4 7h16M7 12h10M10 17h4"/>',
     "close": '<path d="M6 6l12 12M18 6L6 18"/>',
     "chevron-right": '<path d="M9 6l6 6-6 6"/>',
     "chevron-left": '<path d="M15 6l-6 6 6 6"/>',
@@ -132,3 +134,16 @@ def nth(options, index):
     """Pick from a "|"-separated list by position, wrapping around: "a|b"|nth:3 -> "b"."""
     choices = [choice.strip() for choice in str(options).split("|")]
     return choices[int(index) % len(choices)]
+
+
+@register.filter
+def email_breaks(value):
+    """Escape an email address and allow line breaks only after its "@" or a dot before it.
+
+    The domain is kept whole, so "name@gmail.com" never ends a line with "gmail.".
+    """
+    local, at, domain = str(value).rpartition("@")
+    if not at:
+        return conditional_escape(value)
+    local = str(conditional_escape(local)).replace(".", ".<wbr>")
+    return mark_safe(f"{local}@<wbr>{conditional_escape(domain)}")  # noqa: S308
