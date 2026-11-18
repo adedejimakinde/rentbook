@@ -1,0 +1,7 @@
+{% extends "notifications/email/base.html" %}{% load money %}
+{% block title %}Reminder: your balance is still due{% endblock %}
+{% block preheader %}{{ balance_due|usd }} is still due on your booking.{% endblock %}
+{% block heading %}Reminder: your balance is still due{% endblock %}
+{% block body %}
+<p style="margin:0 0 16px;">Hi {{ booking.customer_name }}, your event is on {{ booking.event_date|date:"l, F j, Y" }} and <strong>{{ balance_due|usd }}</strong> is still due. Please pay it today so we can deliver as planned.</p>
+{% endblock %}

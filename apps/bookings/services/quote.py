@@ -24,6 +24,7 @@ from apps.bookings.models import (
 )
 from apps.bookings.services import availability
 from apps.catalogue.models import ItemVariant, Package
+from apps.core import site_settings
 from apps.invoices import hooks as documents
 
 ZERO = Decimal("0.00")
@@ -276,7 +277,7 @@ def build_quote(lines, event_date, zip_code, promo_code=None):
     subtotal = items_subtotal + package_subtotal
 
     promo, discount = None, ZERO
-    code = (promo_code or "").strip()
+    code = (promo_code or "").strip() if site_settings.promo_codes_enabled() else ""
     if code:
         candidate = PromoCode.objects.filter(code__iexact=code).first()
         problem = (

@@ -1,4 +1,4 @@
-"""Queue customer and owner emails. Each runs as a Celery task after the caller commits."""
+"""Queue customer and owner emails and their texts, each as a Celery task after commit."""
 
 from apps.core.queue import enqueue_on_commit
 
@@ -9,12 +9,20 @@ def _after_commit(kind, *args):
     enqueue_on_commit(send_email, kind, *args)
 
 
+def _texts_after_commit(kind, object_id):
+    from apps.notifications.tasks import queue_event_texts
+
+    enqueue_on_commit(queue_event_texts, kind, object_id)
+
+
 def booking_received(booking_id):
     _after_commit("booking_received", booking_id)
+    _texts_after_commit("booking_received", booking_id)
 
 
 def booking_confirmed(receipt_id):
     _after_commit("booking_confirmed", receipt_id)
+    _texts_after_commit("booking_confirmed", receipt_id)
 
 
 def payment_receipt(receipt_id):
@@ -40,7 +48,9 @@ def ach_processing(payment):
 
 def owner_new_booking(booking_id):
     _after_commit("owner_new_booking", booking_id)
+    _texts_after_commit("owner_new_booking", booking_id)
 
 
 def owner_payment(receipt_id):
     _after_commit("owner_payment", receipt_id)
+    _texts_after_commit("owner_payment", receipt_id)

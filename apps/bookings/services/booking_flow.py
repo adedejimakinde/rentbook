@@ -16,6 +16,8 @@ from apps.bookings.models import MANUAL_PAYMENT_CHOICES, Booking, PaymentPlan
 from apps.bookings.services import lifecycle
 from apps.bookings.services import quote as quote_service
 from apps.bookings.services.cart import line_requests
+from apps.core import site_settings
+from apps.notifications.consent import SMS_CONSENT_VERSION
 from apps.payments.models import Payment
 from apps.payments.services import ledger
 from apps.payments.services import stripe as stripe_service
@@ -30,6 +32,23 @@ STEP_TITLES = {
     REVIEW: "Review and pay",
 }
 PENDING_BOOKING_KEY = "pending_booking"
+
+PAUSED_MESSAGE = "Online booking is paused right now. Please contact us on WhatsApp to book."
+
+
+class NotAllowed(Exception):
+    """The owner has switched off online booking, this plan or this payment method."""
+
+
+def check_allowed(plan, choice):
+    """Raise NotAllowed unless a new online booking may use this plan and payment choice."""
+    if not site_settings.online_booking_enabled():
+        raise NotAllowed(PAUSED_MESSAGE)
+    if plan == PaymentPlan.DEPOSIT and not site_settings.deposit_allowed():
+        raise NotAllowed("Deposits are not available right now. Please pay in full.")
+    if choice not in site_settings.active_payment_choices():
+        raise NotAllowed("That payment method is not available right now. Please choose another.")
+
 
 PLAN_KINDS = {PaymentPlan.DEPOSIT: Payment.Kind.DEPOSIT, PaymentPlan.FULL: Payment.Kind.FULL}
 
@@ -101,14 +120,19 @@ def release_pending(request):
 def submit_booking(lines, *, event_date, zip_code, promo_code, flow, plan, choice, now=None):
     """Create the held booking for the cart and record the flow's details on it.
 
-    Raises quote.QuoteNotBookable when the rebuilt quote has errors (the cart
-    changed, stock sold out, the ZIP is not served). A booking to be paid by
-    Zelle, Cash App or bank deposit is held MANUAL_PAY_HOLD_HOURS so the money
-    has time to arrive; card and ACH bookings keep the normal hold, which
-    create_checkout_session extends while Stripe Checkout is open.
+    Raises NotAllowed when the owner has switched off online booking, the
+    plan or the payment method, and quote.QuoteNotBookable when the rebuilt
+    quote has errors (the cart changed, stock sold out, the ZIP is not served).
+    A booking to be paid by Zelle, Cash App or bank deposit is held
+    MANUAL_PAY_HOLD_HOURS so the money has time to arrive; card and ACH
+    bookings keep the normal hold, which create_checkout_session extends while
+    Stripe Checkout is open.
     """
     now = now or timezone.now()
+    check_allowed(plan, choice)
     event, delivery, contact = flow[EVENT], flow[DELIVERY], flow[CONTACT]
+    exempt = contact["tax_exempt"] and site_settings.tax_exempt_requests_enabled()
+    sms_consent = bool(contact.get("sms_consent")) and site_settings.sms().active
     with transaction.atomic():
         booking = quote_service.create_booking_from_quote(
             line_requests(lines),
@@ -125,9 +149,12 @@ def submit_booking(lines, *, event_date, zip_code, promo_code, flow, plan, choic
         booking.event_type = event["event_type"]
         booking.surface = delivery["surface"]
         booking.crew_notes = delivery["crew_notes"]
-        booking.tax_exempt_requested = contact["tax_exempt"]
-        booking.tax_exempt_org_name = contact["org_name"] if contact["tax_exempt"] else ""
-        booking.tax_exempt_cert_number = contact["cert_number"] if contact["tax_exempt"] else ""
+        booking.tax_exempt_requested = exempt
+        booking.tax_exempt_org_name = contact["org_name"] if exempt else ""
+        booking.tax_exempt_cert_number = contact["cert_number"] if exempt else ""
+        booking.sms_consent = sms_consent
+        booking.sms_consent_version = SMS_CONSENT_VERSION if sms_consent else ""
+        booking.sms_consent_at = now if sms_consent else None
         booking.terms_version = settings.TERMS_VERSION
         booking.terms_accepted_at = now
         booking.payment_choice = choice
@@ -145,6 +172,9 @@ def submit_booking(lines, *, event_date, zip_code, promo_code, flow, plan, choic
             "terms_accepted_at",
             "payment_choice",
             "payment_plan",
+            "sms_consent",
+            "sms_consent_version",
+            "sms_consent_at",
             "updated_at",
         ]
         if is_manual(choice):

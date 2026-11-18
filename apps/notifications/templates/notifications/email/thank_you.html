@@ -1,0 +1,8 @@
+{% extends "notifications/email/base.html" %}
+{% block title %}Thank you for renting with us{% endblock %}
+{% block preheader %}We hope your event was a great day.{% endblock %}
+{% block heading %}Thank you for renting with us{% endblock %}
+{% block body %}
+<p style="margin:0 0 16px;">Hi {{ booking.customer_name }}, thank you for choosing {{ business_name }} for your event. We hope it was a great day.</p>
+<p style="margin:0 0 16px;">If you have a minute, we would love a review: <a href="{{ review_url }}" style="color:#6a0dad;font-weight:bold;">leave a review</a>.</p>
+{% endblock %}

@@ -355,6 +355,14 @@ class Booking(TimeStampedModel):
     )
     payment_plan = models.CharField(max_length=10, choices=PaymentPlan.choices, blank=True)
 
+    sms_consent = models.BooleanField(
+        default=False, help_text="The customer ticked the box to get booking texts."
+    )
+    sms_consent_version = models.CharField(
+        max_length=40, blank=True, help_text="Version of the consent wording they saw."
+    )
+    sms_consent_at = models.DateTimeField(null=True, blank=True)
+
     objects = BookingQuerySet.as_manager()
 
     class Meta:

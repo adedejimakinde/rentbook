@@ -4,6 +4,7 @@ create_checkout_session."""
 
 import logging
 from datetime import date, time
+from functools import wraps
 
 import stripe
 from django.conf import settings
@@ -20,6 +21,7 @@ from apps.bookings.models import normalise_zip
 from apps.bookings.services import booking_flow, lifecycle, links
 from apps.bookings.services import cart as cart_service
 from apps.bookings.services import quote as quote_service
+from apps.core import site_settings
 from apps.core.services import ZIP_KEY, get_event_date, set_event_date
 from apps.payments.services import ledger
 from apps.payments.services import stripe as stripe_service
@@ -38,6 +40,22 @@ def is_htmx(request):
     return request.headers.get("HX-Request") == "true"
 
 
+def booking_open(view):
+    """Show the "online booking is paused" message instead of view while the owner has paused it.
+
+    Staff bookings in the admin are not affected.
+    """
+
+    @wraps(view)
+    def wrapper(request, *args, **kwargs):
+        if site_settings.online_booking_enabled():
+            return view(request, *args, **kwargs)
+        template = "bookings/_booking_paused.html" if is_htmx(request) else "bookings/paused.html"
+        return render(request, template, {"meta_title": "Online booking is paused"})
+
+    return wrapper
+
+
 def _cart_context(request, **extra):
     return {
         "cart": cart_service.attach_line_images(cart_service.cart_view(request)),
@@ -49,6 +67,7 @@ def _cart_context(request, **extra):
 
 @never_cache
 @require_http_methods(["GET"])
+@booking_open
 def cart_page(request):
     """The cart with its live quote."""
     return render(request, "bookings/cart.html", _cart_context(request))
@@ -59,6 +78,7 @@ def _cart_body(request, **extra):
 
 
 @require_POST
+@booking_open
 def cart_add(request):
     """Add a variant or package. HTMX gets a short confirmation and the new cart count."""
     try:
@@ -76,6 +96,7 @@ def cart_add(request):
 
 
 @require_POST
+@booking_open
 def cart_update(request):
     """Change a line's quantity and return the refreshed cart."""
     error = ""
@@ -93,6 +114,7 @@ def cart_update(request):
 
 
 @require_POST
+@booking_open
 def cart_remove(request):
     """Remove a line and return the refreshed cart."""
     cart_service.remove(request, request.POST.get("kind"), request.POST.get("id"))
@@ -102,6 +124,7 @@ def cart_remove(request):
 
 
 @require_POST
+@booking_open
 def cart_details(request):
     """Set the event date, delivery ZIP and promo code the quote is built for."""
     date_error = set_event_date(request, request.POST.get("date", ""))
@@ -162,6 +185,7 @@ def _flow_context(step, **extra):
 
 @never_cache
 @require_http_methods(["GET", "POST"])
+@booking_open
 def step(request, step):
     """One details step of the booking flow: event, delivery or contact."""
     if step == booking_flow.REVIEW:
@@ -224,11 +248,14 @@ def _review_context(request, form, **extra):
 
 
 @never_cache
+@booking_open
 def review(request):
     """Last step: the full quote again, terms, how much to pay and how."""
     blocked = _guard(request, booking_flow.REVIEW)
     if blocked:
         return blocked
+    if not site_settings.active_payment_choices():
+        return render(request, "bookings/paused.html", {"meta_title": "Online booking is paused"})
     if request.method != "POST":
         context = _review_context(request, flow_forms.ReviewForm())
         return render(request, "bookings/review.html", context)
@@ -255,6 +282,9 @@ def review(request):
             plan=plan,
             choice=choice,
         )
+    except booking_flow.NotAllowed as problem:
+        context = _review_context(request, flow_forms.ReviewForm(), submit_error=str(problem))
+        return render(request, "bookings/review.html", context, status=409)
     except quote_service.QuoteNotBookable:
         context = _review_context(
             request, form, submit_error="Your quote changed. Please check the items below."

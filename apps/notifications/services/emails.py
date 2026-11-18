@@ -22,7 +22,8 @@ from apps.bookings.models import MANUAL_PAYMENT_CHOICES, Booking, PaymentChoice,
 from apps.bookings.services import booking_flow
 from apps.invoices.models import Invoice
 from apps.invoices.services import issuing, pdf
-from apps.notifications.models import SentEmail
+from apps.notifications.models import Notification, SentEmail
+from apps.notifications.services import dispatch, messages
 from apps.payments.models import Payment
 from apps.payments.services import ledger
 from apps.payments.services import manual as manual_service
@@ -262,7 +263,95 @@ def build_owner_payment(receipt_id):
     )
 
 
+def _reminder_booking(kind, booking_id):
+    """The booking a reminder is for, or None when the reminder no longer applies."""
+    booking = Booking.objects.get(pk=booking_id)
+    return booking if messages.still_applies(kind, booking) else None
+
+
+def build_payment_deadline(booking_id):
+    booking = _reminder_booking("payment_deadline", booking_id)
+    if booking is None:
+        return None
+    return _customer(
+        "payment_deadline",
+        f"payment_deadline:{booking.pk}",
+        booking,
+        "Your hold ends soon",
+        deadline=timezone.localtime(booking.hold_expires_at),
+        choice_label=PaymentChoice(booking.payment_choice).label,
+        details=manual_service.manual_details()[booking.payment_choice],
+        memo=manual_service.payment_memo(booking),
+        manual_url=messages.manual_url(booking),
+    )
+
+
+def build_balance_due(booking_id):
+    booking = _reminder_booking("balance_due", booking_id)
+    if booking is None:
+        return None
+    return _customer("balance_due", f"balance_due:{booking.pk}", booking, "Your balance is due")
+
+
+def build_balance_due_final(booking_id):
+    booking = _reminder_booking("balance_due_final", booking_id)
+    if booking is None:
+        return None
+    return _customer(
+        "balance_due_final",
+        f"balance_due_final:{booking.pk}",
+        booking,
+        "Reminder: your balance is still due",
+    )
+
+
+def build_pre_event(booking_id):
+    booking = _reminder_booking("pre_event", booking_id)
+    if booking is None:
+        return None
+    return _customer(
+        "pre_event",
+        f"pre_event:{booking.pk}",
+        booking,
+        "See you tomorrow",
+        prepare=messages.prepare_text(booking),
+    )
+
+
+def build_thank_you(booking_id):
+    booking = _reminder_booking("thank_you", booking_id)
+    if booking is None:
+        return None
+    email = _customer(
+        "thank_you",
+        f"thank_you:{booking.pk}",
+        booking,
+        "Thank you for renting with us",
+        review_url=settings.REVIEW_URL,
+    )
+    email.context["balance_url"] = ""
+    return email
+
+
+def build_owner_balance_unpaid(booking_id):
+    booking = _reminder_booking("owner_balance_unpaid", booking_id)
+    if booking is None:
+        return None
+    return _owner(
+        "owner_balance_unpaid",
+        f"owner_balance_unpaid:{booking.pk}",
+        booking,
+        f"Unpaid balance on booking #{booking.pk}: event tomorrow",
+    )
+
+
 BUILDERS = {
+    "payment_deadline": build_payment_deadline,
+    "balance_due": build_balance_due,
+    "balance_due_final": build_balance_due_final,
+    "pre_event": build_pre_event,
+    "thank_you": build_thank_you,
+    "owner_balance_unpaid": build_owner_balance_unpaid,
     "booking_received": build_booking_received,
     "booking_confirmed": build_booking_confirmed,
     "payment_receipt": build_payment_receipt,
@@ -272,6 +361,16 @@ BUILDERS = {
     "ach_processing": build_ach_processing,
     "owner_new_booking": build_owner_new_booking,
     "owner_payment": build_owner_payment,
+}
+
+
+REMINDER_BUILDERS = {
+    "payment_deadline",
+    "balance_due",
+    "balance_due_final",
+    "pre_event",
+    "thank_you",
+    "owner_balance_unpaid",
 }
 
 
@@ -290,9 +389,20 @@ def send(kind, object_id, key_suffix=""):
     """
     builder = BUILDERS[kind]
     email = builder(object_id)
-    if email is not None and key_suffix:
+    if email is None:
+        if kind in REMINDER_BUILDERS:
+            booking = Booking.objects.filter(pk=object_id).first()
+            key = dispatch.make_key(kind, booking, key_suffix) if booking else ""
+            Notification.objects.filter(
+                unique_key=f"{key}:email", status=Notification.Status.PENDING
+            ).update(
+                status=Notification.Status.SKIPPED,
+                error="No longer needed (paid, cancelled or past).",
+            )
+        return False
+    if key_suffix:
         email.key = f"{email.key}:{key_suffix}"
-    if email is None or SentEmail.objects.filter(key=email.key).exists():
+    if SentEmail.objects.filter(key=email.key).exists():
         return False
     text, html = render(email)
     message = EmailMultiAlternatives(
@@ -319,6 +429,9 @@ def send(kind, object_id, key_suffix=""):
         except IntegrityError:
             return False
         message.send()
+        dispatch.record_email(
+            email.key, email.kind, email.booking, ", ".join(email.to), Notification.Status.SENT
+        )
     return True
 
 

@@ -1,0 +1,12 @@
+{% extends "notifications/email/base.txt" %}
+{% block heading %}See you tomorrow{% endblock %}
+{% block body %}Hi {{ booking.customer_name }}, we are getting ready for your event.
+
+Date: {{ booking.event_date|date:"l, F j, Y" }}{% if booking.setup_by_time %}
+Set up by: {{ booking.setup_by_time|time:"g:i A" }}{% endif %}
+Address: {{ booking.delivery_address }}
+
+Before we arrive, {{ prepare }}.
+
+Need to reach us? Call or text {{ business_phone }} or email {{ business_email }}.
+{% endblock %}
