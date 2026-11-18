@@ -1,0 +1,4 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Calendar{% endblock %}
+{% block hero %}<header class="staff-hero-plain"><div class="staff-body !px-0"><h1 class="text-[22px] font-bold lg:text-[26px]">Calendar</h1><p class="text-small text-surface-tint">Bookings by event date. Held bookings that have lapsed are left out.</p></div></header>{% endblock %}
+{% block content %}<div class="py-4">{% include "dashboard/_calendar_body.html" %}</div>{% endblock %}

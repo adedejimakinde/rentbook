@@ -5,15 +5,25 @@ read-only here: they change only through the lifecycle and ledger services,
 which check the money first.
 """
 
+import re
 from collections import defaultdict
 
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
+from django.db.models import Q, Value
+from django.db.models.functions import Replace
 from django.forms import BaseInlineFormSet, ModelForm
 from django.shortcuts import redirect
 from django.urls import reverse
 from unfold.admin import ModelAdmin, TabularInline
+from unfold.contrib.filters.admin import BooleanRadioFilter, RangeDateFilter
 
+from apps.bookings.admin_filters import (
+    CautionFilter,
+    CommaSeparatedStatusFilter,
+    PaymentMethodFilter,
+    PaymentStateFilter,
+)
 from apps.bookings.forms import LIFECYCLE_FORMS
 from apps.bookings.models import (
     Booking,
@@ -24,6 +34,8 @@ from apps.bookings.models import (
     PromoCode,
 )
 from apps.bookings.services import availability, lifecycle, quote
+from apps.dashboard.services.money import with_money
+from apps.dashboard.services.visibility import visibility_for
 from apps.invoices.admin import documents_table
 from apps.invoices.forms import ManualInvoiceForm
 from apps.notifications.admin import notifications_table
@@ -34,6 +46,42 @@ from apps.payments.admin import TAX_EXEMPTION_PERMISSION, BookingPaymentActionsM
 # Statuses staff may set by hand. Every other status is reached through a
 # payment or a lifecycle action, never by editing the booking.
 HAND_SET_STATUSES = (Booking.Status.ENQUIRY, Booking.Status.QUOTED, Booking.Status.HELD)
+# Fields only people who may see payments can see (Crew cannot).
+MONEY_FIELDS = {
+    "delivery_fee",
+    "setup_fee",
+    "discount",
+    "tax",
+    "caution_fee",
+    "promo_code",
+    "promo_redeemed_at",
+    "payment_choice",
+    "payment_plan",
+    "tax_exempt",
+    "tax_exempt_certificate",
+    "tax_exempt_by",
+    "tax_exempt_at",
+    "tax_exempt_requested",
+    "tax_exempt_org_name",
+    "tax_exempt_cert_number",
+    "delivery_override_note",
+    "delivery_override_by",
+    "delivery_override_at",
+    "clearing_override_note",
+    "clearing_override_by",
+    "clearing_override_at",
+    "invoices_and_receipts",
+    "total",
+    "deposit_amount",
+    "amount_paid",
+    "balance_due",
+    "overpaid_refundable",
+    "caution_held",
+    "caution_to_collect",
+    "caution_to_refund",
+}
+MONEY_COLUMNS = {"total_amount", "paid_amount", "balance_amount"}
+SEE_PAYMENTS = "payments.view_payment"
 LOCKED_WITH_PAYMENTS = [
     "status",
     "hold_expires_at",
@@ -149,7 +197,17 @@ class LockedWithPaymentsInline(TabularInline):
         return not has_payments(obj) and super().has_delete_permission(request, obj)
 
 
-class BookingItemInline(LockedWithPaymentsInline):
+class PriceHiddenInline(LockedWithPaymentsInline):
+    """Hides unit prices from people who may not see payments."""
+
+    def get_fields(self, request, obj=None):
+        fields = super().get_fields(request, obj)
+        if request.user.has_perm(SEE_PAYMENTS):
+            return fields
+        return [field for field in fields if field != "unit_price"]
+
+
+class BookingItemInline(PriceHiddenInline):
     model = BookingItem
     formset = BookingItemFormSet
     fields = ["variant", "quantity", "package_quantity", "unit_price"]
@@ -157,7 +215,7 @@ class BookingItemInline(LockedWithPaymentsInline):
     extra = 0
 
 
-class BookingPackageInline(LockedWithPaymentsInline):
+class BookingPackageInline(PriceHiddenInline):
     """Packages as priced on the booking; their stock is on the booking items."""
 
     model = BookingPackage
@@ -174,10 +232,22 @@ class BookingAdmin(BookingPaymentActionsMixin, ModelAdmin):
         "customer_name",
         "event_date",
         "status",
+        "total_amount",
+        "paid_amount",
+        "balance_amount",
         "needs_attention",
         "hold_expires_at",
     ]
-    list_filter = ["status", "needs_attention", "event_date"]
+    list_filter = [
+        ("event_date", RangeDateFilter),
+        CommaSeparatedStatusFilter,
+        PaymentStateFilter,
+        ("needs_attention", BooleanRadioFilter),
+        PaymentMethodFilter,
+        CautionFilter,
+    ]
+    list_filter_submit = True
+    list_per_page = 25
     actions = [
         *BookingPaymentActionsMixin.payment_actions,
         "change_item_line",
@@ -196,7 +266,6 @@ class BookingAdmin(BookingPaymentActionsMixin, ModelAdmin):
         "manual-invoice": ManualInvoiceForm,
     }
     search_fields = ["customer_name", "email", "phone"]
-    date_hierarchy = "event_date"
     readonly_fields = [
         "tax",
         "caution_fee",
@@ -227,6 +296,67 @@ class BookingAdmin(BookingPaymentActionsMixin, ModelAdmin):
         "notification_log",
     ]
     inlines = [BookingItemInline, BookingPackageInline]
+
+    def get_queryset(self, request):
+        """Every row carries its total, paid and balance, worked out in the one query."""
+        return with_money(super().get_queryset(request))
+
+    @admin.display(description="Total", ordering="m_total")
+    def total_amount(self, booking):
+        return f"${booking.m_total:,.2f}"
+
+    @admin.display(description="Paid", ordering="m_paid")
+    def paid_amount(self, booking):
+        return f"${booking.m_paid:,.2f}"
+
+    @admin.display(description="Balance", ordering="m_balance")
+    def balance_amount(self, booking):
+        return f"${booking.m_balance:,.2f}"
+
+    def get_search_results(self, request, queryset, search_term):
+        """Also find a booking by its number (1038 or #1038) or a phone in any format."""
+        term = search_term.strip()
+        found, may_have_duplicates = super().get_search_results(request, queryset, term)
+        extra = Q()
+        number = term.lstrip("#")
+        if number.isdigit():
+            extra |= Q(pk=int(number))
+        digits = re.sub(r"\D", "", term)
+        if len(digits) >= 3 and re.fullmatch(r"[\d\s()+.-]+", term):
+            plain = Replace("phone", Value("-"), Value(""))
+            for mark in (" ", "(", ")", ".", "+"):
+                plain = Replace(plain, Value(mark), Value(""))
+            queryset = queryset.annotate(phone_digits=plain)
+            extra |= Q(phone_digits__contains=digits)
+        if not extra:
+            return found, may_have_duplicates
+        return queryset.filter(Q(pk__in=found.values("pk")) | extra), may_have_duplicates
+
+    def _hidden_fields(self, request):
+        """Fields this user may not see: money for those without payments, phone per the switch."""
+        hidden = set()
+        if not request.user.has_perm(SEE_PAYMENTS):
+            hidden |= MONEY_FIELDS
+        if not visibility_for(request.user).show_phone:
+            hidden.add("phone")
+        return hidden
+
+    def get_list_display(self, request):
+        columns = list(super().get_list_display(request))
+        if request.user.has_perm(SEE_PAYMENTS):
+            return columns
+        return [column for column in columns if column not in MONEY_COLUMNS]
+
+    def get_fields(self, request, obj=None):
+        hidden = self._hidden_fields(request)
+        return [field for field in super().get_fields(request, obj) if field not in hidden]
+
+    def get_exclude(self, request, obj=None):
+        model_names = {field.name for field in self.model._meta.fields}
+        return [
+            *(super().get_exclude(request, obj) or []),
+            *(self._hidden_fields(request) & model_names),
+        ]
 
     @admin.display(description="Invoices and receipts")
     def invoices_and_receipts(self, booking):
@@ -282,6 +412,8 @@ class BookingAdmin(BookingPaymentActionsMixin, ModelAdmin):
         """Bookings are deleted one at a time, where stock and payments are checked."""
         actions = super().get_actions(request)
         actions.pop("delete_selected", None)
+        if not self.has_change_permission(request):
+            return {}
         return actions
 
     def has_delete_permission(self, request, obj=None):

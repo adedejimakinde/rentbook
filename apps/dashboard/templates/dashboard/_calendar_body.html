@@ -1,0 +1,44 @@
+{% load core_tags dash %}<div id="calendar-body">
+  <div class="mb-3 flex items-center justify-between gap-2">
+    <a href="?view={{ page.view }}&amp;date={{ page.previous|date:'Y-m-d' }}" hx-get="?view={{ page.view }}&amp;date={{ page.previous|date:'Y-m-d' }}" hx-target="#calendar-body" hx-swap="outerHTML" hx-push-url="true" class="icon-btn flex h-11 w-11 items-center justify-center rounded-full border border-border-strong" aria-label="Previous {{ page.view }}">{% icon "chevron-left" 20 stroke=2.5 %}</a>
+    <h2 class="t-h3 text-center" aria-live="polite">{{ page.title }}</h2>
+    <a href="?view={{ page.view }}&amp;date={{ page.following|date:'Y-m-d' }}" hx-get="?view={{ page.view }}&amp;date={{ page.following|date:'Y-m-d' }}" hx-target="#calendar-body" hx-swap="outerHTML" hx-push-url="true" class="icon-btn flex h-11 w-11 items-center justify-center rounded-full border border-border-strong" aria-label="Next {{ page.view }}">{% icon "chevron-right" 20 stroke=2.5 %}</a>
+  </div>
+  <div class="mb-3 flex gap-2" role="group" aria-label="Calendar view">
+    <a href="?view=month&amp;date={{ page.anchor|date:'Y-m-d' }}" hx-get="?view=month&amp;date={{ page.anchor|date:'Y-m-d' }}" hx-target="#calendar-body" hx-swap="outerHTML" hx-push-url="true" class="chip" {% if page.view == "month" %}aria-pressed="true"{% endif %}>Month</a>
+    <a href="?view=week&amp;date={{ page.anchor|date:'Y-m-d' }}" hx-get="?view=week&amp;date={{ page.anchor|date:'Y-m-d' }}" hx-target="#calendar-body" hx-swap="outerHTML" hx-push-url="true" class="chip" {% if page.view == "week" %}aria-pressed="true"{% endif %}>Week</a>
+    <a href="?view={{ page.view }}&amp;date={{ page.today|date:'Y-m-d' }}" hx-get="?view={{ page.view }}&amp;date={{ page.today|date:'Y-m-d' }}" hx-target="#calendar-body" hx-swap="outerHTML" hx-push-url="true" class="chip ml-auto">Today</a>
+  </div>
+
+  <div class="card p-2 lg:p-3">
+    <div class="cal-grid" role="grid" aria-label="{{ page.title }}">
+      <div class="cal-head" role="columnheader">Sun</div><div class="cal-head" role="columnheader">Mon</div><div class="cal-head" role="columnheader">Tue</div><div class="cal-head" role="columnheader">Wed</div><div class="cal-head" role="columnheader">Thu</div><div class="cal-head" role="columnheader">Fri</div><div class="cal-head" role="columnheader">Sat</div>
+      {% for week in page.weeks %}{% for day in week %}
+      <a href="?view={{ page.view }}&amp;date={{ page.anchor|date:'Y-m-d' }}&amp;day={{ day.date|date:'Y-m-d' }}" hx-get="?view={{ page.view }}&amp;date={{ page.anchor|date:'Y-m-d' }}&amp;day={{ day.date|date:'Y-m-d' }}" hx-target="#calendar-body" hx-swap="outerHTML" hx-push-url="true" class="cal-day" data-out="{% if day.in_month %}false{% else %}true{% endif %}"{% if day.is_today %} aria-current="date"{% endif %}{% if day.date == page.selected %} aria-pressed="true"{% endif %} role="gridcell">
+        <span class="cal-num">{{ day.date|date:"j" }}</span>
+        {% if day.entries %}
+        <span class="cal-dots flex flex-wrap justify-center gap-0.5"><span class="sr-only">{{ day.entries|length }} booking{{ day.entries|length|pluralize }}:</span>{% for entry in day.entries|slice:":4" %}<span class="dot dot-{{ entry.tone }}"></span>{% endfor %}</span>
+        {% for entry in day.entries|slice:":3" %}<span class="cal-chip badge-{{ entry.tone }} {% if entry.tone == 'brand' %}!bg-surface-tint !text-brand{% endif %}">{{ entry.booking.customer_name }}, {{ entry.label }}</span>{% endfor %}
+        {% if day.entries|length > 3 %}<span class="cal-chip text-ink-muted">+{{ day.entries|length|add:"-3" }} more</span>{% endif %}
+        {% endif %}
+      </a>
+      {% endfor %}{% endfor %}
+    </div>
+  </div>
+
+  {% with day=page.selected_day %}{% if day %}
+  <section class="staff-card mt-3" aria-labelledby="day-heading" aria-live="polite">
+    <h2 id="day-heading" class="t-h3 pb-1">{{ day.date|date:"l, F j" }}</h2>
+    {% for entry in day.entries %}
+    <div class="staff-row !min-h-[64px]">
+      <a href="{% url 'admin:bookings_booking_change' entry.booking.pk %}" class="min-w-0 flex-1">
+        <span class="block text-[14px] font-bold [overflow-wrap:anywhere]">#{{ entry.booking.pk }} {{ entry.booking.customer_name }}</span>
+        <span class="mt-0.5 flex items-center gap-1.5 text-caption font-semibold"><span class="dot dot-{{ entry.tone }}" aria-hidden="true"></span><span class="badge badge-{{ entry.tone }}">{{ entry.label }}</span></span>
+      </a>
+      <span class="flex-none text-right"><span class="block text-[15px] font-bold {% if entry.booking.m_balance > 0 %}text-danger{% else %}text-success{% endif %}">{{ entry.booking.m_balance|dollars }}</span><span class="block text-[11px] font-medium text-ink-muted">{% if entry.booking.m_balance > 0 %}balance due{% else %}all paid{% endif %}</span></span>
+      <span class="row-chevron" aria-hidden="true">{% icon "chevron-right" 18 %}</span>
+    </div>
+    {% empty %}<p class="border-t border-border pb-4 pt-3 text-ink-muted">No bookings this day.</p>{% endfor %}
+  </section>
+  {% endif %}{% endwith %}
+</div>

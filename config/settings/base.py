@@ -31,6 +31,7 @@ USE_I18N = False
 
 INSTALLED_APPS = [
     "unfold",
+    "unfold.contrib.filters",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -47,6 +48,7 @@ INSTALLED_APPS = [
     "apps.invoices",
     "apps.notifications",
     "apps.customers",
+    "apps.dashboard",
 ]
 
 MIDDLEWARE = [
@@ -75,6 +77,7 @@ TEMPLATES = [
                 "apps.core.context_processors.business",
                 "apps.core.context_processors.site_sections",
                 "apps.bookings.context_processors.cart",
+                "apps.dashboard.context_processors.staff_nav",
             ],
         },
     },
@@ -244,6 +247,24 @@ def _static(path):
 UNFOLD = {
     "SITE_TITLE": BUSINESS_NAME,
     "SITE_HEADER": BUSINESS_NAME,
+    "SITE_URL": "/",
+    # Brand purple from docs/design/tokens.json (brand is 600, brand-deep 800).
+    "COLORS": {
+        "primary": {
+            "50": "#f7f4fa",
+            "100": "#f0e5fb",
+            "200": "#e0c8f5",
+            "300": "#c79cec",
+            "400": "#a863de",
+            "500": "#8a2bd0",
+            "600": "#6a0dad",
+            "700": "#5a0b94",
+            "800": "#4e0a84",
+            "900": "#3c0766",
+            "950": "#2a0549",
+        },
+    },
+    "STYLES": [lambda request: _static("admin/staff.css")],
     # Every admin page: forms submit once, so a double click cannot save twice.
     "SCRIPTS": [lambda request: _static("core/js/submit_once.js")],
 }

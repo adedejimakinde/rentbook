@@ -1,0 +1,228 @@
+/* Admin pages: booking cards on phones and the bottom tab bar. Colours are the design tokens. */
+:root {
+  --st-brand: #6a0dad;
+  --st-brand-deep: #4e0a84;
+  --st-ink: #241634;
+  --st-muted: #6b5f7b;
+  --st-tint: #f0e5fb;
+  --st-soft: #f7f4fa;
+  --st-border: #ede5f5;
+  --st-success: #1b6e3c;
+  --st-success-tint: #e3f4e8;
+  --st-warning: #8a4b00;
+  --st-warning-tint: #fff1de;
+  --st-danger: #b0154f;
+  --st-danger-tint: #fce8f1;
+}
+
+.bk-cards {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bk-card {
+  border: 1px solid var(--st-border);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(36, 22, 52, 0.06);
+}
+
+.bk-card-link {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 64px;
+  padding: 12px;
+  color: var(--st-ink);
+}
+
+.bk-date {
+  display: inline-flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--st-tint);
+  font-weight: 700;
+}
+
+.bk-date-month {
+  font-size: 10px;
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--st-brand);
+}
+
+.bk-date-day {
+  font-size: 18px;
+  line-height: 20px;
+}
+
+.bk-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.bk-title {
+  font-size: 15px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.bk-meta {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--st-muted);
+}
+
+.bk-flag {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--st-danger-tint);
+  color: var(--st-danger);
+  font-weight: 700;
+}
+
+.bk-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--st-brand);
+}
+
+.bk-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.bk-status-held {
+  color: var(--st-warning);
+}
+
+.bk-status-paid {
+  color: var(--st-success);
+}
+
+.bk-status-cancelled {
+  color: var(--st-danger);
+}
+
+.bk-status-returned,
+.bk-status-expired,
+.bk-status-enquiry,
+.bk-status-quoted {
+  color: var(--st-muted);
+}
+
+.bk-money {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+}
+
+.bk-balance {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--st-success);
+}
+
+.bk-owed {
+  color: var(--st-danger);
+}
+
+.bk-money-label,
+.bk-money-small {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--st-muted);
+}
+
+.staff-tabbar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 40;
+  display: flex;
+  padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--st-border);
+  background: #fff;
+  box-shadow: 0 -8px 24px rgba(36, 22, 52, 0.06);
+}
+
+.staff-tab {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  min-height: 52px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--st-muted);
+}
+
+.staff-tab-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 30px;
+  border-radius: 999px;
+}
+
+.staff-tab[aria-current="page"] {
+  color: var(--st-brand);
+}
+
+.staff-tab[aria-current="page"] .staff-tab-icon {
+  background: var(--st-tint);
+}
+
+/* Room for the bar under the page on phones. */
+body:has(.staff-tabbar) #content {
+  padding-bottom: 88px;
+}
+
+@media (min-width: 1024px) {
+  .staff-tabbar {
+    display: none;
+  }
+
+  body:has(.staff-tabbar) #content {
+    padding-bottom: 0;
+  }
+}
+
+.bk-table {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .bk-cards {
+    display: none;
+  }
+
+  .bk-table {
+    display: block;
+  }
+}

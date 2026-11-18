@@ -54,7 +54,7 @@ class PaymentAdmin(ModelAdmin):
         "reference",
         "received_at",
     ]
-    list_filter = ["status", "kind", "method"]
+    list_filter = ["status", "kind", "method", "received_at"]
     list_select_related = ["booking"]
     search_fields = [
         "reference",

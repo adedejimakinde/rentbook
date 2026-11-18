@@ -1,0 +1,29 @@
+{% extends "dashboard/base.html" %}
+{% load core_tags dash %}
+{% block title %}Crew schedule{% endblock %}
+{% block hero %}
+<header class="staff-hero-plain">
+  <div class="staff-body !px-0">
+    <h1 class="text-[22px] font-bold lg:text-[26px]">Crew schedule</h1>
+    <p class="text-small text-surface-tint">{{ day|date:"l, F j, Y" }}{% if is_today %} (today){% endif %}</p>
+  </div>
+</header>
+{% endblock %}
+{% block content %}
+<div class="py-4">
+  <div class="no-print mb-3 flex items-center justify-between gap-2">
+    <a href="{% url 'dashboard:crew_day' previous_day|date:'Y-m-d' %}" class="btn btn-secondary" aria-label="Previous day">{% icon "chevron-left" 18 stroke=2.5 %}<span class="hidden sm:inline">{{ previous_day|date:"D, M j" }}</span></a>
+    {% if not is_today %}<a href="{% url 'dashboard:crew' %}" class="chip">Today</a>{% endif %}
+    <a href="{% url 'dashboard:crew_day' next_day|date:'Y-m-d' %}" class="btn btn-secondary" aria-label="Next day"><span class="hidden sm:inline">{{ next_day|date:"D, M j" }}</span>{% icon "chevron-right" 18 stroke=2.5 %}</a>
+  </div>
+  <div class="no-print mb-3 flex flex-wrap gap-2">
+    <button type="button" class="btn btn-secondary" onclick="window.print()">{% icon "printer" 18 %}Print</button>
+    <a href="{% url 'dashboard:run_sheet' day|date:'Y-m-d' %}" class="btn btn-secondary">{% icon "download" 18 %}Run sheet PDF</a>
+  </div>
+  {% if cards %}
+  <div class="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:items-start">
+    {% for card in cards %}{% include "dashboard/_stop_card.html" %}{% endfor %}
+  </div>
+  {% else %}<p class="card p-4 text-ink-muted">No deliveries or pickups on this day.</p>{% endif %}
+</div>
+{% endblock %}
