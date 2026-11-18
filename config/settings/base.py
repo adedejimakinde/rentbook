@@ -264,7 +264,8 @@ UNFOLD = {
             "950": "#2a0549",
         },
     },
-    "STYLES": [lambda request: _static("admin/staff.css")],
+    # The project stylesheet (design-system tokens and components), shared with the dashboard.
+    "STYLES": [lambda request: _static("css/tailwind.css")],
     # Every admin page: forms submit once, so a double click cannot save twice.
     "SCRIPTS": [lambda request: _static("core/js/submit_once.js")],
 }

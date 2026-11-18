@@ -1914,3 +1914,167 @@
     }
   }
 }
+
+/* Booking list cards on phones (Unfold pages) */
+@layer components {
+  .bk-cards {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .bk-card {
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    background: var(--color-surface);
+    box-shadow: 0 1px 2px rgba(36, 22, 52, 0.06);
+  }
+
+  .bk-card-link {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    min-height: 64px;
+    padding: 12px;
+    color: var(--color-ink);
+  }
+
+  .bk-date {
+    display: inline-flex;
+    flex: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 48px;
+    border-radius: 12px;
+    background: var(--color-surface-tint);
+    font-weight: 700;
+  }
+
+  .bk-date-month {
+    font-size: 10px;
+    line-height: 1;
+    text-transform: uppercase;
+    color: var(--color-brand);
+  }
+
+  .bk-date-day {
+    font-size: 18px;
+    line-height: 20px;
+  }
+
+  .bk-main {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .bk-title {
+    font-size: 15px;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+
+  .bk-meta {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-ink-muted);
+  }
+
+  .bk-flag {
+    display: inline-block;
+    margin-left: 4px;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: var(--color-danger-tint);
+    color: var(--color-danger);
+    font-weight: 700;
+  }
+
+  .bk-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 2px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--color-brand);
+  }
+
+  .bk-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: currentColor;
+  }
+
+  .bk-status-held {
+    color: var(--color-warning);
+  }
+
+  .bk-status-paid {
+    color: var(--color-success);
+  }
+
+  .bk-status-cancelled {
+    color: var(--color-danger);
+  }
+
+  .bk-status-returned,
+  .bk-status-expired,
+  .bk-status-enquiry,
+  .bk-status-quoted {
+    color: var(--color-ink-muted);
+  }
+
+  .bk-money {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    align-items: flex-end;
+    text-align: right;
+  }
+
+  .bk-balance {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--color-success);
+  }
+
+  .bk-owed {
+    color: var(--color-danger);
+  }
+
+  .bk-money-label,
+  .bk-money-small {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--color-ink-muted);
+  }
+
+  .bk-table {
+    display: none;
+  }
+
+  @media (min-width: 768px) {
+    .bk-cards {
+      display: none;
+    }
+
+    .bk-table {
+      display: block;
+    }
+  }
+
+  /* Room under Unfold's pages for the phone tab bar. */
+  @media (max-width: 1023px) {
+    body:has(.tabbar) #content {
+      padding-bottom: 88px;
+    }
+  }
+}

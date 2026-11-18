@@ -478,7 +478,7 @@ class BookingAdmin(BookingPaymentActionsMixin, ModelAdmin):
             for entry in entries
         ]
         return format_html(
-            '<ul style="list-style:none;margin:0;padding:0;display:grid;gap:8px">{}</ul>',
+            '<ul class="grid list-none gap-2 p-0 m-0">{}</ul>',
             format_html_join("", "<li><strong>{}</strong>: {} by {}. {}</li>", rows),
         )
 

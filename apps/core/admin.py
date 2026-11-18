@@ -24,9 +24,9 @@ class ReviewAdmin(ModelAdmin):
 
 
 TONES = {
-    "success": "background:#e3f4e8;color:#1b6e3c;",
-    "warning": "background:#fff1de;color:#8a4b00;",
-    "danger": "background:#fce8f1;color:#b0154f;",
+    "success": "badge-success",
+    "warning": "badge-warning",
+    "danger": "badge-danger",
 }
 
 
@@ -90,13 +90,11 @@ class SiteSettingsAdmin(ModelAdmin):
                 state, tone = "Off: switched off below", "warning"
             rows.append((item.label, TONES[tone], state))
         return format_html(
-            '<ul style="list-style:none;margin:0;padding:0;display:grid;gap:8px">{}</ul>',
+            '<ul class="grid list-none gap-2 p-0 m-0">{}</ul>',
             format_html_join(
                 "",
-                '<li style="display:flex;flex-wrap:wrap;align-items:center;gap:8px">'
-                "<strong>{}</strong>"
-                '<span style="{}border-radius:999px;padding:3px 10px;font-size:12px;'
-                'font-weight:700">{}</span></li>',
+                '<li class="flex flex-wrap items-center gap-2"><strong>{}</strong>'
+                '<span class="badge {} whitespace-normal [overflow-wrap:anywhere]">{}</span></li>',
                 rows,
             ),
         )
@@ -117,7 +115,7 @@ class SiteSettingsAdmin(ModelAdmin):
         if not items:
             return "No changes yet."
         return format_html(
-            '<ul style="list-style:none;margin:0;padding:0;display:grid;gap:6px">{}</ul>',
+            '<ul class="grid list-none gap-1.5 p-0 m-0">{}</ul>',
             format_html_join("", "<li>{} by <strong>{}</strong>: {}</li>", items),
         )
 
