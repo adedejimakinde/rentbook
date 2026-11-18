@@ -1,0 +1,110 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&display=swap"><style>
+body{margin:0}
+a{color:#6A0DAD;text-decoration:none}
+.shelf{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-left:20px;padding:2px 20px 6px;scrollbar-width:none}
+.shelf::-webkit-scrollbar{display:none}
+.shelf>*{scroll-snap-align:start;flex:none}
+.lift{transition:transform .25s ease,box-shadow .25s ease}
+.lift:hover{transform:translateY(-4px);box-shadow:0 10px 30px rgba(36,22,52,.14)}
+@media (prefers-reduced-motion: reduce){.lift:hover{transform:none}}
+ </style></head><body>
+
+<div style="width: 390px; height: 1440px; box-sizing: border-box; background: #F7F4FA; color: #241634; font-family: Montserrat, system-ui, sans-serif; overflow: hidden; position: relative; font-variant-numeric: tabular-nums">
+<header style="height: 64px; box-sizing: border-box; padding: 0 12px 0 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid #D4AF37; background: #FFFFFF">
+<a href="HomeV2.dc.html" aria-label="Atglace Events and Rentals home"><img src="../../static/brand/atglace-logo-header-320.webp" alt="Atglace Events and Rentals LLC" style="width: 64px; height: 52px; object-fit: contain; display: block"></a>
+<div style="display: flex; align-items: center; gap: 4px">
+<a href="CartV2.dc.html" aria-label="Your booking cart, 2 items" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; position: relative"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#241634" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h2l2 10h10l2-7H7"></path><circle cx="10" cy="19" r="1.5"></circle><circle cx="17" cy="19" r="1.5"></circle></svg><span aria-hidden="true" style="position: absolute; top: 6px; right: 4px; min-width: 18px; height: 18px; border-radius: 9px; background: #C2185B; color: #FFFFFF; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center">2</span></a>
+<a href="CatalogueV2.dc.html" style="height: 40px; padding: 0 16px; border-radius: 999px; background: #C2185B; color: #FFFFFF; display: flex; align-items: center; font-size: 14px; font-weight: 700">Book now</a>
+<button aria-label="Open menu" style="width: 44px; height: 44px; border: 0; background: transparent; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#241634" stroke-width="2" stroke-linecap="round"><path d="M4 8h16M4 16h16"></path></svg></button>
+</div>
+</header>
+
+<section style="background: #FFFFFF; padding: 20px 20px 14px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; flex-direction: column; gap: 4px"><span style="font-size: 12px; font-weight: 700; letter-spacing: 1.4px; color: #C2185B">ALL RENTALS</span><h1 style="margin: 0; font-size: 30px; line-height: 34px; font-weight: 800; letter-spacing: -0.6px">Find your setup</h1></div>
+<a href="#date" style="min-height: 52px; box-sizing: border-box; padding: 8px 14px; border-radius: 16px; background: #F0E5FB; color: #241634; display: flex; align-items: center; gap: 12px">
+<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6A0DAD" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>
+<span style="flex: 1; display: flex; flex-direction: column"><span style="font-size: 14px; font-weight: 700">Sat, Dec 12 · ZIP 75204</span><span style="font-size: 12px; font-weight: 500; color: #6B5F7B">Showing what is free on your date</span></span>
+<span style="font-size: 13px; font-weight: 700; color: #6A0DAD">Change</span></a>
+</section>
+<div style="position: relative; background: #FFFFFF; border-bottom: 1px solid #EDE5F5; padding-bottom: 12px">
+<div class="shelf" style="gap: 8px">
+<button aria-pressed="true" onClick="" style="height: 38px; padding: 0 16px; border-radius: 999px; border: 1.5px solid #241634; background: #241634; color: #FFFFFF; font-family: inherit; font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer">All</button><button aria-pressed="false" onClick="" style="height: 38px; padding: 0 16px; border-radius: 999px; border: 1.5px solid #D9CFE5; background: #FFFFFF; color: #241634; font-family: inherit; font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer">Inflatables</button><button aria-pressed="false" onClick="" style="height: 38px; padding: 0 16px; border-radius: 999px; border: 1.5px solid #D9CFE5; background: #FFFFFF; color: #241634; font-family: inherit; font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer">Tables</button><button aria-pressed="false" onClick="" style="height: 38px; padding: 0 16px; border-radius: 999px; border: 1.5px solid #D9CFE5; background: #FFFFFF; color: #241634; font-family: inherit; font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer">Chairs</button><button aria-pressed="false" onClick="" style="height: 38px; padding: 0 16px; border-radius: 999px; border: 1.5px solid #D9CFE5; background: #FFFFFF; color: #241634; font-family: inherit; font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer">Concessions</button><button aria-pressed="false" onClick="" style="height: 38px; padding: 0 16px; border-radius: 999px; border: 1.5px solid #D9CFE5; background: #FFFFFF; color: #241634; font-family: inherit; font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer">Tents</button><button aria-pressed="false" onClick="" style="height: 38px; padding: 0 16px; border-radius: 999px; border: 1.5px solid #D9CFE5; background: #FFFFFF; color: #241634; font-family: inherit; font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer">Decor</button><button aria-pressed="false" onClick="" style="height: 38px; padding: 0 16px; border-radius: 999px; border: 1.5px solid #D9CFE5; background: #FFFFFF; color: #241634; font-family: inherit; font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer">Power</button>
+</div>
+</div>
+<div style="padding: 14px 20px 4px; display: flex; justify-content: space-between; align-items: center">
+<span style="font-size: 13px; font-weight: 600; color: #6B5F7B">19 rentals</span>
+<button style="height: 36px; padding: 0 12px; border-radius: 999px; border: 1.5px solid #D9CFE5; background: #FFFFFF; color: #241634; font-family: inherit; font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 6px"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M7 12h10M10 17h4"></path></svg>Sort: Popular</button>
+</div>
+<div style="padding: 10px 16px 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+
+<a href="ItemV2.dc.html" class="lift" style="border-radius: 18px; background: #FFFFFF; overflow: hidden; color: #241634; display: flex; flex-direction: column; box-shadow: 0 1px 2px rgba(36,22,52,0.06)">
+<span style="aspect-ratio: 1 / 1; background: #EDE3F8; position: relative; display: flex; align-items: flex-end; padding: 10px; box-sizing: border-box">
+<span style="position: absolute; top: 10px; left: 10px; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: #D4AF37; color: #241634">Popular</span>
+<span style="font-size: 10px; font-weight: 600; color: #4A3F5C">Photo: combo bounce house</span></span>
+<span style="padding: 12px 12px 14px; display: flex; flex-direction: column; gap: 5px">
+<span style="font-size: 14px; line-height: 18px; font-weight: 700">Combo bounce house</span>
+<span style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: #1B6E3C"><span aria-hidden="true" style="width: 7px; height: 7px; border-radius: 4px; background: #1B6E3C; display: block"></span>1 free on your date</span>
+<span style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px"><span style="font-size: 16px; font-weight: 800">[PRICE]</span><span aria-hidden="true" style="width: 32px; height: 32px; border-radius: 16px; background: #C2185B; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg></span></span>
+</span></a>
+
+<a href="ItemV2.dc.html" class="lift" style="border-radius: 18px; background: #FFFFFF; overflow: hidden; color: #241634; display: flex; flex-direction: column; box-shadow: 0 1px 2px rgba(36,22,52,0.06)">
+<span style="aspect-ratio: 1 / 1; background: #F6E9EF; position: relative; display: flex; align-items: flex-end; padding: 10px; box-sizing: border-box">
+<span style="position: absolute; top: 10px; left: 10px; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: #D4AF37; color: #241634">Popular</span>
+<span style="font-size: 10px; font-weight: 600; color: #4A3F5C">Photo: gold Chiavari chairs</span></span>
+<span style="padding: 12px 12px 14px; display: flex; flex-direction: column; gap: 5px">
+<span style="font-size: 14px; line-height: 18px; font-weight: 700">Chiavari chair</span>
+<span style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: #1B6E3C"><span aria-hidden="true" style="width: 7px; height: 7px; border-radius: 4px; background: #1B6E3C; display: block"></span>140 free on your date</span>
+<span style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px"><span style="font-size: 16px; font-weight: 800">[PRICE]</span><span aria-hidden="true" style="width: 32px; height: 32px; border-radius: 16px; background: #C2185B; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg></span></span>
+</span></a>
+
+<a href="ItemV2.dc.html" class="lift" style="border-radius: 18px; background: #FFFFFF; overflow: hidden; color: #241634; display: flex; flex-direction: column; box-shadow: 0 1px 2px rgba(36,22,52,0.06)">
+<span style="aspect-ratio: 1 / 1; background: #E8F0FA; position: relative; display: flex; align-items: flex-end; padding: 10px; box-sizing: border-box">
+
+<span style="font-size: 10px; font-weight: 600; color: #4A3F5C">Photo: water slide</span></span>
+<span style="padding: 12px 12px 14px; display: flex; flex-direction: column; gap: 5px">
+<span style="font-size: 14px; line-height: 18px; font-weight: 700">Water slide</span>
+<span style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: #1B6E3C"><span aria-hidden="true" style="width: 7px; height: 7px; border-radius: 4px; background: #1B6E3C; display: block"></span>2 free on your date</span>
+<span style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px"><span style="font-size: 16px; font-weight: 800">[PRICE]</span><span aria-hidden="true" style="width: 32px; height: 32px; border-radius: 16px; background: #C2185B; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg></span></span>
+</span></a>
+
+<a href="ItemV2.dc.html" class="lift" style="border-radius: 18px; background: #FFFFFF; overflow: hidden; color: #241634; display: flex; flex-direction: column; box-shadow: 0 1px 2px rgba(36,22,52,0.06)">
+<span style="aspect-ratio: 1 / 1; background: #E3F4E8; position: relative; display: flex; align-items: flex-end; padding: 10px; box-sizing: border-box">
+
+<span style="font-size: 10px; font-weight: 600; color: #4A3F5C">Photo: obstacle course</span></span>
+<span style="padding: 12px 12px 14px; display: flex; flex-direction: column; gap: 5px">
+<span style="font-size: 14px; line-height: 18px; font-weight: 700">Obstacle course</span>
+<span style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: #6B5F7B"><span aria-hidden="true" style="width: 7px; height: 7px; border-radius: 4px; background: #6B5F7B; display: block"></span>Booked on your date</span>
+<span style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px"><span style="font-size: 16px; font-weight: 800">[PRICE]</span><span aria-hidden="true" style="width: 32px; height: 32px; border-radius: 16px; background: #B9AEC6; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg></span></span>
+</span></a>
+
+<a href="ItemV2.dc.html" class="lift" style="border-radius: 18px; background: #FFFFFF; overflow: hidden; color: #241634; display: flex; flex-direction: column; box-shadow: 0 1px 2px rgba(36,22,52,0.06)">
+<span style="aspect-ratio: 1 / 1; background: #FFF1DE; position: relative; display: flex; align-items: flex-end; padding: 10px; box-sizing: border-box">
+<span style="position: absolute; top: 10px; left: 10px; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: #D4AF37; color: #241634">Popular</span>
+<span style="font-size: 10px; font-weight: 600; color: #4A3F5C">Photo: popcorn machine</span></span>
+<span style="padding: 12px 12px 14px; display: flex; flex-direction: column; gap: 5px">
+<span style="font-size: 14px; line-height: 18px; font-weight: 700">Popcorn machine</span>
+<span style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: #1B6E3C"><span aria-hidden="true" style="width: 7px; height: 7px; border-radius: 4px; background: #1B6E3C; display: block"></span>2 free on your date</span>
+<span style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px"><span style="font-size: 16px; font-weight: 800">[PRICE]</span><span aria-hidden="true" style="width: 32px; height: 32px; border-radius: 16px; background: #C2185B; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg></span></span>
+</span></a>
+
+<a href="ItemV2.dc.html" class="lift" style="border-radius: 18px; background: #FFFFFF; overflow: hidden; color: #241634; display: flex; flex-direction: column; box-shadow: 0 1px 2px rgba(36,22,52,0.06)">
+<span style="aspect-ratio: 1 / 1; background: #F0E5FB; position: relative; display: flex; align-items: flex-end; padding: 10px; box-sizing: border-box">
+
+<span style="font-size: 10px; font-weight: 600; color: #4A3F5C">Photo: round tables set</span></span>
+<span style="padding: 12px 12px 14px; display: flex; flex-direction: column; gap: 5px">
+<span style="font-size: 14px; line-height: 18px; font-weight: 700">Round table</span>
+<span style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: #1B6E3C"><span aria-hidden="true" style="width: 7px; height: 7px; border-radius: 4px; background: #1B6E3C; display: block"></span>18 free on your date</span>
+<span style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px"><span style="font-size: 16px; font-weight: 800">[PRICE]</span><span aria-hidden="true" style="width: 32px; height: 32px; border-radius: 16px; background: #C2185B; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg></span></span>
+</span></a>
+
+</div>
+<div style="padding: 20px 20px 0; display: flex; flex-direction: column; align-items: center; gap: 10px">
+<span style="font-size: 12px; font-weight: 600; color: #6B5F7B">Showing 6 of 19</span>
+<div aria-hidden="true" style="width: 160px; height: 3px; border-radius: 2px; background: #EDE5F5"><div style="width: 32%; height: 3px; border-radius: 2px; background: #6A0DAD"></div></div>
+<button style="height: 48px; padding: 0 28px; border-radius: 999px; border: 2px solid #241634; background: #FFFFFF; color: #241634; font-family: inherit; font-size: 15px; font-weight: 700">Show more</button>
+</div>
+<a href="CartV2.dc.html" style="position: absolute; left: 16px; right: 16px; bottom: 20px; height: 60px; border-radius: 999px; background: #241634; color: #FFFFFF; padding: 0 8px 0 22px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 10px 30px rgba(36,22,52,0.3)">
+<span style="display: flex; flex-direction: column"><span style="font-size: 12px; font-weight: 600; color: #CDB8E6">2 items in your booking</span><span style="font-size: 16px; font-weight: 800">[TOTAL]</span></span>
+<span style="height: 44px; padding: 0 18px; border-radius: 999px; background: #C2185B; display: flex; align-items: center; gap: 4px; font-size: 14px; font-weight: 700">View booking<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></span></a>
+</div>
+</body></html>

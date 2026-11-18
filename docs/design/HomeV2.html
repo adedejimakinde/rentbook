@@ -1,0 +1,238 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&display=swap"><style>
+body{margin:0}
+a{color:#6A0DAD;text-decoration:none}
+.shelf{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-left:20px;padding:4px 20px 8px;scrollbar-width:none}
+.shelf::-webkit-scrollbar{display:none}
+.shelf>*{scroll-snap-align:start;flex:none}
+.lift{transition:transform .25s ease,box-shadow .25s ease}
+.lift:hover{transform:translateY(-4px);box-shadow:0 10px 30px rgba(36,22,52,.14)}
+.rise{animation:rise .7s cubic-bezier(.2,.7,.2,1) both}
+.d1{animation-delay:.08s}.d2{animation-delay:.16s}.d3{animation-delay:.24s}
+@keyframes rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+@supports (animation-timeline: view()){
+.reveal{animation:rise linear both;animation-timeline:view();animation-range:entry 0% cover 22%}
+.progress{animation:fill linear both;animation-timeline:scroll(x nearest)}
+}
+@keyframes fill{from{transform:scaleX(.18)}to{transform:scaleX(1)}}
+.marquee{display:flex;gap:28px;width:max-content;animation:slide 38s linear infinite}
+.marquee:hover{animation-play-state:paused}
+@keyframes slide{to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion: reduce){.rise,.reveal,.marquee,.progress{animation:none}.lift:hover{transform:none}}
+ </style></head><body>
+
+<div style="width: 390px; height: 3880px; box-sizing: border-box; background: #FFFFFF; color: #241634; font-family: Montserrat, system-ui, sans-serif; overflow: hidden; position: relative; font-variant-numeric: tabular-nums">
+
+<header style="height: 64px; box-sizing: border-box; padding: 0 12px 0 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid #D4AF37; background: #FFFFFF">
+<a href="HomeV2.dc.html" aria-label="Atglace Events and Rentals home"><img src="../../static/brand/atglace-logo-header-320.webp" alt="Atglace Events and Rentals LLC" style="width: 64px; height: 52px; object-fit: contain; display: block"></a>
+<div style="display: flex; align-items: center; gap: 4px">
+<a href="Booking.dc.html" aria-label="Your booking cart" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#241634" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h2l2 10h10l2-7H7"></path><circle cx="10" cy="19" r="1.5"></circle><circle cx="17" cy="19" r="1.5"></circle></svg></a>
+<a href="Catalogue.dc.html" style="height: 40px; padding: 0 16px; border-radius: 999px; background: #C2185B; color: #FFFFFF; display: flex; align-items: center; font-size: 14px; font-weight: 700">Book now</a>
+<button aria-label="Open menu" style="width: 44px; height: 44px; border: 0; background: transparent; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#241634" stroke-width="2" stroke-linecap="round"><path d="M4 8h16M4 16h16"></path></svg></button>
+</div>
+</header>
+
+<section aria-labelledby="hero-title" style="padding: 22px 0 0">
+<div role="tablist" aria-label="Event types" class="shelf" style="gap: 8px; padding-bottom: 14px">
+
+<button role="tab" aria-selected="true" onClick="" style="height: 38px; padding: 0 16px; border-radius: 999px; border: 1.5px solid #241634; background: #241634; color: #FFFFFF; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap">Birthdays</button>
+
+<button role="tab" aria-selected="false" onClick="" style="height: 38px; padding: 0 16px; border-radius: 999px; border: 1.5px solid #D9CFE5; background: #FFFFFF; color: #241634; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap">Weddings</button>
+
+<button role="tab" aria-selected="false" onClick="" style="height: 38px; padding: 0 16px; border-radius: 999px; border: 1.5px solid #D9CFE5; background: #FFFFFF; color: #241634; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap">Church &amp; school</button>
+
+<button role="tab" aria-selected="false" onClick="" style="height: 38px; padding: 0 16px; border-radius: 999px; border: 1.5px solid #D9CFE5; background: #FFFFFF; color: #241634; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap">Concessions</button>
+
+</div>
+<div style="padding: 0 20px; display: flex; flex-direction: column; gap: 12px">
+<span class="rise" style="font-size: 12px; font-weight: 700; letter-spacing: 1.4px; color: #C2185B">BACKYARD BIRTHDAYS</span>
+<h1 id="hero-title" class="rise d1" style="margin: 0; font-size: 38px; line-height: 41px; font-weight: 800; letter-spacing: -1px; text-wrap: balance">Big party. Zero hauling.</h1>
+<p class="rise d2" style="margin: 0; font-size: 16px; line-height: 25px; font-weight: 500; color: #4A3F5C">Bounce houses, combos and treats delivered, set up and picked up across DFW.</p>
+<div class="rise d3" style="display: flex; gap: 10px; margin-top: 4px">
+<a href="Catalogue.dc.html" style="height: 50px; padding: 0 20px; border-radius: 999px; background: #C2185B; color: #FFFFFF; display: flex; align-items: center; font-size: 15px; font-weight: 700; white-space: nowrap">Shop inflatables</a>
+<a href="#how" style="height: 50px; padding: 0 6px; border-radius: 999px; color: #6A0DAD; display: flex; align-items: center; gap: 4px; font-size: 15px; font-weight: 700; white-space: nowrap">How it works<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></a>
+</div>
+</div>
+<div class="rise d2" style="margin: 22px 20px 0; height: 300px; border-radius: 24px; background: #6A0DAD; position: relative; overflow: hidden; display: flex; align-items: flex-start">
+<span aria-hidden="true" style="position: absolute; right: -36px; top: -36px; width: 180px; height: 180px; border-radius: 90px; background: rgba(255,255,255,0.12)"></span>
+<span aria-hidden="true" style="position: absolute; right: 52px; top: 70px; width: 64px; height: 64px; border-radius: 32px; background: #FF2D8F; opacity: .85"></span>
+<span aria-hidden="true" style="position: absolute; right: 30px; top: 118px; width: 40px; height: 40px; border-radius: 20px; background: #D4AF37; opacity: .9"></span>
+<span style="margin: 18px; padding: 8px 12px; border-radius: 12px; background: rgba(255,255,255,0.92); font-size: 12px; font-weight: 600; color: #241634">Your photo: a bounce house at a backyard party</span>
+</div>
+</section>
+
+<section aria-label="Check your date" style="margin: -34px 32px 0; position: relative; background: #FFFFFF; border-radius: 20px; padding: 16px; box-shadow: 0 10px 30px rgba(36,22,52,0.14); display: flex; flex-direction: column; gap: 10px">
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+<label style="display: flex; flex-direction: column; gap: 4px; font-size: 11px; font-weight: 700; color: #6B5F7B">EVENT DATE<input type="text" placeholder="Pick a date" style="height: 44px; box-sizing: border-box; padding: 0 12px; border-radius: 10px; border: 1.5px solid #8A7A9E; font-family: inherit; font-size: 15px; color: #241634; min-width: 0"></label>
+<label style="display: flex; flex-direction: column; gap: 4px; font-size: 11px; font-weight: 700; color: #6B5F7B">DELIVERY ZIP<input type="text" inputmode="numeric" placeholder="75204" style="height: 44px; box-sizing: border-box; padding: 0 12px; border-radius: 10px; border: 1.5px solid #8A7A9E; font-family: inherit; font-size: 15px; color: #241634; min-width: 0"></label>
+</div>
+<a href="Catalogue.dc.html" style="height: 48px; border-radius: 999px; background: #6A0DAD; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700">See what's free on your date</a>
+</section>
+
+<div aria-label="Areas we deliver to" style="margin-top: 30px; padding: 14px 0; border-top: 1px solid #EDE5F5; border-bottom: 1px solid #EDE5F5; overflow: hidden">
+<div class="marquee" style="font-size: 13px; font-weight: 700; color: #6B5F7B">
+<span style="display: flex; align-items: center; gap: 28px; white-space: nowrap">Dallas<span aria-hidden="true" style="width: 6px; height: 6px; border-radius: 3px; background: #FF2D8F; display: block"></span></span><span style="display: flex; align-items: center; gap: 28px; white-space: nowrap">Fort Worth<span aria-hidden="true" style="width: 6px; height: 6px; border-radius: 3px; background: #FF2D8F; display: block"></span></span><span style="display: flex; align-items: center; gap: 28px; white-space: nowrap">Plano<span aria-hidden="true" style="width: 6px; height: 6px; border-radius: 3px; background: #FF2D8F; display: block"></span></span><span style="display: flex; align-items: center; gap: 28px; white-space: nowrap">Frisco<span aria-hidden="true" style="width: 6px; height: 6px; border-radius: 3px; background: #FF2D8F; display: block"></span></span><span style="display: flex; align-items: center; gap: 28px; white-space: nowrap">Arlington<span aria-hidden="true" style="width: 6px; height: 6px; border-radius: 3px; background: #FF2D8F; display: block"></span></span><span style="display: flex; align-items: center; gap: 28px; white-space: nowrap">Garland<span aria-hidden="true" style="width: 6px; height: 6px; border-radius: 3px; background: #FF2D8F; display: block"></span></span><span style="display: flex; align-items: center; gap: 28px; white-space: nowrap">Irving<span aria-hidden="true" style="width: 6px; height: 6px; border-radius: 3px; background: #FF2D8F; display: block"></span></span><span style="display: flex; align-items: center; gap: 28px; white-space: nowrap">Mesquite<span aria-hidden="true" style="width: 6px; height: 6px; border-radius: 3px; background: #FF2D8F; display: block"></span></span><span style="display: flex; align-items: center; gap: 28px; white-space: nowrap">Forney<span aria-hidden="true" style="width: 6px; height: 6px; border-radius: 3px; background: #FF2D8F; display: block"></span></span><span style="display: flex; align-items: center; gap: 28px; white-space: nowrap">Rockwall<span aria-hidden="true" style="width: 6px; height: 6px; border-radius: 3px; background: #FF2D8F; display: block"></span></span><span style="display: flex; align-items: center; gap: 28px; white-space: nowrap">McKinney<span aria-hidden="true" style="width: 6px; height: 6px; border-radius: 3px; background: #FF2D8F; display: block"></span></span><span style="display: flex; align-items: center; gap: 28px; white-space: nowrap">Grand Prairie<span aria-hidden="true" style="width: 6px; height: 6px; border-radius: 3px; background: #FF2D8F; display: block"></span></span><span style="display: flex; align-items: center; gap: 28px; white-space: nowrap">Dallas<span aria-hidden="true" style="width: 6px; height: 6px; border-radius: 3px; background: #FF2D8F; display: block"></span></span><span style="display: flex; align-items: center; gap: 28px; white-space: nowrap">Fort Worth<span aria-hidden="true" style="width: 6px; height: 6px; border-radius: 3px; background: #FF2D8F; display: block"></span></span><span style="display: flex; align-items: center; gap: 28px; white-space: nowrap">Plano<span aria-hidden="true" style="width: 6px; height: 6px; border-radius: 3px; background: #FF2D8F; display: block"></span></span><span style="display: flex; align-items: center; gap: 28px; white-space: nowrap">Frisco<span aria-hidden="true" style="width: 6px; height: 6px; border-radius: 3px; background: #FF2D8F; display: block"></span></span><span style="display: flex; align-items: center; gap: 28px; white-space: nowrap">Arlington<span aria-hidden="true" style="width: 6px; height: 6px; border-radius: 3px; background: #FF2D8F; display: block"></span></span><span style="display: flex; align-items: center; gap: 28px; white-space: nowrap">Garland<span aria-hidden="true" style="width: 6px; height: 6px; border-radius: 3px; background: #FF2D8F; display: block"></span></span><span style="display: flex; align-items: center; gap: 28px; white-space: nowrap">Irving<span aria-hidden="true" style="width: 6px; height: 6px; border-radius: 3px; background: #FF2D8F; display: block"></span></span><span style="display: flex; align-items: center; gap: 28px; white-space: nowrap">Mesquite<span aria-hidden="true" style="width: 6px; height: 6px; border-radius: 3px; background: #FF2D8F; display: block"></span></span><span style="display: flex; align-items: center; gap: 28px; white-space: nowrap">Forney<span aria-hidden="true" style="width: 6px; height: 6px; border-radius: 3px; background: #FF2D8F; display: block"></span></span><span style="display: flex; align-items: center; gap: 28px; white-space: nowrap">Rockwall<span aria-hidden="true" style="width: 6px; height: 6px; border-radius: 3px; background: #FF2D8F; display: block"></span></span><span style="display: flex; align-items: center; gap: 28px; white-space: nowrap">McKinney<span aria-hidden="true" style="width: 6px; height: 6px; border-radius: 3px; background: #FF2D8F; display: block"></span></span><span style="display: flex; align-items: center; gap: 28px; white-space: nowrap">Grand Prairie<span aria-hidden="true" style="width: 6px; height: 6px; border-radius: 3px; background: #FF2D8F; display: block"></span></span>
+</div>
+</div>
+
+<section class="reveal" style="padding: 40px 0 0">
+<div style="padding: 0 20px 14px; display: flex; justify-content: space-between; align-items: flex-end">
+<div style="display: flex; flex-direction: column; gap: 4px"><span style="font-size: 12px; font-weight: 700; letter-spacing: 1.4px; color: #C2185B">SHOP BY CATEGORY</span><h2 style="margin: 0; font-size: 24px; line-height: 30px; font-weight: 800; letter-spacing: -0.4px">What are you planning?</h2></div>
+</div>
+<div class="shelf">
+
+<a href="Catalogue.dc.html" class="lift" style="width: 150px; height: 196px; border-radius: 20px; background: #6A0DAD; color: #FFFFFF; padding: 16px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between">
+<span style="font-size: 17px; line-height: 21px; font-weight: 800">Bounce houses</span>
+<span style="display: flex; justify-content: space-between; align-items: flex-end"><span style="font-size: 12px; font-weight: 600; opacity: .85">4 rentals</span><span aria-hidden="true" style="width: 34px; height: 34px; border-radius: 17px; background: rgba(255,255,255,0.9); display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#241634" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></span></span>
+</a>
+
+<a href="Catalogue.dc.html" class="lift" style="width: 150px; height: 196px; border-radius: 20px; background: #F0E5FB; color: #241634; padding: 16px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between">
+<span style="font-size: 17px; line-height: 21px; font-weight: 800">Tables and chairs</span>
+<span style="display: flex; justify-content: space-between; align-items: flex-end"><span style="font-size: 12px; font-weight: 600; opacity: .85">6 rentals</span><span aria-hidden="true" style="width: 34px; height: 34px; border-radius: 17px; background: rgba(255,255,255,0.9); display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#241634" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></span></span>
+</a>
+
+<a href="Catalogue.dc.html" class="lift" style="width: 150px; height: 196px; border-radius: 20px; background: #C2185B; color: #FFFFFF; padding: 16px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between">
+<span style="font-size: 17px; line-height: 21px; font-weight: 800">Concessions</span>
+<span style="display: flex; justify-content: space-between; align-items: flex-end"><span style="font-size: 12px; font-weight: 600; opacity: .85">4 machines</span><span aria-hidden="true" style="width: 34px; height: 34px; border-radius: 17px; background: rgba(255,255,255,0.9); display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#241634" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></span></span>
+</a>
+
+<a href="Catalogue.dc.html" class="lift" style="width: 150px; height: 196px; border-radius: 20px; background: #FFF1DE; color: #241634; padding: 16px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between">
+<span style="font-size: 17px; line-height: 21px; font-weight: 800">Tents and canopies</span>
+<span style="display: flex; justify-content: space-between; align-items: flex-end"><span style="font-size: 12px; font-weight: 600; opacity: .85">1 rental</span><span aria-hidden="true" style="width: 34px; height: 34px; border-radius: 17px; background: rgba(255,255,255,0.9); display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#241634" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></span></span>
+</a>
+
+<a href="Catalogue.dc.html" class="lift" style="width: 150px; height: 196px; border-radius: 20px; background: #4E0A84; color: #FFFFFF; padding: 16px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between">
+<span style="font-size: 17px; line-height: 21px; font-weight: 800">Decor and linen</span>
+<span style="display: flex; justify-content: space-between; align-items: flex-end"><span style="font-size: 12px; font-weight: 600; opacity: .85">2 rentals</span><span aria-hidden="true" style="width: 34px; height: 34px; border-radius: 17px; background: rgba(255,255,255,0.9); display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#241634" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></span></span>
+</a>
+
+<a href="Catalogue.dc.html" class="lift" style="width: 150px; height: 196px; border-radius: 20px; background: #E3F4E8; color: #241634; padding: 16px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between">
+<span style="font-size: 17px; line-height: 21px; font-weight: 800">Golf simulator</span>
+<span style="display: flex; justify-content: space-between; align-items: flex-end"><span style="font-size: 12px; font-weight: 600; opacity: .85">1 experience</span><span aria-hidden="true" style="width: 34px; height: 34px; border-radius: 17px; background: rgba(255,255,255,0.9); display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#241634" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></span></span>
+</a>
+
+</div>
+<div aria-hidden="true" style="margin: 10px 20px 0; height: 3px; border-radius: 2px; background: #EDE5F5; overflow: hidden"><div class="progress" style="height: 3px; width: 100%; background: #6A0DAD; transform-origin: left; transform: scaleX(.3)"></div></div>
+</section>
+
+<section class="reveal" style="padding: 44px 0 0">
+<div style="padding: 0 20px 14px; display: flex; justify-content: space-between; align-items: flex-end">
+<div style="display: flex; flex-direction: column; gap: 4px"><span style="font-size: 12px; font-weight: 700; letter-spacing: 1.4px; color: #C2185B">GUEST FAVOURITES</span><h2 style="margin: 0; font-size: 24px; line-height: 30px; font-weight: 800; letter-spacing: -0.4px">Most booked in DFW</h2></div>
+<a href="Catalogue.dc.html" style="min-height: 44px; display: flex; align-items: center; gap: 2px; font-size: 13px; font-weight: 700">See all<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></a>
+</div>
+<div class="shelf">
+
+<a href="Item.dc.html" class="lift" style="width: 236px; border-radius: 18px; background: #FFFFFF; border: 1px solid #EDE5F5; overflow: hidden; color: #241634; display: flex; flex-direction: column">
+<span style="height: 178px; background: #EDE3F8; position: relative; display: flex; align-items: flex-end; padding: 12px; box-sizing: border-box"><span style="position: absolute; top: 12px; left: 12px; font-size: 11px; font-weight: 700; padding: 4px 9px; border-radius: 999px; background: #D4AF37; color: #241634">Popular</span><span style="font-size: 11px; font-weight: 600; color: #4A3F5C">Photo: combo bounce house</span></span>
+<span style="padding: 14px; display: flex; flex-direction: column; gap: 6px"><span style="font-size: 16px; font-weight: 700">Combo bounce house</span><span style="font-size: 13px; line-height: 18px; font-weight: 500; color: #6B5F7B">Bounce area and slide in one unit.</span><span style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px"><span style="font-size: 18px; font-weight: 800">[PRICE]<span style="font-size: 12px; font-weight: 600; color: #6B5F7B"> / day</span></span><span aria-hidden="true" style="width: 36px; height: 36px; border-radius: 18px; background: #C2185B; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg></span></span></span>
+</a>
+
+<a href="Item.dc.html" class="lift" style="width: 236px; border-radius: 18px; background: #FFFFFF; border: 1px solid #EDE5F5; overflow: hidden; color: #241634; display: flex; flex-direction: column">
+<span style="height: 178px; background: #F6E9EF; position: relative; display: flex; align-items: flex-end; padding: 12px; box-sizing: border-box"><span style="position: absolute; top: 12px; left: 12px; font-size: 11px; font-weight: 700; padding: 4px 9px; border-radius: 999px; background: #D4AF37; color: #241634">Popular</span><span style="font-size: 11px; font-weight: 600; color: #4A3F5C">Photo: gold Chiavari chairs</span></span>
+<span style="padding: 14px; display: flex; flex-direction: column; gap: 6px"><span style="font-size: 16px; font-weight: 700">Chiavari chair</span><span style="font-size: 13px; line-height: 18px; font-weight: 500; color: #6B5F7B">Gold, silver or black. The wedding favourite.</span><span style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px"><span style="font-size: 18px; font-weight: 800">[PRICE]<span style="font-size: 12px; font-weight: 600; color: #6B5F7B"> / day</span></span><span aria-hidden="true" style="width: 36px; height: 36px; border-radius: 18px; background: #C2185B; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg></span></span></span>
+</a>
+
+<a href="Item.dc.html" class="lift" style="width: 236px; border-radius: 18px; background: #FFFFFF; border: 1px solid #EDE5F5; overflow: hidden; color: #241634; display: flex; flex-direction: column">
+<span style="height: 178px; background: #FFF1DE; position: relative; display: flex; align-items: flex-end; padding: 12px; box-sizing: border-box"><span style="position: absolute; top: 12px; left: 12px; font-size: 11px; font-weight: 700; padding: 4px 9px; border-radius: 999px; background: #D4AF37; color: #241634">Popular</span><span style="font-size: 11px; font-weight: 600; color: #4A3F5C">Photo: popcorn machine</span></span>
+<span style="padding: 14px; display: flex; flex-direction: column; gap: 6px"><span style="font-size: 16px; font-weight: 700">Popcorn machine</span><span style="font-size: 13px; line-height: 18px; font-weight: 500; color: #6B5F7B">Theatre-style, supplies available.</span><span style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px"><span style="font-size: 18px; font-weight: 800">[PRICE]<span style="font-size: 12px; font-weight: 600; color: #6B5F7B"> / day</span></span><span aria-hidden="true" style="width: 36px; height: 36px; border-radius: 18px; background: #C2185B; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg></span></span></span>
+</a>
+
+<a href="Item.dc.html" class="lift" style="width: 236px; border-radius: 18px; background: #FFFFFF; border: 1px solid #EDE5F5; overflow: hidden; color: #241634; display: flex; flex-direction: column">
+<span style="height: 178px; background: #E8F0FA; position: relative; display: flex; align-items: flex-end; padding: 12px; box-sizing: border-box"><span style="position: absolute; top: 12px; left: 12px; font-size: 11px; font-weight: 700; padding: 4px 9px; border-radius: 999px; background: #D4AF37; color: #241634">Popular</span><span style="font-size: 11px; font-weight: 600; color: #4A3F5C">Photo: obstacle course</span></span>
+<span style="padding: 14px; display: flex; flex-direction: column; gap: 6px"><span style="font-size: 16px; font-weight: 700">Obstacle course</span><span style="font-size: 13px; line-height: 18px; font-weight: 500; color: #6B5F7B">Race-style fun for bigger groups.</span><span style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px"><span style="font-size: 18px; font-weight: 800">[PRICE]<span style="font-size: 12px; font-weight: 600; color: #6B5F7B"> / day</span></span><span aria-hidden="true" style="width: 36px; height: 36px; border-radius: 18px; background: #C2185B; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg></span></span></span>
+</a>
+
+</div>
+<div aria-hidden="true" style="margin: 10px 20px 0; height: 3px; border-radius: 2px; background: #EDE5F5; overflow: hidden"><div class="progress" style="height: 3px; width: 100%; background: #6A0DAD; transform-origin: left; transform: scaleX(.2)"></div></div>
+</section>
+
+<section class="reveal" style="margin: 44px 20px 0; border-radius: 24px; background: #4E0A84; color: #FFFFFF; padding: 26px 22px; position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 14px">
+<span aria-hidden="true" style="position: absolute; right: -50px; bottom: -50px; width: 170px; height: 170px; border-radius: 85px; background: #6A0DAD"></span>
+<span aria-hidden="true" style="position: absolute; right: 34px; bottom: 74px; width: 46px; height: 46px; border-radius: 23px; background: #FF2D8F"></span>
+<span style="font-size: 12px; font-weight: 700; letter-spacing: 1.4px; color: #F5C9E0; position: relative">PARTY PACKAGES</span>
+<h2 style="margin: 0; font-size: 26px; line-height: 31px; font-weight: 800; letter-spacing: -0.4px; position: relative">Everything for the party, one price</h2>
+<p style="margin: 0; font-size: 15px; line-height: 23px; font-weight: 500; color: #EFE6FA; position: relative; max-width: 260px">Bounce house, tables, chairs and treats bundled together, so you book once.</p>
+<a href="#packages" style="align-self: flex-start; height: 48px; padding: 0 20px; border-radius: 999px; background: #FFFFFF; color: #4E0A84; display: flex; align-items: center; font-size: 15px; font-weight: 700; position: relative">View packages</a>
+</section>
+
+<section id="how" class="reveal" style="padding: 48px 20px 0; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; flex-direction: column; gap: 4px"><span style="font-size: 12px; font-weight: 700; letter-spacing: 1.4px; color: #C2185B">HOW IT WORKS</span><h2 style="margin: 0; font-size: 24px; line-height: 30px; font-weight: 800; letter-spacing: -0.4px">Three steps. We do the heavy lifting.</h2></div>
+
+<div style="display: flex; gap: 16px; align-items: flex-start">
+<span style="flex: none; font-size: 40px; line-height: 40px; font-weight: 800; color: #F0E5FB; -webkit-text-stroke: 1.5px #6A0DAD; width: 44px">1</span>
+<span style="display: flex; flex-direction: column; gap: 4px; padding-top: 2px"><span style="font-size: 17px; font-weight: 700">Pick your date and ZIP</span><span style="font-size: 14px; line-height: 21px; font-weight: 500; color: #6B5F7B">See instantly what is free and what delivery costs.</span></span>
+</div>
+
+<div style="display: flex; gap: 16px; align-items: flex-start">
+<span style="flex: none; font-size: 40px; line-height: 40px; font-weight: 800; color: #F0E5FB; -webkit-text-stroke: 1.5px #6A0DAD; width: 44px">2</span>
+<span style="display: flex; flex-direction: column; gap: 4px; padding-top: 2px"><span style="font-size: 17px; font-weight: 700">Book and pay online</span><span style="font-size: 14px; line-height: 21px; font-weight: 500; color: #6B5F7B">Pay a deposit by card, bank, Zelle or Cash App. Your invoice arrives right away.</span></span>
+</div>
+
+<div style="display: flex; gap: 16px; align-items: flex-start">
+<span style="flex: none; font-size: 40px; line-height: 40px; font-weight: 800; color: #F0E5FB; -webkit-text-stroke: 1.5px #6A0DAD; width: 44px">3</span>
+<span style="display: flex; flex-direction: column; gap: 4px; padding-top: 2px"><span style="font-size: 17px; font-weight: 700">We deliver, set up, pick up</span><span style="font-size: 14px; line-height: 21px; font-weight: 500; color: #6B5F7B">Our crew arrives before your guests and clears everything after.</span></span>
+</div>
+
+</section>
+
+<section class="reveal" style="padding: 48px 20px 0; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; flex-direction: column; gap: 4px"><span style="font-size: 12px; font-weight: 700; letter-spacing: 1.4px; color: #C2185B">EVENTS WE SET UP</span><h2 style="margin: 0; font-size: 24px; line-height: 30px; font-weight: 800; letter-spacing: -0.4px">From backyard birthdays to church fairs</h2></div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<a href="Catalogue.dc.html" style="height: 40px; padding: 0 16px; border-radius: 999px; background: #F7F4FA; border: 1px solid #EDE5F5; color: #241634; display: flex; align-items: center; font-size: 13px; font-weight: 700">Birthdays</a><a href="Catalogue.dc.html" style="height: 40px; padding: 0 16px; border-radius: 999px; background: #F7F4FA; border: 1px solid #EDE5F5; color: #241634; display: flex; align-items: center; font-size: 13px; font-weight: 700">Weddings</a><a href="Catalogue.dc.html" style="height: 40px; padding: 0 16px; border-radius: 999px; background: #F7F4FA; border: 1px solid #EDE5F5; color: #241634; display: flex; align-items: center; font-size: 13px; font-weight: 700">Baby showers</a><a href="Catalogue.dc.html" style="height: 40px; padding: 0 16px; border-radius: 999px; background: #F7F4FA; border: 1px solid #EDE5F5; color: #241634; display: flex; align-items: center; font-size: 13px; font-weight: 700">Graduations</a><a href="Catalogue.dc.html" style="height: 40px; padding: 0 16px; border-radius: 999px; background: #F7F4FA; border: 1px solid #EDE5F5; color: #241634; display: flex; align-items: center; font-size: 13px; font-weight: 700">Church events</a><a href="Catalogue.dc.html" style="height: 40px; padding: 0 16px; border-radius: 999px; background: #F7F4FA; border: 1px solid #EDE5F5; color: #241634; display: flex; align-items: center; font-size: 13px; font-weight: 700">School field days</a><a href="Catalogue.dc.html" style="height: 40px; padding: 0 16px; border-radius: 999px; background: #F7F4FA; border: 1px solid #EDE5F5; color: #241634; display: flex; align-items: center; font-size: 13px; font-weight: 700">Corporate picnics</a><a href="Catalogue.dc.html" style="height: 40px; padding: 0 16px; border-radius: 999px; background: #F7F4FA; border: 1px solid #EDE5F5; color: #241634; display: flex; align-items: center; font-size: 13px; font-weight: 700">Holiday parties</a>
+</div>
+</section>
+
+<section class="reveal" style="padding: 48px 0 0">
+<div style="padding: 0 20px 14px; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 12px; font-weight: 700; letter-spacing: 1.4px; color: #C2185B">REVIEWS</span><h2 style="margin: 0; font-size: 24px; line-height: 30px; font-weight: 800; letter-spacing: -0.4px">What DFW families say</h2></div>
+<div class="shelf">
+
+<figure style="margin: 0; width: 280px; border-radius: 18px; background: #F7F4FA; padding: 18px; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px">
+<span aria-label="5 out of 5 stars" style="display: flex; gap: 2px"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="#D4AF37"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"></path></svg><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="#D4AF37"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"></path></svg><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="#D4AF37"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"></path></svg><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="#D4AF37"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"></path></svg><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="#D4AF37"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"></path></svg></span>
+<blockquote style="margin: 0; font-size: 14px; line-height: 21px; font-weight: 500; color: #4A3F5C">[Customer review from her Google profile]</blockquote>
+<figcaption style="font-size: 13px; font-weight: 700">[Customer name, city]</figcaption>
+</figure>
+
+<figure style="margin: 0; width: 280px; border-radius: 18px; background: #F7F4FA; padding: 18px; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px">
+<span aria-label="5 out of 5 stars" style="display: flex; gap: 2px"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="#D4AF37"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"></path></svg><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="#D4AF37"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"></path></svg><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="#D4AF37"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"></path></svg><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="#D4AF37"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"></path></svg><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="#D4AF37"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"></path></svg></span>
+<blockquote style="margin: 0; font-size: 14px; line-height: 21px; font-weight: 500; color: #4A3F5C">[Customer review from her Google profile]</blockquote>
+<figcaption style="font-size: 13px; font-weight: 700">[Customer name, city]</figcaption>
+</figure>
+
+<figure style="margin: 0; width: 280px; border-radius: 18px; background: #F7F4FA; padding: 18px; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px">
+<span aria-label="5 out of 5 stars" style="display: flex; gap: 2px"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="#D4AF37"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"></path></svg><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="#D4AF37"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"></path></svg><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="#D4AF37"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"></path></svg><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="#D4AF37"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"></path></svg><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="#D4AF37"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"></path></svg></span>
+<blockquote style="margin: 0; font-size: 14px; line-height: 21px; font-weight: 500; color: #4A3F5C">[Customer review from her Google profile]</blockquote>
+<figcaption style="font-size: 13px; font-weight: 700">[Customer name, city]</figcaption>
+</figure>
+
+</div>
+</section>
+
+<section class="reveal" style="margin: 48px 20px 0; border-radius: 24px; background: #E9F6EE; padding: 24px 22px; display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 22px; line-height: 28px; font-weight: 800; letter-spacing: -0.3px">Planning something big?</h2>
+<p style="margin: 0; font-size: 15px; line-height: 23px; font-weight: 500; color: #3B4A40">Send the date, headcount and venue. We'll tell you how many chairs, tables and linens you need.</p>
+<a href="https://wa.me/14693474687" style="align-self: flex-start; height: 48px; padding: 0 20px; border-radius: 999px; background: #128C4A; color: #FFFFFF; display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.6 7.4L3 21l2.1-5.2A8.5 8.5 0 1 1 21 11.5z"></path></svg>Chat on WhatsApp</a>
+</section>
+
+<footer style="margin-top: 56px; background: #4E0A84; color: #FFFFFF; padding: 32px 20px 40px; display: flex; flex-direction: column; gap: 24px">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 22px; font-weight: 800; letter-spacing: -0.3px">Atglace Events &amp; Rentals</span>
+<span style="font-size: 14px; font-weight: 500; color: #E3D3F5">Rent. Celebrate. Make memories.</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px">
+<a href="#Rentals" style="min-height: 36px; display: flex; align-items: center; color: #FFFFFF; font-size: 14px; font-weight: 600">Rentals</a><a href="#Packages" style="min-height: 36px; display: flex; align-items: center; color: #FFFFFF; font-size: 14px; font-weight: 600">Packages</a><a href="#About us" style="min-height: 36px; display: flex; align-items: center; color: #FFFFFF; font-size: 14px; font-weight: 600">About us</a><a href="#FAQs" style="min-height: 36px; display: flex; align-items: center; color: #FFFFFF; font-size: 14px; font-weight: 600">FAQs</a><a href="#Contact" style="min-height: 36px; display: flex; align-items: center; color: #FFFFFF; font-size: 14px; font-weight: 600">Contact</a><a href="#Rental terms" style="min-height: 36px; display: flex; align-items: center; color: #FFFFFF; font-size: 14px; font-weight: 600">Rental terms</a><a href="#Privacy" style="min-height: 36px; display: flex; align-items: center; color: #FFFFFF; font-size: 14px; font-weight: 600">Privacy</a><a href="#Gallery" style="min-height: 36px; display: flex; align-items: center; color: #FFFFFF; font-size: 14px; font-weight: 600">Gallery</a>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 500; color: #E3D3F5">
+<span style="font-size: 12px; font-weight: 700; letter-spacing: 1.2px; color: #F5C9E0">CONTACT</span>
+<a href="tel:+14693474687" style="color: #FFFFFF; font-weight: 700; min-height: 32px; display: flex; align-items: center">469-347-4687</a>
+<a href="mailto:atglaceevents.rental@gmail.com" style="color: #FFFFFF; font-weight: 600; min-height: 32px; display: flex; align-items: center">atglaceevents.rental@gmail.com</a>
+<span>Serving the Dallas-Fort Worth area</span>
+</div>
+<div style="display: flex; gap: 10px">
+<a href="#IG" aria-label="IG" style="width: 44px; height: 44px; border-radius: 22px; background: rgba(255,255,255,0.12); color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800">IG</a><a href="#TT" aria-label="TT" style="width: 44px; height: 44px; border-radius: 22px; background: rgba(255,255,255,0.12); color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800">TT</a><a href="#FB" aria-label="FB" style="width: 44px; height: 44px; border-radius: 22px; background: rgba(255,255,255,0.12); color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800">FB</a>
+</div>
+<span style="font-size: 12px; font-weight: 500; color: #CDB8E6">© 2026 Atglace Events &amp; Rentals LLC</span>
+</footer>
+
+<a href="https://wa.me/14693474687" aria-label="Chat with us on WhatsApp" style="position: absolute; right: 16px; top: 930px; width: 54px; height: 54px; border-radius: 27px; background: #128C4A; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 30px rgba(36,22,52,0.25)"><svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.6 7.4L3 21l2.1-5.2A8.5 8.5 0 1 1 21 11.5z"></path></svg></a>
+
+</div>
+</body></html>
