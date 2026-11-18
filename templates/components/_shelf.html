@@ -8,7 +8,7 @@ per entry of `entries`, as `item`.{% endcomment %}{% load core_tags %}<div x-dat
     </div>
     <div class="flex shrink-0 items-center gap-3">
       {% if link_url %}<a href="{{ link_url }}" class="link">{{ link_label }}{% icon "chevron-right" 16 stroke=2.5 %}</a>{% endif %}
-      <div class="shelf-arrows" role="group" aria-label="Scroll {{ title }}">
+      <div class="shelf-arrows" role="group" aria-label="Scroll {{ title }}" x-show="!(s && e)">
         <button type="button" class="icon-btn" aria-label="Previous" @click="go(-1)" :disabled="s">{% icon "chevron-left" 20 %}</button>
         <button type="button" class="icon-btn" aria-label="Next" @click="go(1)" :disabled="e">{% icon "chevron-right" 20 %}</button>
       </div>

@@ -7,7 +7,7 @@
     {% if status %}{% include "catalogue/_status.html" %}{% elif item.short_description and not compact %}<p class="line-clamp-2 text-small muted">{{ item.short_description }}</p>{% endif %}
     <div class="mt-auto flex items-center justify-between gap-2 pt-1">
       <p class="price min-w-0">{% include "catalogue/_price.html" with price=item.display_price ranged=item.has_price_range %}{% if item.display_price %}<span class="whitespace-nowrap text-caption muted"> / day</span>{% endif %}</p>
-      {% if not compact %}<span class="product-add{% if status.code == 'unavailable' %} is-off{% endif %}" aria-hidden="true">{% icon "plus" 18 stroke=2.5 %}</span>{% endif %}
+      {% if not compact %}<span class="product-add{% if status.code == 'unavailable' %} is-off{% endif %}" aria-hidden="true"></span>{% endif %}
     </div>
   </div>
 </article>{% endwith %}

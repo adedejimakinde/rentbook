@@ -1,7 +1,7 @@
 {% load core_tags %}{% if date_error %}
 <p role="alert" class="alert alert-danger">{{ date_error }}</p>
 {% elif status %}
-<p class="flex items-start gap-2 text-small font-bold {% if status.code == 'available' %}text-success{% elif status.code == 'limited' %}text-warning{% elif status.code == 'unavailable' %}text-danger{% else %}text-brand{% endif %}">{% if status.code == 'available' %}{% icon "check-circle" 18 css="mt-px shrink-0" %}{% else %}{% icon "info" 18 css="mt-px shrink-0" %}{% endif %}<span>{{ selected.name }} on {{ event_date|date:"D, M j" }}: {{ status.label|lower|capfirst }}.</span></p>
+<p class="flex items-start gap-2 text-small font-bold {% if status.code == 'available' %}text-success{% elif status.code == 'limited' %}text-warning{% elif status.code == 'unavailable' %}text-danger{% else %}text-brand{% endif %}">{% if status.code == 'available' %}{% icon "check-circle" 18 css="mt-px shrink-0" %}{% else %}{% icon "info" 18 css="mt-px shrink-0" %}{% endif %}<span>{{ status.label }} ({{ event_date|date:"D, M j" }}).</span></p>
 {% else %}
 <p class="text-small font-bold text-ink-muted">Pick your event date to see live availability.</p>
 {% endif %}
