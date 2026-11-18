@@ -21,16 +21,16 @@ def _srcset(storage, renditions, key):
 def picture(image, name="", alt="", sizes=DEFAULT_SIZES, eager=False, ratio="4/3", css=""):
     """Render an ItemImage or Category image as <picture>, or a placeholder box.
 
-    Until the Celery task has produced renditions (``renditions_ready``) a light purple
-    box with ``name`` is shown, at the same aspect ratio, so the layout never jumps.
+    Until the Celery task has produced renditions (``renditions_ready``), or when there is
+    no photo, a plain ``surface-tint`` block is shown at the same aspect ratio, so the
+    layout never jumps.
     Below-the-fold images are lazy; pass ``eager=True`` for the first screen only.
     """
-    box = f"relative block overflow-hidden bg-[#e9d8fb] {css}".strip()
+    box = f"relative block overflow-hidden bg-surface-tint {css}".strip()
     style = f"aspect-ratio:{ratio}"
     if image is None or not image.renditions_ready or not image.renditions:
         return format_html(
-            '<span class="{} flex items-center justify-center p-3 text-center font-bold '
-            'text-primary" style="{}" aria-hidden="true">{}</span>',
+            '<span class="{}" style="{}" aria-hidden="true" data-placeholder="{}"></span>',
             box,
             style,
             name,

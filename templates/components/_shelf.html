@@ -1,0 +1,21 @@
+{% comment %}Swipeable shelf with its section header: scroll-snap row where the next card peeks in,
+a progress line that fills as you swipe, and arrow buttons on desktop. Renders `card` once
+per entry of `entries`, as `item`.{% endcomment %}{% load core_tags %}<div x-data="{ p: 0.25, s: true, e: false, upd() { const r = this.$refs.row, max = r.scrollWidth - r.clientWidth; this.p = max > 0 ? Math.max(0.15, (r.scrollLeft + r.clientWidth) / r.scrollWidth) : 1; this.s = r.scrollLeft < 4; this.e = r.scrollLeft >= max - 4 }, go(d) { const r = this.$refs.row; r.scrollBy({ left: d * r.clientWidth * 0.8, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }) } }" x-init="upd()" @resize.window.debounce="upd()">
+  <div class="wrap mb-3 flex items-end justify-between gap-4">
+    <div class="min-w-0 space-y-1">
+      {% if eyebrow %}<p class="eyebrow">{{ eyebrow }}</p>{% endif %}
+      <h2{% if heading_id %} id="{{ heading_id }}"{% endif %} class="t-h2">{{ title }}</h2>
+    </div>
+    <div class="flex shrink-0 items-center gap-3">
+      {% if link_url %}<a href="{{ link_url }}" class="link">{{ link_label }}{% icon "chevron-right" 16 stroke=2.5 %}</a>{% endif %}
+      <div class="shelf-arrows" role="group" aria-label="Scroll {{ title }}">
+        <button type="button" class="icon-btn" aria-label="Previous" @click="go(-1)" :disabled="s">{% icon "chevron-left" 20 %}</button>
+        <button type="button" class="icon-btn" aria-label="Next" @click="go(1)" :disabled="e">{% icon "chevron-right" 20 %}</button>
+      </div>
+    </div>
+  </div>
+  <ul class="shelf" x-ref="row" @scroll.passive="upd()" tabindex="0" aria-label="{{ title }}">
+    {% for item in entries %}<li class="{{ item_class }}">{% include card %}</li>{% endfor %}
+  </ul>
+  <div class="shelf-progress" aria-hidden="true"><span :style="'--p:' + p"></span></div>
+</div>

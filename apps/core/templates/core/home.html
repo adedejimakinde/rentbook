@@ -1,74 +1,118 @@
 {% extends "base.html" %}
-{% block jsonld %}{% load core_tags %}{% local_business_jsonld %}{% endblock %}
+{% load core_tags catalogue_media %}
+{% block jsonld %}{% local_business_jsonld %}{% endblock %}
 {% block content %}
-<section class="bg-linear-to-br from-ink to-primary text-white">
-  <div class="mx-auto max-w-5xl px-4 pb-16 pt-12 md:pb-24 md:pt-20">
-    <p class="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-wide">{% include "core/_sparkle.html" %}{{ business_tagline }}</p>
-    <h1 class="max-w-3xl text-3xl font-bold leading-tight md:text-5xl">Party rentals across DFW, delivered and set up</h1>
-    <p class="mt-4 max-w-xl text-lg">Bounce houses, chairs, tables, linen, backdrops, a golf simulator and popcorn and cotton candy machines for birthdays, weddings, church and school events.</p>
-    <div class="mt-8 flex flex-wrap gap-3">
-      <a href="#check" class="inline-flex min-h-12 items-center rounded-lg bg-accent px-6 font-bold text-white hover:bg-accent-dark">Check availability</a>
-      <a href="{% url 'catalogue:list' %}" class="inline-flex min-h-12 items-center rounded-lg border-2 border-white px-6 font-bold text-white">Browse rentals</a>
+{% with first=event_tabs.0 %}
+<section aria-labelledby="hero-title" class="pt-4 md:pt-8"
+         x-data="{ tab: '{{ first.key }}', t: { eyebrow: '', title: '', text: '', cta: '', url: '' }, pick(el) { this.tab = el.dataset.key; this.t = { ...el.dataset } }, move(d) { const tabs = [...this.$refs.tabs.querySelectorAll('[role=tab]')]; const i = (tabs.findIndex(b => b.dataset.key === this.tab) + d + tabs.length) % tabs.length; tabs[i].focus(); this.pick(tabs[i]) } }"
+         x-init="pick($refs.tabs.querySelector('[aria-selected=true]'))">
+  <div role="tablist" aria-label="Event types" x-ref="tabs" class="shelf gap-2 pb-3 pt-1 md:pb-4" @keydown.right.prevent="move(1)" @keydown.left.prevent="move(-1)">
+    {% for tab in event_tabs %}
+    <button type="button" role="tab" id="tab-{{ tab.key }}" aria-controls="hero-panel" class="chip"
+            aria-selected="{% if forloop.first %}true{% else %}false{% endif %}" :aria-selected="(tab === '{{ tab.key }}').toString()" :tabindex="tab === '{{ tab.key }}' ? 0 : -1"
+            data-key="{{ tab.key }}" data-eyebrow="{{ tab.eyebrow }}" data-title="{{ tab.title }}" data-text="{{ tab.text }}" data-cta="{{ tab.cta }}" data-url="{{ tab.url|default:'/rentals/' }}"
+            @click="pick($el)">{{ tab.label }}</button>
+    {% endfor %}
+  </div>
+
+  <div id="hero-panel" role="tabpanel" :aria-labelledby="'tab-' + tab" aria-labelledby="tab-{{ first.key }}" class="wrap grid grid-cols-1 gap-x-10 md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] md:items-center [grid-template-areas:'text'_'media'_'card'] md:[grid-template-areas:'text_media'_'card_media']">
+    <div class="flex flex-col gap-3 [grid-area:text]">
+      <p class="eyebrow rise" x-text="t.eyebrow">{{ first.eyebrow }}</p>
+      <h1 id="hero-title" class="t-display rise rise-1" x-text="t.title">{{ first.title }}</h1>
+      <p class="rise rise-2 max-w-[46ch] text-ink-muted md:text-body-lg" x-text="t.text">{{ first.text }}</p>
+      <div class="rise rise-3 mt-1 flex flex-wrap items-center gap-x-3 gap-y-2">
+        <a href="{{ first.url|default:'/rentals/' }}" :href="t.url" class="btn btn-primary btn-lg" x-text="t.cta">{{ first.cta }}</a>
+        <a href="#how" class="btn btn-ghost btn-lg">How it works{% icon "chevron-right" 16 stroke=2.5 %}</a>
+      </div>
+    </div>
+
+    <div class="hero-media rise rise-2 mt-4 [grid-area:media] md:mt-0">
+      {% for tab in event_tabs %}
+      <div class="absolute inset-0"{% if not forloop.first %} hidden{% endif %} :hidden="tab !== '{{ tab.key }}'">
+        {% if tab.image %}{% picture tab.image name=tab.image_name alt="" sizes="(min-width: 768px) 55vw, 100vw" eager=forloop.first css="h-full w-full" %}
+        {% else %}
+        <span class="blob -right-9 -top-9 h-44 w-44 bg-white/12" aria-hidden="true"></span>
+        <span class="blob right-12 top-16 h-16 w-16 bg-accent-bright/85" aria-hidden="true"></span>
+        <span class="blob right-8 top-28 h-10 w-10 bg-gold/90" aria-hidden="true"></span>
+        <span class="blob -bottom-12 left-8 h-28 w-28 bg-brand-bright/60" aria-hidden="true"></span>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+
+    <div id="check" class="relative z-10 mx-4 -mt-9 [grid-area:card] md:mx-0 md:mt-6" aria-labelledby="check-heading">
+      <div class="rounded-[20px] bg-surface p-4 shadow-lift">
+        <h2 id="check-heading" class="sr-only">Check availability</h2>
+        {% include "core/_quick_check_form.html" %}
+        <div id="quick-check-result" aria-live="polite"></div>
+      </div>
     </div>
   </div>
 </section>
+{% endwith %}
 
-<section id="check" class="relative z-10 mx-auto -mt-10 max-w-5xl px-4" aria-labelledby="check-heading">
-  <div class="rounded-xl border border-primary/20 bg-white p-5 shadow-lg">
-    <h2 id="check-heading" class="flex items-center gap-2 text-xl font-bold text-primary">{% include "core/_sparkle.html" %}Is your date open?</h2>
-    <p class="mt-1 text-sm">Enter your event date and delivery ZIP. We will tell you what we can do.</p>
-    {% include "core/_quick_check_form.html" %}
-    <div id="quick-check-result" aria-live="polite"></div>
+<div class="mt-6 border-y border-border py-3 md:mt-10" role="region" aria-label="Areas we deliver to">
+  <div class="marquee-track" tabindex="0">
+    <ul class="marquee text-small font-bold text-ink-muted">
+      {% for city in service_cities %}<li class="flex items-center gap-7 whitespace-nowrap">{{ city }}<span class="h-1.5 w-1.5 rounded-pill bg-accent-bright" aria-hidden="true"></span></li>{% endfor %}
+      {% for city in service_cities %}<li class="flex items-center gap-7 whitespace-nowrap" aria-hidden="true" data-dup>{{ city }}<span class="h-1.5 w-1.5 rounded-pill bg-accent-bright"></span></li>{% endfor %}
+    </ul>
   </div>
-</section>
+</div>
 
 {% if categories %}
-<section class="mx-auto max-w-5xl px-4 pt-14" aria-labelledby="categories-heading">
-  <h2 id="categories-heading" class="flex items-center gap-2 text-2xl font-bold text-primary">{% include "core/_sparkle.html" %}What we rent</h2>
-  <ul class="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4 md:grid-rows-2">
-    {% for category in categories %}
-    <li class="relative flex min-h-28 flex-col justify-end overflow-hidden rounded-xl p-4 {% if forloop.first %}col-span-2 row-span-2 min-h-48 bg-primary text-white{% elif forloop.counter|divisibleby:2 %}bg-surface text-primary{% else %}bg-[#ecdcfa] text-primary{% endif %}">
-      <h3 class="font-bold {% if forloop.first %}text-2xl{% else %}text-lg leading-snug{% endif %}"><a href="{{ category.get_absolute_url }}" class="after:absolute after:inset-0">{{ category.name }}</a></h3>
-      <p class="text-sm">{{ category.item_count }} item{{ category.item_count|pluralize }}</p>
-    </li>
-    {% endfor %}
-  </ul>
+<section class="section reveal" aria-labelledby="categories-heading">
+  {% include "components/_shelf.html" with entries=categories card="core/_category_card.html" eyebrow="Shop by category" title="What are you planning?" heading_id="categories-heading" link_url="/rentals/" link_label="All rentals" item_class="w-[clamp(140px,40vw,200px)]" %}
 </section>
 {% endif %}
 
 {% if featured %}
-<section class="mt-14" aria-labelledby="featured-heading">
-  <div class="mx-auto max-w-5xl px-4">
-    <h2 id="featured-heading" class="flex items-center gap-2 text-2xl font-bold text-primary">{% include "core/_sparkle.html" %}Guest favourites</h2>
-    <p class="mt-1">The rentals DFW parties ask for most.</p>
-  </div>
-  <ul class="mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-3 md:mx-auto md:max-w-5xl" role="region" aria-label="Featured rentals" tabindex="0">
-    {% for item in featured %}
-    <li class="w-56 shrink-0 snap-start">{% include "catalogue/_item_card.html" with eager=False %}</li>
-    {% endfor %}
-  </ul>
+<section class="section reveal" aria-labelledby="featured-heading">
+  {% include "components/_shelf.html" with entries=featured card="core/_featured_card.html" eyebrow="Guest favourites" title="Most booked in DFW" heading_id="featured-heading" link_url="/rentals/" link_label="See all" item_class="w-[clamp(220px,62vw,280px)]" %}
 </section>
 {% endif %}
 
-<section class="mx-auto mt-14 grid max-w-5xl grid-cols-1 gap-8 px-4 md:grid-cols-2" aria-labelledby="how-heading">
-  <div>
-    <h2 id="how-heading" class="flex items-center gap-2 text-2xl font-bold text-primary">{% include "core/_sparkle.html" %}How it works</h2>
-    <p class="mt-2 max-w-md">No driving to a warehouse and no hauling tables in your own car. We bring it, build it and take it away again.</p>
+<section class="section wrap reveal" aria-labelledby="packages-heading">
+  <div class="relative flex flex-col gap-3 overflow-hidden rounded-lg bg-brand-deep px-6 py-7 text-white md:px-10 md:py-10">
+    <span class="blob -bottom-16 -right-16 h-44 w-44 bg-brand" aria-hidden="true"></span>
+    <span class="blob bottom-6 right-6 h-10 w-10 bg-accent-bright" aria-hidden="true"></span>
+    <p class="eyebrow relative text-surface-tint">Party packages</p>
+    <h2 id="packages-heading" class="t-h1 relative max-w-[18ch]">Everything for the party, one price</h2>
+    <p class="relative max-w-[30ch] text-surface-tint">Bounce house, tables, chairs and treats bundled together, so you book once.</p>
+    {% if show_packages %}<a href="{% url 'catalogue:packages' %}" class="btn btn-white btn-lg relative self-start">View packages</a>
+    {% else %}<a href="{% url 'core:contact' %}" class="btn btn-white btn-lg relative self-start">Ask for a bundle</a>{% endif %}
   </div>
-  <ol class="space-y-5">
-    <li class="flex gap-4"><span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent font-bold text-white" aria-hidden="true">1</span><div><h3 class="font-bold">Pick your date and ZIP</h3><p>See at once whether the date is free and whether we deliver to your neighbourhood.</p></div></li>
-    <li class="flex gap-4"><span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent font-bold text-white" aria-hidden="true">2</span><div><h3 class="font-bold">Choose your rentals</h3><p>Tables, chairs, linen, a bounce house, a popcorn machine. Availability is shown for your date.</p></div></li>
-    <li class="flex gap-4"><span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent font-bold text-white" aria-hidden="true">3</span><div><h3 class="font-bold">We deliver, set up and pick up</h3><p>Our crew arrives before your guests do and collects everything after the party.</p></div></li>
+</section>
+
+<section id="how" class="section wrap reveal" aria-labelledby="how-heading">
+  {% include "components/_section_header.html" with eyebrow="How it works" title="Three steps. We do the heavy lifting." id="how-heading" %}
+  <ol class="mt-5 grid grid-cols-1 gap-5 md:grid-cols-3 md:gap-8">
+    <li class="flex items-start gap-4"><span class="step-num" aria-hidden="true">1</span><div class="space-y-1 pt-0.5"><h3 class="t-h3">Pick your date and ZIP</h3><p class="text-[14px] text-ink-muted">See instantly what is free and what delivery costs.</p></div></li>
+    <li class="flex items-start gap-4"><span class="step-num" aria-hidden="true">2</span><div class="space-y-1 pt-0.5"><h3 class="t-h3">Book and pay online</h3><p class="text-[14px] text-ink-muted">Pay a deposit by card, bank, Zelle or Cash App. Your invoice arrives right away.</p></div></li>
+    <li class="flex items-start gap-4"><span class="step-num" aria-hidden="true">3</span><div class="space-y-1 pt-0.5"><h3 class="t-h3">We deliver, set up, pick up</h3><p class="text-[14px] text-ink-muted">Our crew arrives before your guests and clears everything after.</p></div></li>
   </ol>
 </section>
 
-<section class="mx-auto mt-14 max-w-5xl px-4" aria-labelledby="wa-heading">
-  <div class="rounded-xl bg-whatsapp p-6 text-white md:flex md:items-center md:justify-between md:gap-8">
-    <div>
-      <h2 id="wa-heading" class="text-2xl font-bold">Planning a big one?</h2>
-      <p class="mt-1 max-w-xl">Send us the date, the headcount and the venue on WhatsApp. We will help you work out how many chairs, tables and linens you need.</p>
+<section class="section wrap reveal" aria-labelledby="events-heading">
+  {% include "components/_section_header.html" with eyebrow="Events we set up" title="From backyard birthdays to church fairs" id="events-heading" %}
+  <ul class="mt-4 flex flex-wrap gap-2">
+    {% for event in event_types %}<li>{% include "components/_chip.html" with href="/rentals/" label=event soft=True %}</li>{% endfor %}
+  </ul>
+</section>
+
+{% if reviews %}
+<section class="section reveal" aria-labelledby="reviews-heading">
+  {% include "components/_shelf.html" with entries=reviews card="core/_review_card.html" eyebrow="Reviews" title="What DFW families say" heading_id="reviews-heading" item_class="w-[clamp(260px,75vw,320px)]" %}
+</section>
+{% endif %}
+
+<section class="section wrap reveal" aria-labelledby="wa-heading">
+  <div class="flex flex-col gap-3 rounded-lg bg-success-tint px-6 py-6 md:flex-row md:items-center md:justify-between md:gap-8 md:px-10 md:py-8">
+    <div class="space-y-2">
+      <h2 id="wa-heading" class="t-h2">Planning something big?</h2>
+      <p class="max-w-[52ch] text-ink-muted">Send the date, headcount and venue. We'll tell you how many chairs, tables and linens you need.</p>
     </div>
-    <a href="https://wa.me/{{ whatsapp_number }}?text=Hi%2C%20I%27m%20planning%20an%20event%20in%20DFW" rel="noopener" class="mt-4 inline-flex min-h-12 items-center rounded-lg bg-white px-6 font-bold text-whatsapp md:mt-0">Chat on WhatsApp</a>
+    <a href="https://wa.me/{{ whatsapp_number }}?text=Hi%2C%20I%27m%20planning%20an%20event%20in%20DFW" rel="noopener" class="btn btn-whatsapp btn-lg shrink-0 self-start md:self-center">{% icon "whatsapp" 18 %}Chat on WhatsApp</a>
   </div>
 </section>
 {% endblock %}

@@ -1,23 +1,31 @@
 {% extends "base.html" %}
+{% load core_tags %}
 {% block head_extra %}<meta name="robots" content="noindex">{% endblock %}
+{% block body_class %} !bg-surface-soft{% endblock %}
+{% block whatsapp_fab %}{% endblock %}
 {% block content %}
-<div class="mx-auto max-w-xl px-4 py-6">
-  <h1 class="text-2xl font-bold text-primary">Pay your balance</h1>
-  <p class="mt-2">Booking #{{ booking.pk }} for {{ booking.event_date|date:"l, M j, Y" }}.</p>
-  <dl class="mt-4 divide-y divide-primary/10">
-    <div class="flex justify-between gap-4 py-2"><dt>Rental total</dt><dd>${{ total|floatformat:"2g" }}</dd></div>
-    <div class="flex justify-between gap-4 py-2"><dt>Paid so far</dt><dd>${{ paid|floatformat:"2g" }}</dd></div>
-    <div class="flex justify-between gap-4 py-2 font-bold"><dt>Balance due</dt><dd>${{ balance_due|floatformat:"2g" }}</dd></div>
-    {% if caution %}<div class="flex justify-between gap-4 py-2"><dt>Refundable caution deposit</dt><dd>${{ caution|floatformat:"2g" }}</dd></div>{% endif %}
-  </dl>
-  {% if cannot_pay %}
-  <p role="alert" class="mt-4 rounded-lg bg-[#fee2e2] p-3 font-bold text-[#7f1d1d]">{{ cannot_pay }}</p>
-  {% else %}
-  <form method="post" class="mt-6">
-    {% csrf_token %}
-    <button type="submit" class="min-h-12 w-full rounded-lg bg-accent px-6 font-bold text-white hover:bg-accent-dark">Pay ${{ to_pay|floatformat:"2g" }} by card or bank account</button>
-  </form>
-  <p class="mt-3 text-sm">You can also pay by Zelle, Cash App or bank deposit: call {{ business_phone }} for details.</p>
-  {% endif %}
+<div class="wrap-narrow page">
+  <p class="eyebrow">Booking #{{ booking.pk }}</p>
+  <h1 class="t-h1 mt-1">Pay your balance</h1>
+  <p class="mt-1 text-ink-muted">For your event on {{ booking.event_date|date:"l, M j, Y" }}.</p>
+  <section class="card mt-4 p-4 md:p-5" aria-label="Amounts">
+    <dl class="space-y-2.5">
+      <div class="sum-row"><dt>Rental total</dt><dd>${{ total|floatformat:"2g" }}</dd></div>
+      <div class="sum-row"><dt>Paid so far</dt><dd>${{ paid|floatformat:"2g" }}</dd></div>
+      <div class="sum-row border-t border-border pt-3 !text-[15px] !text-ink font-bold"><dt>Balance due</dt><dd>${{ balance_due|floatformat:"2g" }}</dd></div>
+      {% if caution %}<div class="sum-row"><dt>Refundable caution deposit</dt><dd>${{ caution|floatformat:"2g" }}</dd></div>{% endif %}
+    </dl>
+    {% if cannot_pay %}
+    <p role="alert" class="alert alert-danger mt-4">{{ cannot_pay }}</p>
+    {% else %}
+    <form method="post" class="mt-5">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-primary btn-lg btn-block">Pay ${{ to_pay|floatformat:"2g" }} by card or bank account</button>
+    </form>
+    <p class="mt-3 flex items-center gap-1.5 text-caption text-ink-muted">{% icon "lock" 14 %}Secure checkout with Stripe</p>
+    {% endif %}
+  </section>
+  {% if not cannot_pay %}<p class="mt-4 text-small text-ink-muted">You can also pay by Zelle, Cash App or bank deposit: call <a href="tel:{{ business_phone_href }}">{{ business_phone }}</a> for details.</p>{% endif %}
+  {% include "bookings/_help.html" %}
 </div>
 {% endblock %}

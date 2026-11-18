@@ -7,7 +7,7 @@ amount shown comes from quote.build_quote, called through cart_quote().
 from dataclasses import dataclass, field
 
 from apps.bookings.services import quote as quote_service
-from apps.catalogue.models import ItemVariant, Package
+from apps.catalogue.models import ItemImage, ItemVariant, Package, PackageItem
 from apps.core.services import get_event_date, get_event_zip
 
 CART_KEY = "cart"
@@ -249,3 +249,37 @@ def _place_errors(view, quote):
             continue
         target = ERROR_TARGETS.get(error.code, "general")
         view.errors.setdefault(target, []).append(error.message)
+
+
+def attach_line_images(view):
+    """Give each cart line the cover photo of its item (for packages, the first item's).
+
+    Two queries at most; lines without a photo get None and show a tinted block.
+    """
+    variant_ids = [line["id"] for line in view.lines if line["kind"] == VARIANT]
+    package_ids = [line["id"] for line in view.lines if line["kind"] == PACKAGE]
+    item_for = (
+        dict(ItemVariant.objects.filter(pk__in=variant_ids).values_list("pk", "item_id"))
+        if variant_ids
+        else {}
+    )
+    package_item = {}
+    if package_ids:
+        for package_id, item_id in (
+            PackageItem.objects.filter(package_id__in=package_ids)
+            .order_by("pk")
+            .values_list("package_id", "variant__item_id")
+        ):
+            package_item.setdefault(package_id, item_id)
+    item_ids = set(item_for.values()) | set(package_item.values())
+    covers = {}
+    if item_ids:
+        images = ItemImage.objects.filter(item_id__in=item_ids, renditions_ready=True).order_by(
+            "-is_primary", "sort_order", "pk"
+        )
+        for image in images:
+            covers.setdefault(image.item_id, image)
+    for line in view.lines:
+        source = item_for if line["kind"] == VARIANT else package_item
+        line["image"] = covers.get(source.get(line["id"]))
+    return view

@@ -98,6 +98,15 @@ def item_statuses(items, event_date):
     return statuses
 
 
+def line_total(variant, quantity):
+    """What `quantity` of a variant costs for the event, as the quote prices it, or None."""
+    from apps.bookings.services.quote import to_cents
+
+    if variant is None or not variant.unit_price:
+        return None
+    return to_cents(variant.unit_price * quantity)
+
+
 def featured_items(limit=8):
     """Items flagged as featured, for the home page row."""
     return list(active_items().filter(is_featured=True).order_by("name")[:limit])

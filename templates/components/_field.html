@@ -1,0 +1,17 @@
+{% comment %}Form field for a bound Django field: label above, 46px input, help and errors linked.{% endcomment %}<div{% if wrapper %} {{ wrapper }}{% endif %}>
+  {% if field.widget_type == "radioselect" %}
+  <fieldset{% if field.errors %} aria-describedby="{{ field.auto_id }}-error"{% endif %}>
+    <legend class="label">{{ field.label }}</legend>
+    <div class="space-y-2">
+      {% for choice in field %}<label for="{{ choice.id_for_label }}" class="choice">{{ choice.tag }}<span class="font-bold">{{ choice.choice_label }}</span></label>{% endfor %}
+    </div>
+  </fieldset>
+  {% elif field.widget_type == "checkbox" %}
+  <label for="{{ field.id_for_label }}" class="flex min-h-11 cursor-pointer items-center gap-3">{{ field }}<span class="font-bold">{{ field.label }}</span></label>
+  {% else %}
+  <label for="{{ field.id_for_label }}" class="label">{{ field.label }}</label>
+  {{ field }}
+  {% endif %}
+  {% if field.help_text %}<p id="{{ field.auto_id }}-help" class="mt-1 text-small muted">{{ field.help_text }}</p>{% endif %}
+  {% include "bookings/_field_errors.html" with errors=field.errors id=field.auto_id %}
+</div>

@@ -73,6 +73,7 @@ def _page(request, template, title, description, **extra):
 def home(request):
     """Render the home page."""
     featured = listing.featured_items()
+    categories = list(listing.categories_with_items())
     event_date = services.get_event_date(request)
     return _page(
         request,
@@ -80,7 +81,10 @@ def home(request):
         "Party rentals across DFW",
         "Bounce houses, chairs, tables, linen, backdrops, concession machines and a golf "
         "simulator, delivered and set up across the Dallas-Fort Worth area.",
-        categories=listing.categories_with_items(),
+        categories=categories,
+        event_tabs=services.event_tabs(categories),
+        event_types=services.EVENT_TYPES,
+        reviews=services.published_reviews(),
         featured=featured,
         statuses=listing.item_statuses(featured, event_date) if event_date and featured else {},
         event_date=event_date,

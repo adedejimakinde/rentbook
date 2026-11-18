@@ -1,10 +1,14 @@
-{% if date_error %}
-<p role="alert" class="rounded-lg bg-[#fee2e2] p-3 font-bold text-[#7f1d1d]">{{ date_error }}</p>
+{% load core_tags %}{% if date_error %}
+<p role="alert" class="alert alert-danger">{{ date_error }}</p>
 {% elif status %}
-<p class="font-bold">{{ selected.name }} on {{ event_date|date:"F j, Y" }}</p>
-<p class="mt-1">{% include "catalogue/_status.html" %}</p>
+<p class="flex items-start gap-2 text-small font-bold {% if status.code == 'available' %}text-success{% elif status.code == 'limited' %}text-warning{% elif status.code == 'unavailable' %}text-danger{% else %}text-brand{% endif %}">{% if status.code == 'available' %}{% icon "check-circle" 18 css="mt-px shrink-0" %}{% else %}{% icon "info" 18 css="mt-px shrink-0" %}{% endif %}<span>{{ selected.name }} on {{ event_date|date:"D, M j" }}: {{ status.label|lower|capfirst }}.</span></p>
 {% else %}
-<p>Pick your event date to see live availability.</p>
+<p class="text-small font-bold text-ink-muted">Pick your event date to see live availability.</p>
 {% endif %}
-{% if selected %}<p class="mt-2 text-sm">Price: <strong>{% include "catalogue/_price.html" with price=selected.unit_price %}</strong>{% if selected.unit_price and quantity > 1 %} each{% endif %}</p>{% endif %}
-{% if ask_price_url %}{% include "catalogue/_ask_price.html" %}{% elif selected and not date_error %}{% include "bookings/_add_form.html" with kind="variant" id=selected.pk quantity=quantity %}{% endif %}
+{% if selected %}<div id="add-result-variant-{{ selected.pk }}" class="empty:hidden mt-2" aria-live="polite"></div>
+<div class="sticky-bar lg-static lg:mt-3">
+  <div class="sticky-bar-inner">
+    <p class="flex min-w-0 flex-1 flex-col"><span class="truncate text-caption font-bold text-ink-muted">{{ quantity }} × {{ item.name }}{% if selected.name != "Default" %} ({{ selected.name }}){% endif %}</span><span class="price">{% if line_total %}${{ line_total|floatformat:"2g" }}{% else %}{% include "catalogue/_price.html" with price=selected.unit_price %}{% endif %}</span></p>
+    {% if ask_price_url %}{% include "catalogue/_ask_price.html" %}{% elif not date_error %}{% include "bookings/_add_form.html" with kind="variant" id=selected.pk quantity=quantity result_outside=True %}{% endif %}
+  </div>
+</div>{% endif %}

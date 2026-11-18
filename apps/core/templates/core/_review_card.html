@@ -1,0 +1,5 @@
+{% load core_tags %}<figure class="flex h-full flex-col gap-3 rounded-md bg-surface-soft p-5">
+  {% stars item.rating %}
+  <blockquote class="flex-1 text-[14px] leading-relaxed text-ink-muted">{{ item.text|linebreaksbr }}</blockquote>
+  <figcaption class="text-small font-bold">{{ item.customer_name }}{% if item.city %}, {{ item.city }}{% endif %}<span class="block text-caption font-medium text-ink-muted">{{ item.get_source_display }} review, {{ item.review_date|date:"M Y" }}</span></figcaption>
+</figure>

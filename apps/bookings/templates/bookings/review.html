@@ -1,52 +1,62 @@
 {% extends "base.html" %}
+{% load core_tags %}
 {% block head_extra %}<meta name="robots" content="noindex">{% endblock %}
+{% block body_class %} !bg-surface-soft{% endblock %}
+{% block whatsapp_fab %}{% endblock %}
 {% block content %}
-<div class="mx-auto max-w-xl px-4 py-6">
+<div class="wrap-narrow page">
   {% include "bookings/_progress.html" %}
-  <h1 class="text-2xl font-bold text-primary">{{ step_title }}</h1>
-  {% if submit_error %}<p role="alert" class="mt-4 rounded-lg bg-[#fee2e2] p-3 font-bold text-[#7f1d1d]">{{ submit_error }}</p>{% endif %}
+  <h1 class="t-h1">{{ step_title }}</h1>
+  {% if submit_error %}<p role="alert" class="alert alert-danger mt-4">{{ submit_error }}</p>{% endif %}
 
-  <section class="mt-4" aria-labelledby="details-heading">
-    <h2 id="details-heading" class="text-lg font-bold text-primary">Your event</h2>
-    <dl class="mt-2 space-y-1 [overflow-wrap:anywhere]">
-      <div><dt class="inline font-bold">Date:</dt> <dd class="inline">{{ cart.event_date|date:"l, M j, Y" }}, starts {{ start_time|time:"g:i A" }}, set up by {{ setup_by_time|time:"g:i A" }}</dd></div>
-      <div><dt class="inline font-bold">Event:</dt> <dd class="inline">{{ event_type_label }}</dd></div>
-      <div><dt class="inline font-bold">Delivery to:</dt> <dd class="inline whitespace-pre-line">{{ address }}</dd></div>
-      <div><dt class="inline font-bold">Surface:</dt> <dd class="inline">{{ surface_label }}</dd></div>
-      {% if flow.delivery.crew_notes %}<div><dt class="inline font-bold">Crew notes:</dt> <dd class="inline">{{ flow.delivery.crew_notes }}</dd></div>{% endif %}
-      <div><dt class="inline font-bold">Contact:</dt> <dd class="inline">{{ flow.contact.name }}, {{ flow.contact.email }}, {{ flow.contact.phone }}</dd></div>
+  <section class="card mt-4 p-4 md:p-5" aria-labelledby="details-heading">
+    <div class="flex items-center justify-between gap-3">
+      <h2 id="details-heading" class="text-h3 font-bold">Your event</h2>
+      <a href="{% url 'bookings:step' 'event' %}" class="link">Change{% icon "chevron-right" 16 stroke=2.5 %}</a>
+    </div>
+    <dl class="rows mt-1 text-[14px]">
+      <div class="grid grid-cols-1 gap-0.5 py-2.5 sm:grid-cols-[130px_minmax(0,1fr)] sm:gap-3"><dt class="font-bold">Date</dt><dd class="text-ink-muted">{{ cart.event_date|date:"l, M j, Y" }}, starts {{ start_time|time:"g:i A" }}, set up by {{ setup_by_time|time:"g:i A" }}</dd></div>
+      <div class="grid grid-cols-1 gap-0.5 py-2.5 sm:grid-cols-[130px_minmax(0,1fr)] sm:gap-3"><dt class="font-bold">Event</dt><dd class="text-ink-muted">{{ event_type_label }}</dd></div>
+      <div class="grid grid-cols-1 gap-0.5 py-2.5 sm:grid-cols-[130px_minmax(0,1fr)] sm:gap-3"><dt class="font-bold">Delivery to</dt><dd class="whitespace-pre-line text-ink-muted [overflow-wrap:anywhere]">{{ address }}</dd></div>
+      <div class="grid grid-cols-1 gap-0.5 py-2.5 sm:grid-cols-[130px_minmax(0,1fr)] sm:gap-3"><dt class="font-bold">Surface</dt><dd class="text-ink-muted">{{ surface_label }}</dd></div>
+      {% if flow.delivery.crew_notes %}<div class="grid grid-cols-1 gap-0.5 py-2.5 sm:grid-cols-[130px_minmax(0,1fr)] sm:gap-3"><dt class="font-bold">Crew notes</dt><dd class="text-ink-muted [overflow-wrap:anywhere]">{{ flow.delivery.crew_notes }}</dd></div>{% endif %}
+      <div class="grid grid-cols-1 gap-0.5 py-2.5 sm:grid-cols-[130px_minmax(0,1fr)] sm:gap-3"><dt class="font-bold">Contact</dt><dd class="text-ink-muted [overflow-wrap:anywhere]">{{ flow.contact.name }}, {{ flow.contact.email }}, {{ flow.contact.phone }}</dd></div>
     </dl>
-    <p class="mt-2 text-sm"><a href="{% url 'bookings:step' 'event' %}" class="font-bold text-primary underline">Change details</a></p>
   </section>
 
-  <section class="mt-6" aria-labelledby="items-heading">
-    <h2 id="items-heading" class="text-lg font-bold text-primary">Rentals</h2>
-    {% for error in cart.errors.general %}<p role="alert" class="mt-2 rounded-lg bg-[#fee2e2] p-3 font-bold text-[#7f1d1d]">{{ error }}</p>{% endfor %}
-    {% for key, errors in cart.errors.items %}{% if key != "general" %}{% for error in errors %}<p role="alert" class="mt-2 rounded-lg bg-[#fee2e2] p-3 font-bold text-[#7f1d1d]">{{ error }}</p>{% endfor %}{% endif %}{% endfor %}
-    <ul class="mt-2 divide-y divide-primary/10">
+  <section class="card mt-3 p-4 md:p-5" aria-labelledby="items-heading">
+    <div class="flex items-center justify-between gap-3">
+      <h2 id="items-heading" class="text-h3 font-bold">Rentals</h2>
+      <a href="{% url 'bookings:cart' %}" class="link">Edit cart{% icon "chevron-right" 16 stroke=2.5 %}</a>
+    </div>
+    {% for error in cart.errors.general %}<p role="alert" class="alert alert-danger mt-2">{{ error }}</p>{% endfor %}
+    {% for key, errors in cart.errors.items %}{% if key != "general" %}{% for error in errors %}<p role="alert" class="alert alert-danger mt-2">{{ error }}</p>{% endfor %}{% endif %}{% endfor %}
+    <ul class="rows mt-1 text-[14px]">
       {% for line in cart.lines %}
-      <li class="py-2"><div class="flex justify-between gap-4"><span>{{ line.quantity }} x {{ line.name }}</span>{% if line.priced %}<span>${{ line.priced.line_total|floatformat:"2g" }}</span>{% endif %}</div>
-      {% if line.error %}<p role="alert" class="mt-1 text-sm font-bold text-[#7f1d1d]">{{ line.error }}</p>{% endif %}</li>
+      <li class="py-2.5"><div class="flex justify-between gap-4"><span class="min-w-0">{{ line.quantity }} x {{ line.name }}</span>{% if line.priced %}<span class="shrink-0 font-bold">${{ line.priced.line_total|floatformat:"2g" }}</span>{% endif %}</div>
+      {% if line.error %}<p role="alert" class="field-error">{{ line.error }}</p>{% endif %}</li>
       {% endfor %}
     </ul>
-    <p class="mt-1 text-sm"><a href="{% url 'bookings:cart' %}" class="font-bold text-primary underline">Edit cart</a></p>
-    {% if cart.quote %}<div class="mt-4">{% include "bookings/_quote.html" %}</div>{% endif %}
-    {% if flow.contact.tax_exempt %}<p class="mt-3 rounded-lg bg-surface p-3 text-sm"><span class="font-bold">Tax exemption requested for {{ flow.contact.org_name }}.</span> The quote includes sales tax. Our staff verify your certificate and then remove the tax from your booking.</p>{% endif %}
+    {% if cart.quote %}<div class="mt-2 border-t border-border pt-1">{% include "bookings/_quote.html" %}</div>{% endif %}
+    {% if flow.contact.tax_exempt %}<p class="alert mt-3 font-medium"><span class="font-bold">Tax exemption requested for {{ flow.contact.org_name }}.</span> The quote includes sales tax. Our staff verify your certificate and then remove the tax from your booking.</p>{% endif %}
   </section>
 
   {% if cart.is_bookable %}
-  <form method="post" class="mt-6 space-y-5" novalidate>
+  <form method="post" class="card mt-3 space-y-5 p-4 md:p-5" novalidate>
     {% csrf_token %}
-    {% include "bookings/_form_field.html" with field=form.plan %}
-    <p class="-mt-3 text-sm">The deposit holds your date. The balance and any refundable caution deposit are paid before your event.</p>
-    {% include "bookings/_form_field.html" with field=form.choice %}
-    <p class="-mt-3 text-sm">Card and bank account (ACH) payments go through Stripe. For Zelle, Cash App or bank deposit we show you how to pay next, and hold your booking for {{ manual_hold_hours }} hours while the payment arrives.</p>
-    <div class="rounded-lg bg-surface p-4">{% include "bookings/_form_field.html" with field=form.accept_terms %}</div>
-    <button type="submit" class="min-h-12 w-full rounded-lg bg-accent px-6 font-bold text-white hover:bg-accent-dark">Book now</button>
-    <a href="{% url 'bookings:step' 'contact' %}" class="inline-flex min-h-12 w-full items-center justify-center rounded-lg border-2 border-primary px-6 font-bold text-primary">Back</a>
+    <div>{% include "bookings/_form_field.html" with field=form.plan %}
+    <p class="mt-2 text-small text-ink-muted">The deposit holds your date. The balance and any refundable caution deposit are paid before your event.</p></div>
+    <div>{% include "bookings/_form_field.html" with field=form.choice %}
+    <p class="mt-2 text-small text-ink-muted">Card and bank account (ACH) payments go through Stripe. For Zelle, Cash App or bank deposit we show you how to pay next, and hold your booking for {{ manual_hold_hours }} hours while the payment arrives.</p></div>
+    <div class="panel">{% include "bookings/_form_field.html" with field=form.accept_terms %}</div>
+    <div class="flex flex-col gap-3 sm:flex-row-reverse sm:justify-between">
+      <button type="submit" class="btn btn-primary btn-lg sm:min-w-[200px]">Book now</button>
+      <a href="{% url 'bookings:step' 'contact' %}" class="btn btn-secondary btn-lg">Back</a>
+    </div>
   </form>
   {% else %}
-  <p class="mt-6 font-bold">Your quote has a problem. <a href="{% url 'bookings:cart' %}" class="text-primary underline">Go back to your cart</a> to fix it.</p>
+  <p class="alert alert-danger mt-4">Your quote has a problem. <a href="{% url 'bookings:cart' %}">Go back to your cart</a> to fix it.</p>
   {% endif %}
+  {% include "bookings/_help.html" %}
 </div>
 {% endblock %}

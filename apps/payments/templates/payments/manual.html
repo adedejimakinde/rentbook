@@ -1,26 +1,28 @@
 {% extends "base.html" %}
+{% load core_tags %}
 {% block head_extra %}<meta name="robots" content="noindex">{% endblock %}
+{% block body_class %} !bg-surface-soft{% endblock %}
 {% block content %}
-<div class="mx-auto max-w-xl px-4 py-6">
-  <h1 class="text-2xl font-bold text-primary">Your booking is on hold</h1>
-  <p class="mt-2">Booking reference <strong>#{{ booking.pk }}</strong>. Send your payment by {{ choice_label }} using the details below.</p>
+<div class="wrap-narrow page">
+  <p class="eyebrow">Booking reference #{{ booking.pk }}</p>
+  <h1 class="t-h1 mt-1">Your booking is on hold</h1>
+  <p class="mt-1 text-ink-muted">Send your payment by {{ choice_label }} using the details below.</p>
   {% if to_send is not None %}
-  <div class="mt-4 rounded-lg border-2 border-primary p-4">
-    <p class="text-sm font-bold">{{ plan_label }}: amount to send</p>
-    <p class="text-3xl font-bold text-primary">${{ to_send|floatformat:"2g" }}</p>
-    {% if caution %}<p class="mt-1 text-sm">Includes a ${{ caution|floatformat:"2g" }} refundable caution deposit.</p>{% endif %}
-    <p class="mt-3 font-bold">Pay by {{ deadline|date:"l, M j, Y, g:i A T" }}</p>
-    <p class="text-sm">If the payment has not arrived by then, the hold ends and the items are released.</p>
-  </div>
-  <dl class="mt-4 divide-y divide-primary/10">
-    {% for label, value in details %}<div class="flex justify-between gap-4 py-2"><dt class="font-bold">{{ label }}</dt><dd class="break-all text-right">{{ value|default:"Ask us" }}</dd></div>{% endfor %}
-    <div class="flex justify-between gap-4 py-2"><dt class="font-bold">Memo or note</dt><dd class="text-right">{{ reference }}</dd></div>
-  </dl>
-  <p class="mt-4">Put <strong>{{ reference }}</strong> in the payment note so we can match it. Our staff confirm your payment once it arrives, and then your booking is confirmed by email.</p>
+  <section class="card mt-4 p-4 md:p-5" aria-label="Amount to send">
+    <p class="text-small font-bold text-ink-muted">{{ plan_label }}: amount to send</p>
+    <p class="mt-1 text-[32px] leading-tight font-bold text-brand">${{ to_send|floatformat:"2g" }}</p>
+    {% if caution %}<p class="mt-1 text-small text-ink-muted">Includes a ${{ caution|floatformat:"2g" }} refundable caution deposit.</p>{% endif %}
+    <div class="alert alert-warning mt-3"><p>Pay by {{ deadline|date:"l, M j, Y, g:i A T" }}</p><p class="mt-1 font-medium">If the payment has not arrived by then, the hold ends and the items are released.</p></div>
+    <dl class="rows mt-3 text-[14px]">
+      {% for label, value in details %}<div class="flex justify-between gap-4 py-2.5"><dt class="font-bold">{{ label }}</dt><dd class="min-w-0 text-right [overflow-wrap:anywhere]">{{ value|default:"Ask us" }}</dd></div>{% endfor %}
+      <div class="flex justify-between gap-4 py-2.5"><dt class="font-bold">Memo or note</dt><dd class="text-right font-bold text-brand">{{ reference }}</dd></div>
+    </dl>
+  </section>
+  <p class="mt-4 text-small text-ink-muted">Put <strong class="text-ink">{{ reference }}</strong> in the payment note so we can match it. Our staff confirm your payment once it arrives, and then your booking is confirmed by email.</p>
   {% else %}
-  <p class="mt-4 rounded-lg bg-[#fee2e2] p-3 font-bold text-[#7f1d1d]">This hold has ended, so this booking can no longer be paid here. Call us and we will help.</p>
+  <p class="alert alert-danger mt-4">This hold has ended, so this booking can no longer be paid here. Call us and we will help.</p>
   {% endif %}
-  <p class="mt-6"><a href="{{ status_url }}" class="font-bold text-primary underline">View your booking</a> (save this link)</p>
-  <p class="mt-2">Questions? Call <a href="tel:{{ business_phone_href }}" class="font-bold text-primary underline">{{ business_phone }}</a>.</p>
+  <a href="{{ status_url }}" class="btn btn-secondary btn-lg mt-5">View your booking{% icon "chevron-right" 16 stroke=2.5 %}</a>
+  <p class="mt-2 text-small text-ink-muted">Save that link to check your booking any time. Questions? Call <a href="tel:{{ business_phone_href }}">{{ business_phone }}</a>.</p>
 </div>
 {% endblock %}

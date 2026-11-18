@@ -1,60 +1,93 @@
-{% for error in cart.errors.general %}<p role="alert" class="mb-4 rounded-lg bg-[#fee2e2] p-3 font-bold text-[#7f1d1d]">{{ error }}</p>{% endfor %}
-{% if update_error %}<p role="alert" class="mb-4 rounded-lg bg-[#fee2e2] p-3 font-bold text-[#7f1d1d]">{{ update_error }}</p>{% endif %}
+{% load core_tags catalogue_media %}{% if update_error %}<p role="alert" class="alert alert-danger mb-3">{{ update_error }}</p>{% endif %}
 {% if cart.lines %}
-<form method="post" action="{% url 'bookings:cart_details' %}" hx-post="{% url 'bookings:cart_details' %}" hx-target="#cart-body" class="grid grid-cols-1 gap-3 rounded-lg bg-surface p-4 sm:grid-cols-3">
-  {% csrf_token %}
-  <div>
-    <label for="cart-date" class="block font-bold">Event date</label>
-    <input id="cart-date" type="date" name="date" value="{{ cart.event_date|date:'Y-m-d' }}" class="min-h-11 w-full rounded-lg border-2 border-primary/40 bg-white px-3"{% if cart.errors.date or date_error %} aria-invalid="true" aria-describedby="cart-date-error"{% endif %}>
-    {% if date_error %}<p id="cart-date-error" role="alert" class="mt-1 text-sm font-bold text-[#7f1d1d]">{{ date_error }}</p>{% else %}{% include "bookings/_field_errors.html" with errors=cart.errors.date id="cart-date" %}{% endif %}
-  </div>
-  <div>
-    <label for="cart-zip" class="block font-bold">Delivery ZIP</label>
-    <input id="cart-zip" type="text" name="zip_code" value="{{ cart.zip_code }}" inputmode="numeric" autocomplete="postal-code" maxlength="10" class="min-h-11 w-full rounded-lg border-2 border-primary/40 bg-white px-3"{% if cart.errors.zip or zip_error %} aria-invalid="true" aria-describedby="cart-zip-error"{% endif %}>
-    {% if zip_error %}<p id="cart-zip-error" role="alert" class="mt-1 text-sm font-bold text-[#7f1d1d]">{{ zip_error }}</p>{% else %}{% include "bookings/_field_errors.html" with errors=cart.errors.zip id="cart-zip" %}{% endif %}
-  </div>
-  <div>
-    <label for="cart-promo" class="block font-bold">Promo code (optional)</label>
-    <input id="cart-promo" type="text" name="promo_code" value="{{ cart.promo_code }}" maxlength="40" autocomplete="off" class="min-h-11 w-full rounded-lg border-2 border-primary/40 bg-white px-3"{% if cart.errors.promo %} aria-invalid="true" aria-describedby="cart-promo-error"{% endif %}>
-    {% include "bookings/_field_errors.html" with errors=cart.errors.promo id="cart-promo" %}
-  </div>
-  <button type="submit" class="min-h-11 rounded-lg border-2 border-primary px-4 font-bold text-primary sm:col-span-3 sm:justify-self-start">Update quote</button>
-</form>
+{% for error in cart.errors.general %}<p role="alert" class="alert alert-danger mb-3">{{ error }}</p>{% endfor %}
+<div class="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:items-start lg:gap-6">
+<div class="space-y-3">
+  <form id="cart-details" method="post" action="{% url 'bookings:cart_details' %}" hx-post="{% url 'bookings:cart_details' %}" hx-target="#cart-body">
+    {% csrf_token %}
+    <details class="card group"{% if not cart.event_date or not cart.zip_code or cart.errors.date or cart.errors.zip or date_error or zip_error %} open{% endif %}>
+      <summary class="flex cursor-pointer items-center gap-3 px-3.5 py-3">
+        {% if cart.event_date %}<span class="date-tile" aria-hidden="true"><span class="text-[10px] text-brand uppercase">{{ cart.event_date|date:"M" }}</span><span class="text-[17px] leading-5">{{ cart.event_date|date:"j" }}</span></span>
+        {% else %}<span class="tile h-12 w-11">{% icon "calendar" 20 %}</span>{% endif %}
+        <span class="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span class="text-[14px] font-bold">{% if cart.event_date %}{{ cart.event_date|date:"l" }} event, {{ cart.event_date|date:"M j" }}{% else %}Choose your event date{% endif %}</span>
+          <span class="text-caption font-medium text-ink-muted">{% if cart.zip_code %}Delivery to ZIP {{ cart.zip_code }}{% if cart.quote.zone %} · {{ cart.quote.zone.name }}{% endif %}{% else %}Add your delivery ZIP for fees{% endif %}</span>
+        </span>
+        <span class="flex min-h-11 items-center text-small font-bold text-brand group-open:hidden">Edit</span><span class="hidden min-h-11 items-center text-small font-bold text-brand group-open:flex">Close</span>
+      </summary>
+      <div class="grid grid-cols-1 gap-3 border-t border-border px-3.5 pb-4 pt-3 xs:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+        <div>
+          <label for="cart-date" class="label label-caps">Event date</label>
+          <input id="cart-date" type="date" name="date" value="{{ cart.event_date|date:'Y-m-d' }}" class="input"{% if cart.errors.date or date_error %} aria-invalid="true" aria-describedby="cart-date-error"{% endif %}>
+          {% if date_error %}<p id="cart-date-error" role="alert" class="field-error">{{ date_error }}</p>{% else %}{% include "bookings/_field_errors.html" with errors=cart.errors.date id="cart-date" %}{% endif %}
+        </div>
+        <div>
+          <label for="cart-zip" class="label label-caps">Delivery ZIP</label>
+          <input id="cart-zip" type="text" name="zip_code" value="{{ cart.zip_code }}" inputmode="numeric" autocomplete="postal-code" maxlength="10" class="input"{% if cart.errors.zip or zip_error %} aria-invalid="true" aria-describedby="cart-zip-error"{% endif %}>
+          {% if zip_error %}<p id="cart-zip-error" role="alert" class="field-error">{{ zip_error }}</p>{% else %}{% include "bookings/_field_errors.html" with errors=cart.errors.zip id="cart-zip" %}{% endif %}
+        </div>
+        <button type="submit" class="btn btn-brand btn-lg xs:col-span-2">Save date and ZIP</button>
+      </div>
+    </details>
+  </form>
 
-<ul class="mt-4 divide-y divide-primary/10" aria-label="Cart lines">
-  {% for line in cart.lines %}
-  <li class="py-3">
-    <div class="flex justify-between gap-4">
-      <p class="font-bold">{{ line.name }}{% if line.kind == "package" %} <span class="text-sm font-medium">(package)</span>{% endif %}</p>
-      {% if line.priced %}<p class="font-bold">${{ line.priced.line_total|floatformat:"2g" }}</p>{% endif %}
-    </div>
-    {% if line.priced %}<p class="text-sm">{{ line.quantity }} x ${{ line.priced.unit_price|floatformat:"2g" }}</p>{% endif %}
-    {% if line.error %}<p role="alert" class="mt-1 text-sm font-bold text-[#7f1d1d]">{{ line.error }}</p>{% endif %}
-    <div class="mt-2 flex flex-wrap items-end gap-2">
-      <form method="post" action="{% url 'bookings:cart_update' %}" hx-post="{% url 'bookings:cart_update' %}" hx-target="#cart-body" class="flex items-end gap-2">
-        {% csrf_token %}<input type="hidden" name="kind" value="{{ line.kind }}"><input type="hidden" name="id" value="{{ line.id }}">
-        <div><label for="qty-{{ line.kind }}-{{ line.id }}" class="block text-sm font-bold">Quantity<span class="sr-only"> of {{ line.name }}</span></label>
-        <input id="qty-{{ line.kind }}-{{ line.id }}" type="number" name="quantity" value="{{ line.quantity }}" min="1" max="999" inputmode="numeric" class="min-h-11 w-20 rounded-lg border-2 border-primary/40 px-2"></div>
-        <button type="submit" class="min-h-11 rounded-lg border-2 border-primary px-3 font-bold text-primary">Update</button>
-      </form>
-      <form method="post" action="{% url 'bookings:cart_remove' %}" hx-post="{% url 'bookings:cart_remove' %}" hx-target="#cart-body">
-        {% csrf_token %}<input type="hidden" name="kind" value="{{ line.kind }}"><input type="hidden" name="id" value="{{ line.id }}">
-        <button type="submit" class="min-h-11 px-3 font-bold text-accent underline">Remove<span class="sr-only"> {{ line.name }}</span></button>
-      </form>
-    </div>
-  </li>
-  {% endfor %}
-</ul>
+  <ul class="card rows px-4 py-1" aria-label="Cart lines">
+    {% for line in cart.lines %}
+    <li class="flex gap-3 py-3.5">
+      <span class="w-[72px] shrink-0 overflow-hidden rounded-[14px]">{% picture line.image name=line.name alt="" sizes="72px" ratio="1/1" %}</span>
+      <div class="flex min-w-0 flex-1 flex-col gap-1">
+        <div class="flex justify-between gap-2">
+          <p class="min-w-0 font-bold">{{ line.name }}</p>
+          {% if line.priced %}<p class="shrink-0 font-bold">${{ line.priced.line_total|floatformat:"2g" }}</p>{% endif %}
+        </div>
+        {% if line.error %}<p role="alert" class="field-error mt-0">{{ line.error }}</p>{% endif %}
+        <p class="text-caption font-medium text-ink-muted">{% if line.kind == "package" %}Package{% if line.priced %} · {% endif %}{% endif %}{% if line.priced %}{{ line.quantity }} x ${{ line.priced.unit_price|floatformat:"2g" }} per day{% endif %}</p>
+        <div class="mt-1 flex items-center justify-between gap-2">
+          <form method="post" action="{% url 'bookings:cart_update' %}" hx-post="{% url 'bookings:cart_update' %}" hx-target="#cart-body" hx-trigger="change" class="flex items-center gap-2">
+            {% csrf_token %}<input type="hidden" name="kind" value="{{ line.kind }}"><input type="hidden" name="id" value="{{ line.id }}">
+            {% with lid=line.id|stringformat:"s" %}{% with qty_id="qty-"|add:line.kind|add:"-"|add:lid %}<label for="{{ qty_id }}" class="sr-only">Quantity of {{ line.name }}</label>
+            {% include "components/_stepper.html" with id=qty_id value=line.quantity small=True what=line.name %}{% endwith %}{% endwith %}
+            <button type="submit" class="btn btn-secondary sr-only-focusable min-h-11 px-3 text-sm">Update<span class="sr-only"> {{ line.name }}</span></button>
+          </form>
+          <form method="post" action="{% url 'bookings:cart_remove' %}" hx-post="{% url 'bookings:cart_remove' %}" hx-target="#cart-body">
+            {% csrf_token %}<input type="hidden" name="kind" value="{{ line.kind }}"><input type="hidden" name="id" value="{{ line.id }}">
+            <button type="submit" class="icon-btn border-0 text-ink-muted hover:text-danger" aria-label="Remove {{ line.name }}">{% icon "trash" 18 %}</button>
+          </form>
+        </div>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
 
-<section class="mt-6" aria-labelledby="quote-heading">
-  <h2 id="quote-heading" class="text-xl font-bold text-primary">Your quote</h2>
-  {% if cart.quote %}{% include "bookings/_quote.html" %}{% else %}<p class="mt-2">Choose your event date and delivery ZIP above to see prices, fees and availability.</p>{% endif %}
-</section>
-<div class="mt-6">
-  {% if cart.is_bookable %}<a href="{% url 'bookings:step' 'event' %}" class="inline-flex min-h-12 w-full items-center justify-center rounded-lg bg-accent px-6 font-bold text-white hover:bg-accent-dark sm:w-auto">Continue to booking</a>
-  {% else %}<p class="font-bold">Fix the items marked above to continue.</p>{% endif %}
+  <details class="card px-4"{% if cart.promo_code or cart.errors.promo %} open{% endif %}>
+    <summary class="flex min-h-[52px] cursor-pointer items-center justify-between text-[14px] font-bold">Have a promo code?<span class="text-brand">{% icon "plus" 18 stroke=2.5 %}</span></summary>
+    <div class="flex flex-wrap items-start gap-2 pb-4">
+      <div class="min-w-[160px] flex-1">
+        <label for="cart-promo" class="sr-only">Promo code</label>
+        <input id="cart-promo" form="cart-details" type="text" name="promo_code" value="{{ cart.promo_code }}" maxlength="40" autocomplete="off" placeholder="Promo code" class="input"{% if cart.errors.promo %} aria-invalid="true" aria-describedby="cart-promo-error"{% endif %}>
+        {% include "bookings/_field_errors.html" with errors=cart.errors.promo id="cart-promo" %}
+      </div>
+      <button type="submit" form="cart-details" class="btn btn-secondary min-h-[46px]">Apply code</button>
+    </div>
+  </details>
 </div>
+
+<section class="card p-4 md:p-5 lg:sticky lg:top-4" aria-labelledby="quote-heading">
+  <h2 id="quote-heading" class="text-h3 font-bold">Your quote</h2>
+  {% if cart.quote %}{% include "bookings/_quote.html" %}{% else %}<p class="mt-2 text-small text-ink-muted">Choose your event date and delivery ZIP above to see prices, fees and availability.</p>{% endif %}
+  <div class="sticky-bar lg-static lg:mt-4">
+    <div class="sticky-bar-inner">
+      {% if cart.is_bookable %}<a href="{% url 'bookings:step' 'event' %}" class="btn btn-primary btn-lg btn-block min-h-[52px] text-[16px]">Continue to booking{% icon "chevron-right" 18 stroke=2.5 %}</a>
+      {% else %}<p class="flex-1 text-center text-small font-bold text-ink-muted">Fix the items marked above to continue.</p>{% endif %}
+    </div>
+  </div>
+</section>
+</div>
+<p class="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-1 text-caption text-ink-muted"><span class="inline-flex items-center gap-1.5">{% icon "lock" 14 %}Secure checkout</span><span>Card · Bank · Zelle · Cash App</span></p>
 {% else %}
-<p class="mt-2"><a href="{% url 'catalogue:list' %}" class="font-bold text-primary underline">Browse rentals</a></p>
+<div class="card flex flex-col items-start gap-3 p-5">
+  {% for error in cart.errors.general %}<p class="font-bold">{{ error }}</p>{% endfor %}
+  <a href="{% url 'catalogue:list' %}" class="btn btn-primary btn-lg">Browse rentals</a>
+</div>
 {% endif %}
 {% if htmx %}{% include "bookings/_cart_count.html" with oob=True %}{% endif %}

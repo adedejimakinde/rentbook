@@ -1,0 +1,23 @@
+{% load static core_tags %}<header class="site-header" x-data="{ open: false }" @keydown.escape.window="open = false">
+  <div class="wrap">
+    <a href="{% url 'core:home' %}" class="flex min-h-11 shrink-0 items-center" aria-label="{{ business_name }} home">
+      <img src="{% static 'brand/atglace-logo-header-320.webp' %}" width="320" height="170" alt="Atglace Events &amp; Rentals LLC" class="h-12 w-auto">
+    </a>
+    <nav class="hidden items-center gap-1 lg:flex" aria-label="Main">
+      {% include "core/_nav_links.html" with link_class="nav-link" %}
+    </nav>
+    <div class="flex items-center gap-1">
+      {% include "bookings/_cart_count.html" %}
+      <a href="{% url 'catalogue:list' %}" class="btn btn-primary min-h-11 whitespace-nowrap px-4 text-sm">Book now</a>
+      <button type="button" class="icon-btn border-0 lg:hidden" @click="open = !open" :aria-expanded="open.toString()" aria-expanded="false" aria-controls="mobile-menu" aria-label="Menu">
+        <span x-show="!open">{% icon "menu" 24 %}</span><span x-show="open" x-cloak>{% icon "close" 24 %}</span>
+      </button>
+    </div>
+  </div>
+  <nav id="mobile-menu" x-show="open" x-cloak x-transition.opacity class="absolute inset-x-0 top-full border-b border-border bg-surface shadow-card lg:hidden" aria-label="Mobile">
+    <ul class="wrap rows pb-4 pt-2">
+      {% include "core/_nav_links.html" with link_class="menu-link" wrap="li" %}
+      <li><a href="{% url 'core:terms' %}" class="menu-link">Rental terms</a></li>
+    </ul>
+  </nav>
+</header>

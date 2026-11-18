@@ -1,2 +1,2 @@
-{% if error %}<p role="alert" class="rounded-lg bg-[#fee2e2] p-3 font-bold text-[#7f1d1d]">{{ error }}</p>{% else %}<p role="status" class="rounded-lg bg-[#dcfce7] p-3 font-bold text-[#14532d]">Added to your booking. <a href="{% url 'bookings:cart' %}" class="underline">View cart and quote</a></p>{% endif %}
+{% if error %}<p role="alert" class="alert alert-danger">{{ error }}</p>{% else %}<p role="status" class="alert alert-success">Added to your booking. <a href="{% url 'bookings:cart' %}">View cart and quote</a></p>{% endif %}
 {% include "bookings/_cart_count.html" with oob=True %}

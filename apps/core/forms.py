@@ -2,7 +2,7 @@
 
 from django import forms
 
-INPUT = "min-h-12 w-full rounded-lg border-2 border-primary/40 bg-white px-3 py-2"
+INPUT = "input"
 
 
 class ContactForm(forms.Form):

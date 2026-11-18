@@ -1,20 +1,25 @@
 {% extends "base.html" %}
-{% block jsonld %}{% load core_tags %}{% local_business_jsonld %}{% endblock %}
+{% load core_tags %}
+{% block jsonld %}{% local_business_jsonld %}{% endblock %}
 {% block content %}
-<div class="mx-auto max-w-3xl px-4 py-10">
-  <h1 class="flex items-center gap-2 text-2xl leading-tight font-bold text-balance text-primary [overflow-wrap:anywhere] sm:text-3xl">{% include "core/_sparkle.html" %}About {{ business_name }}</h1>
-  <p class="mt-4 text-lg">We are a DFW event rental business. We bring the bounce house, the Chiavari chairs, the popcorn machine and the golf simulator to your venue, set everything up and pick it up again afterwards.</p>
-  <h2 class="mt-8 text-xl font-bold text-primary">Who we work with</h2>
-  <p class="mt-2">Parents planning a birthday, event planners juggling a wedding, churches and schools running a fun day, and companies hosting a team party. Whether you need ten chairs or an entire reception, we help you work out quantities and timing.</p>
-  <h2 class="mt-8 text-xl font-bold text-primary">What you can expect</h2>
-  <ul class="mt-2 list-disc space-y-2 pl-5">
-    <li>Delivery, setup and pickup handled by our crew, with fees based on your ZIP code.</li>
-    <li>Live availability for your event date, so you are never promised something that is booked.</li>
-    <li>A clear quote and an automatic invoice, with a deposit or full payment.</li>
-  </ul>
-  <div class="mt-8 flex flex-wrap gap-3">
-    <a href="{% url 'catalogue:list' %}" class="inline-flex min-h-12 items-center rounded-lg bg-accent px-6 font-bold text-white hover:bg-accent-dark">Browse rentals</a>
-    <a href="{% url 'core:contact' %}" class="inline-flex min-h-12 items-center rounded-lg border-2 border-primary px-6 font-bold text-primary">Contact us</a>
+<div class="wrap page">
+  <div class="max-w-[720px]">
+    <p class="eyebrow">About us</p>
+    <h1 class="t-h1 mt-1 text-balance [overflow-wrap:anywhere]">About {{ business_name }}</h1>
+    <p class="mt-3 text-body-lg text-ink-muted">We are a DFW event rental business. We bring the bounce house, the Chiavari chairs, the popcorn machine and the golf simulator to your venue, set everything up and pick it up again afterwards.</p>
   </div>
+  <div class="mt-8 grid grid-cols-1 gap-3 md:grid-cols-3">
+    <div class="card p-4"><span class="tile">{% icon "truck" 20 %}</span><h2 class="t-h3 mt-3">Delivery, setup and pickup</h2><p class="mt-1 text-small text-ink-muted">Handled by our crew, with fees based on your ZIP code.</p></div>
+    <div class="card p-4"><span class="tile">{% icon "calendar" 20 %}</span><h2 class="t-h3 mt-3">Live availability</h2><p class="mt-1 text-small text-ink-muted">See what is free on your event date, so you are never promised something that is booked.</p></div>
+    <div class="card p-4"><span class="tile">{% icon "shield" 20 %}</span><h2 class="t-h3 mt-3">Clear quotes</h2><p class="mt-1 text-small text-ink-muted">A clear quote and an automatic invoice, with a deposit or full payment.</p></div>
+  </div>
+  <section class="section max-w-[720px]" aria-labelledby="who-heading">
+    {% include "components/_section_header.html" with eyebrow="Who we work with" title="Ten chairs or an entire reception" id="who-heading" %}
+    <p class="mt-3 text-ink-muted">Parents planning a birthday, event planners juggling a wedding, churches and schools running a fun day, and companies hosting a team party. Whether you need ten chairs or an entire reception, we help you work out quantities and timing.</p>
+    <div class="mt-6 flex flex-wrap gap-3">
+      <a href="{% url 'catalogue:list' %}" class="btn btn-primary btn-lg">Browse rentals</a>
+      <a href="{% url 'core:contact' %}" class="btn btn-secondary btn-lg">Contact us</a>
+    </div>
+  </section>
 </div>
 {% endblock %}

@@ -1,17 +1,1 @@
-<div{% if wrapper %} {{ wrapper }}{% endif %}>
-  {% if field.widget_type == "radioselect" %}
-  <fieldset{% if field.errors %} aria-describedby="{{ field.auto_id }}-error"{% endif %}>
-    <legend class="font-bold">{{ field.label }}</legend>
-    <div class="mt-2 space-y-2">
-      {% for choice in field %}<label for="{{ choice.id_for_label }}" class="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border-2 border-primary/20 px-3 has-[:checked]:border-primary has-[:checked]:bg-surface">{{ choice.tag }}<span>{{ choice.choice_label }}</span></label>{% endfor %}
-    </div>
-  </fieldset>
-  {% elif field.widget_type == "checkbox" %}
-  <label for="{{ field.id_for_label }}" class="flex min-h-11 cursor-pointer items-center gap-3">{{ field }}<span class="font-bold">{{ field.label }}</span></label>
-  {% else %}
-  <label for="{{ field.id_for_label }}" class="block font-bold">{{ field.label }}</label>
-  {{ field }}
-  {% endif %}
-  {% if field.help_text %}<p id="{{ field.auto_id }}-help" class="mt-1 text-sm">{{ field.help_text }}</p>{% endif %}
-  {% include "bookings/_field_errors.html" with errors=field.errors id=field.auto_id %}
-</div>
+{% include "components/_field.html" %}

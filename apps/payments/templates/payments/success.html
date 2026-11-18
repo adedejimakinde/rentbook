@@ -1,8 +1,11 @@
 {% extends "base.html" %}
+{% load core_tags %}
 {% block head_extra %}<meta name="robots" content="noindex">{% endblock %}
+{% block body_class %} !bg-surface-soft{% endblock %}
 {% block content %}
-<div class="mx-auto max-w-xl px-4 py-6">
+<div class="wrap-narrow page">
   {% include "payments/_payment_status.html" %}
-  <p class="mt-6"><a href="{{ status_url }}" class="font-bold text-primary underline">View your booking</a> (save this link)</p>
+  <a href="{{ status_url }}" class="btn btn-secondary btn-lg mt-4">View your booking{% icon "chevron-right" 16 stroke=2.5 %}</a>
+  <p class="mt-2 text-small text-ink-muted">Save that link to check your booking any time.</p>
 </div>
 {% endblock %}

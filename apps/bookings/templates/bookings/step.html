@@ -1,31 +1,34 @@
 {% extends "base.html" %}
 {% block head_extra %}<meta name="robots" content="noindex">{% endblock %}
+{% block body_class %} !bg-surface-soft{% endblock %}
+{% block whatsapp_fab %}{% endblock %}
 {% block content %}
-<div class="mx-auto max-w-xl px-4 py-6">
+<div class="wrap-narrow page">
   {% include "bookings/_progress.html" %}
-  <h1 class="text-2xl font-bold text-primary">{{ step_title }}</h1>
-  <form method="post" class="mt-4 space-y-5" novalidate{% if step == "contact" %} x-data="{ exempt: {{ form.tax_exempt.value|yesno:'true,false' }} }"{% endif %}>
+  <h1 class="t-h1">{{ step_title }}</h1>
+  <form method="post" class="card mt-4 space-y-5 p-4 md:p-6" novalidate{% if step == "contact" %} x-data="{ exempt: {{ form.tax_exempt.value|yesno:'true,false' }} }"{% endif %}>
     {% csrf_token %}
-    {% if form.non_field_errors %}<p role="alert" class="rounded-lg bg-[#fee2e2] p-3 font-bold text-[#7f1d1d]">{{ form.non_field_errors.0 }}</p>{% endif %}
+    {% if form.non_field_errors %}<p role="alert" class="alert alert-danger">{{ form.non_field_errors.0 }}</p>{% endif %}
     {% if step == "contact" %}
       {% include "bookings/_form_field.html" with field=form.name %}
       {% include "bookings/_form_field.html" with field=form.email %}
       {% include "bookings/_form_field.html" with field=form.phone %}
-      <div class="rounded-lg bg-surface p-4" @change="exempt = $refs.exempt.checked">
-        <label for="{{ form.tax_exempt.id_for_label }}" class="flex min-h-11 cursor-pointer items-center gap-3"><input type="checkbox" name="tax_exempt" id="{{ form.tax_exempt.id_for_label }}" x-ref="exempt" class="h-5 w-5 accent-primary"{% if form.tax_exempt.value %} checked{% endif %}><span class="font-bold">{{ form.tax_exempt.label }}</span></label>
+      <div class="panel" @change="exempt = $refs.exempt.checked">
+        {% include "components/_switch.html" with id=form.tax_exempt.id_for_label name="tax_exempt" label=form.tax_exempt.label checked=form.tax_exempt.value xref="exempt" %}
         <div x-show="exempt" class="mt-3 space-y-4">
           {% include "bookings/_form_field.html" with field=form.org_name %}
           {% include "bookings/_form_field.html" with field=form.cert_number %}
-          <p class="text-sm">Your quote still includes sales tax. Tax is removed after our staff verify your exemption certificate, before your balance is due.</p>
+          <p class="text-small text-ink-muted">Your quote still includes sales tax. Tax is removed after our staff verify your exemption certificate, before your balance is due.</p>
         </div>
       </div>
     {% else %}
       {% for field in form %}{% include "bookings/_form_field.html" %}{% endfor %}
     {% endif %}
-    <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
-      {% if previous_step %}<a href="{% url 'bookings:step' previous_step %}" class="inline-flex min-h-12 items-center justify-center rounded-lg border-2 border-primary px-6 font-bold text-primary">Back</a>{% else %}<a href="{% url 'bookings:cart' %}" class="inline-flex min-h-12 items-center justify-center rounded-lg border-2 border-primary px-6 font-bold text-primary">Back to cart</a>{% endif %}
-      <button type="submit" class="min-h-12 rounded-lg bg-accent px-6 font-bold text-white hover:bg-accent-dark">Continue</button>
+    <div class="flex flex-col-reverse gap-3 pt-1 sm:flex-row sm:justify-between">
+      {% if previous_step %}<a href="{% url 'bookings:step' previous_step %}" class="btn btn-secondary btn-lg">Back</a>{% else %}<a href="{% url 'bookings:cart' %}" class="btn btn-secondary btn-lg">Back to cart</a>{% endif %}
+      <button type="submit" class="btn btn-primary btn-lg sm:min-w-[200px]">Continue</button>
     </div>
   </form>
+  {% include "bookings/_help.html" %}
 </div>
 {% endblock %}

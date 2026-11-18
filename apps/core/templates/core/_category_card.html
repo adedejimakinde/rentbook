@@ -1,0 +1,8 @@
+{% load core_tags catalogue_media %}{% with tone="bg-brand text-white | bg-surface-tint text-ink | bg-accent text-white | bg-warning-tint text-ink | bg-brand-deep text-white | bg-success-tint text-ink"|nth:forloop.counter0 %}<div class="lift relative flex aspect-[3/4] flex-col justify-between overflow-hidden rounded-[20px] p-4 {{ tone }}">
+  {% if item.renditions_ready %}{% picture item name=item.name alt="" sizes="200px" css="!absolute inset-0 h-full w-full" %}<span class="absolute inset-0 bg-ink/45" aria-hidden="true"></span>{% endif %}
+  <h3 class="relative text-h3 leading-tight font-bold{% if item.renditions_ready %} text-white{% endif %}"><a href="{{ item.get_absolute_url }}" class="after:absolute after:inset-0">{{ item.name }}</a></h3>
+  <span class="relative flex items-end justify-between gap-2{% if item.renditions_ready %} text-white{% endif %}">
+    <span class="text-caption opacity-90">{{ item.item_count }} rental{{ item.item_count|pluralize }}</span>
+    <span class="flex h-9 w-9 items-center justify-center rounded-pill bg-white/90 text-ink" aria-hidden="true">{% icon "arrow-right" 16 stroke=2.5 %}</span>
+  </span>
+</div>{% endwith %}

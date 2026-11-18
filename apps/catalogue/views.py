@@ -8,7 +8,7 @@ from django.views.decorators.vary import vary_on_headers
 
 from apps.catalogue.models import Category, ItemImage, Package
 from apps.catalogue.services import listing
-from apps.core.services import get_event_date, set_event_date
+from apps.core.services import get_event_date, get_event_zip, set_event_date
 
 GALLERY_PAGE_SIZE = 24
 
@@ -46,6 +46,7 @@ def catalogue(request, category_slug=None):
         "categories": listing.categories_with_items(),
         "page": page,
         "event_date": event_date,
+        "event_zip": get_event_zip(request),
         "date_error": date_error,
         "statuses": listing.item_statuses(page.object_list, event_date) if event_date else {},
         "meta_title": title,
@@ -82,6 +83,7 @@ def _availability_context(request, item):
         "event_date": event_date,
         "date_error": date_error,
         "status": status,
+        "line_total": listing.line_total(selected, quantity),
         "ask_price_url": (
             listing.price_enquiry_url(item.name, selected.name, event_date)
             if selected is not None and not selected.unit_price

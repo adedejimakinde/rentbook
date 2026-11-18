@@ -1,27 +1,50 @@
-<title>{{ meta_title }} | {{ business_name }}</title>
-{% if date_error %}<p role="alert" class="mb-4 rounded-lg bg-[#fee2e2] p-3 font-bold text-[#7f1d1d]">{{ date_error }}</p>{% endif %}
-{% if event_date %}<p class="mb-4 font-bold">Showing availability for {{ event_date|date:"l, F j, Y" }}.</p>{% else %}<p class="mb-4">Pick an event date above to see availability on each item.</p>{% endif %}
-<nav aria-label="Categories" class="-mx-4 mb-6 overflow-x-auto px-4">
-  <ul class="flex gap-2 whitespace-nowrap pb-2">
-    <li><a href="{% url 'catalogue:list' %}" hx-get="{% url 'catalogue:list' %}" hx-target="#catalogue-results" hx-push-url="true" {% if not category %}aria-current="page"{% endif %} class="inline-flex min-h-11 items-center rounded-full border-2 px-4 font-bold {% if not category %}border-primary bg-primary text-white{% else %}border-primary/40 text-primary{% endif %}">All</a></li>
+{% load core_tags %}<title>{{ meta_title }} | {{ business_name }}</title>
+<section class="bg-surface pb-3 pt-5">
+  <div class="wrap flex flex-col gap-3 md:flex-row md:items-end md:justify-between md:gap-8">
+    <div class="space-y-1">
+      <p class="eyebrow">{% if category %}Rentals{% else %}All rentals{% endif %}</p>
+      <h1 class="t-h1 md:text-[30px]">{% if category %}{{ category.name }}{% else %}Find your setup{% endif %}</h1>
+      {% if category.description %}<p class="max-w-[60ch] text-small text-ink-muted">{{ category.description }}</p>{% endif %}
+    </div>
+    <details class="group rounded-md bg-surface-tint md:w-[min(420px,45%)]"{% if date_error %} open{% endif %}>
+      <summary class="flex min-h-[52px] cursor-pointer items-center gap-3 px-3.5 py-2">
+        <span class="text-brand">{% icon "calendar" 20 %}</span>
+        <span class="flex min-w-0 flex-1 flex-col">
+          {% if event_date %}<span class="text-[14px] font-bold">{{ event_date|date:"D, M j" }}{% if event_zip %} · ZIP {{ event_zip }}{% endif %}</span><span class="text-caption font-medium text-ink-muted">Showing what is free on {{ event_date|date:"l, F j" }}</span>
+          {% else %}<span class="text-[14px] font-bold">Pick your event date</span><span class="text-caption font-medium text-ink-muted">See what is free on your date</span>{% endif %}
+        </span>
+        <span class="text-small font-bold text-brand group-open:hidden">{% if event_date %}Change{% else %}Choose{% endif %}</span><span class="hidden text-small font-bold text-brand group-open:inline">Close</span>
+      </summary>
+      <form method="get" action="{{ request.path }}" hx-get="{{ request.path }}" hx-target="#catalogue-results" hx-push-url="true" class="flex flex-wrap items-end gap-2 px-3.5 pb-3.5">
+        <div class="min-w-[160px] flex-1">
+          <label for="event-date" class="label label-caps">Event date</label>
+          <input id="event-date" type="date" name="date" value="{{ event_date|date:'Y-m-d' }}" class="input"{% if date_error %} aria-invalid="true" aria-describedby="event-date-error"{% endif %}>
+        </div>
+        <button type="submit" class="btn btn-brand min-h-[46px]">Show</button>
+        {% if event_date %}<a href="{{ request.path }}?date=" hx-get="{{ request.path }}?date=" hx-target="#catalogue-results" hx-push-url="true" class="btn btn-ghost min-h-[46px]">Clear</a>{% endif %}
+        {% if date_error %}<p id="event-date-error" role="alert" class="field-error w-full">{{ date_error }}</p>{% endif %}
+      </form>
+    </details>
+  </div>
+</section>
+<nav aria-label="Categories" class="border-b border-border bg-surface pb-3">
+  <ul class="shelf gap-2 py-1">
+    <li>{% if category %}{% include "components/_chip.html" with href="/rentals/" label="All" hx="#catalogue-results" %}{% else %}{% include "components/_chip.html" with href="/rentals/" label="All" active=True hx="#catalogue-results" %}{% endif %}</li>
     {% for chip in categories %}
-    <li><a href="{{ chip.get_absolute_url }}" hx-get="{{ chip.get_absolute_url }}" hx-target="#catalogue-results" hx-push-url="true" {% if category.pk == chip.pk %}aria-current="page"{% endif %} class="inline-flex min-h-11 items-center rounded-full border-2 px-4 font-bold {% if category.pk == chip.pk %}border-primary bg-primary text-white{% else %}border-primary/40 text-primary{% endif %}">{{ chip.name }}</a></li>
+    <li>{% if category.pk == chip.pk %}{% include "components/_chip.html" with href=chip.get_absolute_url label=chip.name active=True hx="#catalogue-results" %}{% else %}{% include "components/_chip.html" with href=chip.get_absolute_url label=chip.name hx="#catalogue-results" %}{% endif %}</li>
     {% endfor %}
   </ul>
 </nav>
-{% if page.object_list %}
-<ul class="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
-  {% for item in page.object_list %}
-  <li>{% include "catalogue/_item_card.html" with eager=forloop.first %}</li>
-  {% endfor %}
-</ul>
-{% else %}
-<p class="rounded-lg bg-surface p-6">Nothing is listed here yet. Call or WhatsApp us and we will help you find what you need.</p>
-{% endif %}
-{% if page.paginator.num_pages > 1 %}
-<nav aria-label="Pagination" class="mt-8 flex items-center justify-between gap-3">
-  {% if page.has_previous %}<a href="?page={{ page.previous_page_number }}" hx-get="?page={{ page.previous_page_number }}" hx-target="#catalogue-results" hx-push-url="true" hx-swap="innerHTML show:top" rel="prev" class="inline-flex min-h-11 items-center rounded-lg border-2 border-primary px-4 font-bold text-primary">Previous</a>{% else %}<span class="min-h-11"></span>{% endif %}
-  <p>Page {{ page.number }} of {{ page.paginator.num_pages }}</p>
-  {% if page.has_next %}<a href="?page={{ page.next_page_number }}" hx-get="?page={{ page.next_page_number }}" hx-target="#catalogue-results" hx-push-url="true" hx-swap="innerHTML show:top" rel="next" class="inline-flex min-h-11 items-center rounded-lg border-2 border-primary px-4 font-bold text-primary">Next</a>{% else %}<span class="min-h-11"></span>{% endif %}
-</nav>
-{% endif %}
+<div class="wrap pt-4">
+  <p class="mb-3 text-small font-bold text-ink-muted">{{ page.paginator.count }} rental{{ page.paginator.count|pluralize }}</p>
+  {% if page.object_list %}
+  <ul id="results-grid" class="grid-products">
+    {% for item in page.object_list %}
+    <li>{% include "catalogue/_item_card.html" with eager=forloop.first %}</li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="card p-6">Nothing is listed here yet. Call or WhatsApp us and we will help you find what you need.</p>
+  {% endif %}
+  {% include "catalogue/_more.html" %}
+</div>
